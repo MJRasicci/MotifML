@@ -91,7 +91,7 @@ Data is **not versioned**. Only structure (`.gitkeep`) is committed.
 ### 1. Clone the repository
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/MJRasicci/MotifML.git
 cd motifml
 ```
 
@@ -106,25 +106,7 @@ uv sync --extra dev
 
 ---
 
-### 3. Install PyTorch
-
-Choose the appropriate build for your machine.
-
-#### CPU (default, works everywhere)
-
-```bash
-./scripts/install_torch.sh cpu
-```
-
-#### NVIDIA GPU (CUDA 12.1 example)
-
-```bash
-./scripts/install_torch.sh cu121
-```
-
----
-
-### 4. Run the pipeline
+### 3. Run the pipeline
 
 ```bash
 uv run kedro run
@@ -132,7 +114,7 @@ uv run kedro run
 
 ---
 
-### 5. Launch visualization tools
+### 4. Launch visualization tools
 
 ```bash
 uv run kedro viz
