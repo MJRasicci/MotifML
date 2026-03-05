@@ -202,6 +202,6 @@ MIT — see `LICENSE.md`.
 
 ## Notes
 
-* The datasets used for training are intentionally excluded from version control. For an example of a compatible dataset, see [PDMX](https://github.com/pnlong/PDMX).
+* The datasets used for training are intentionally excluded from version control.
 * GPU support is optional and environment-dependent
 * The project prioritizes correctness, structure, and reproducibility over rapid prototyping
