@@ -35,7 +35,7 @@ MotifML is designed around three core principles:
 MotifML follows a pipeline-oriented architecture:
 
 ```
-Raw Data (Structured Musical Data from GPIO.NET)
+Raw Data (Structured Musical Data from the Motif library)
         ↓
 Normalization / Parsing
         ↓
@@ -61,7 +61,7 @@ motifml/
 ├── src/motifml/           # Core library and pipeline code
 ├── conf/                  # Kedro configuration (catalog, parameters, logging)
 ├── data/                  # Data directories (ignored in git)
-├── tools/                 # Place GPIO binaries here (ignored in git)
+├── tools/                 # Place Motif CLI binaries here (ignored in git)
 ├── notebooks/             # Notebooks for data analysis and prototyping
 ├── tests/                 # Unit tests
 ├── pyproject.toml         # Project configuration

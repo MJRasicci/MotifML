@@ -23,9 +23,9 @@ uv.lock
 .idea/
 .vscode/
 
-# --- GPIO Binaries
-tools/GPIO
-tools/GPIO.exe
+# --- Motif CLI Binaries
+tools/motif-cli
+tools/motif-cli.exe
 
 # --- Output Files
 *.log
