@@ -6,18 +6,25 @@ import pytest
 
 from motifml.ir.models import (
     Bar,
+    ControlScope,
     DynamicChangeValue,
     FermataValue,
     GeneralTechniquePayload,
     GenericTechniqueFlags,
     HairpinDirection,
     HairpinValue,
+    NoteEvent,
+    OnsetGroup,
     OttavaValue,
     Part,
     Pitch,
     PitchStep,
+    PointControlEvent,
+    PointControlKind,
     RhythmBaseValue,
     RhythmShape,
+    SpanControlEvent,
+    SpanControlKind,
     Staff,
     StringFrettedTechniquePayload,
     TechniquePayload,
@@ -34,6 +41,7 @@ EXPECTED_WRITTEN_MINUS_SOUNDING = 10
 EXPECTED_BEATS_PER_MINUTE = 120.0
 EXPECTED_GENERIC_ACCENT = 2
 EXPECTED_CAPO_FRET = 2
+EXPECTED_STRING_NUMBER = 1
 EXPECTED_STAFF_IDS = ("staff:part:track-7:0", "staff:part:track-7:1")
 
 
@@ -237,4 +245,116 @@ def test_structure_models_reject_inconsistent_ownership_and_invalid_geometry():
             staff_id="staff:part:track-7:0",
             bar_id="bar:0",
             voice_index=0,
+        )
+
+
+def test_event_models_accept_valid_onsets_notes_and_controls():
+    onset = OnsetGroup(
+        onset_id="onset:voice:staff:part:track-7:0:0:0:0",
+        voice_lane_id="voice:staff:part:track-7:0:0:0",
+        bar_id="bar:0",
+        time=ScoreTime(0, 1),
+        duration_notated=ScoreTime(1, 4),
+        is_rest=False,
+        attack_order_in_voice=0,
+        duration_sounding_max=ScoreTime(1, 2),
+        dynamic_local=" mf ",
+        techniques=TechniquePayload(),
+        rhythm_shape=RhythmShape(base_value=RhythmBaseValue.QUARTER),
+    )
+    note = NoteEvent(
+        note_id="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+        onset_id=onset.onset_id,
+        part_id="part:track-7",
+        staff_id="staff:part:track-7:0",
+        time=ScoreTime(0, 1),
+        attack_duration=ScoreTime(1, 4),
+        sounding_duration=ScoreTime(1, 2),
+        pitch=Pitch(step=PitchStep.C, accidental="#", octave=4),
+        velocity=96,
+        string_number=EXPECTED_STRING_NUMBER,
+        show_string_number=True,
+        techniques=TechniquePayload(),
+    )
+    point_control = PointControlEvent(
+        control_id="ctrlp:score:0",
+        kind=PointControlKind.TEMPO_CHANGE,
+        scope=ControlScope.SCORE,
+        target_ref="score",
+        time=ScoreTime(0, 1),
+        value=TempoChangeValue(beats_per_minute=EXPECTED_BEATS_PER_MINUTE),
+    )
+    span_control = SpanControlEvent(
+        control_id="ctrls:staff:0",
+        kind=SpanControlKind.HAIRPIN,
+        scope=ControlScope.STAFF,
+        target_ref="staff:part:track-7:0",
+        start_time=ScoreTime(0, 1),
+        end_time=ScoreTime(1, 2),
+        value=HairpinValue(direction=HairpinDirection.CRESCENDO),
+        start_anchor_ref=onset.onset_id,
+        end_anchor_ref=note.note_id,
+    )
+
+    assert onset.dynamic_local == "mf"
+    assert note.show_string_number is True
+    assert point_control.kind is PointControlKind.TEMPO_CHANGE
+    assert span_control.end_anchor_ref == note.note_id
+
+
+def test_event_models_reject_invalid_constraints_and_kind_payload_mismatches():
+    with pytest.raises(ValueError, match="duration_sounding_max"):
+        OnsetGroup(
+            onset_id="onset:voice:staff:part:track-7:0:0:0:0",
+            voice_lane_id="voice:staff:part:track-7:0:0:0",
+            bar_id="bar:0",
+            time=ScoreTime(0, 1),
+            duration_notated=ScoreTime(1, 4),
+            is_rest=True,
+            attack_order_in_voice=0,
+            duration_sounding_max=ScoreTime(1, 4),
+        )
+
+    with pytest.raises(ValueError, match="sounding_duration"):
+        NoteEvent(
+            note_id="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+            onset_id="onset:voice:staff:part:track-7:0:0:0:0",
+            part_id="part:track-7",
+            staff_id="staff:part:track-7:0",
+            time=ScoreTime(0, 1),
+            attack_duration=ScoreTime(1, 4),
+            sounding_duration=ScoreTime(0, 1),
+        )
+
+    with pytest.raises(ValueError, match="show_string_number"):
+        NoteEvent(
+            note_id="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+            onset_id="onset:voice:staff:part:track-7:0:0:0:0",
+            part_id="part:track-7",
+            staff_id="staff:part:track-7:0",
+            time=ScoreTime(0, 1),
+            attack_duration=ScoreTime(1, 4),
+            sounding_duration=ScoreTime(1, 4),
+            show_string_number=True,
+        )
+
+    with pytest.raises(ValueError, match="TempoChangeValue"):
+        PointControlEvent(
+            control_id="ctrlp:score:0",
+            kind=PointControlKind.TEMPO_CHANGE,
+            scope=ControlScope.SCORE,
+            target_ref="score",
+            time=ScoreTime(0, 1),
+            value=DynamicChangeValue(marking="mf"),
+        )
+
+    with pytest.raises(ValueError, match="after start_time"):
+        SpanControlEvent(
+            control_id="ctrls:staff:0",
+            kind=SpanControlKind.HAIRPIN,
+            scope=ControlScope.STAFF,
+            target_ref="staff:part:track-7:0",
+            start_time=ScoreTime(1, 2),
+            end_time=ScoreTime(1, 2),
+            value=HairpinValue(direction=HairpinDirection.CRESCENDO),
         )

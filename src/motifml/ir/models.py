@@ -8,7 +8,11 @@ from typing import TypeAlias, TypeVar
 
 from motifml.ir.ids import (
     BAR_PREFIX,
+    NOTE_PREFIX,
+    ONSET_PREFIX,
     PART_PREFIX,
+    POINT_CONTROL_PREFIX,
+    SPAN_CONTROL_PREFIX,
     STAFF_PREFIX,
     VOICE_LANE_CHAIN_PREFIX,
     VOICE_LANE_PREFIX,
@@ -50,6 +54,30 @@ class HairpinDirection(StrEnum):
 
     CRESCENDO = "crescendo"
     DECRESCENDO = "decrescendo"
+
+
+class ControlScope(StrEnum):
+    """Supported scope targets for score control events."""
+
+    SCORE = "score"
+    PART = "part"
+    STAFF = "staff"
+    VOICE = "voice"
+
+
+class PointControlKind(StrEnum):
+    """Supported v1 point control kinds."""
+
+    TEMPO_CHANGE = "tempo_change"
+    DYNAMIC_CHANGE = "dynamic_change"
+    FERMATA = "fermata"
+
+
+class SpanControlKind(StrEnum):
+    """Supported v1 span control kinds."""
+
+    HAIRPIN = "hairpin"
+    OTTAVA = "ottava"
 
 
 @dataclass(frozen=True)
@@ -452,6 +480,181 @@ class VoiceLane:
             raise ValueError("VoiceLane voice_index must be non-negative.")
 
 
+@dataclass(frozen=True)
+class OnsetGroup:
+    """One authored onset or rest slot inside a voice lane."""
+
+    onset_id: str
+    voice_lane_id: str
+    bar_id: str
+    time: ScoreTime
+    duration_notated: ScoreTime
+    is_rest: bool
+    attack_order_in_voice: int
+    duration_sounding_max: ScoreTime | None = None
+    grace_type: str | None = None
+    dynamic_local: str | None = None
+    techniques: TechniquePayload | None = None
+    rhythm_shape: RhythmShape | None = None
+
+    def __post_init__(self) -> None:
+        _require_identifier_prefix(self.onset_id, ONSET_PREFIX, "onset_id")
+        _require_identifier_prefix(
+            self.voice_lane_id, VOICE_LANE_PREFIX, "voice_lane_id"
+        )
+        _require_identifier_prefix(self.bar_id, BAR_PREFIX, "bar_id")
+        if not self.onset_id.startswith(f"{ONSET_PREFIX}:{self.voice_lane_id}:"):
+            raise ValueError(
+                "OnsetGroup onset_id must encode the owning voice_lane_id."
+            )
+
+        self.time.require_non_negative("OnsetGroup time")
+        if self.duration_notated.numerator <= 0:
+            raise ValueError("OnsetGroup duration_notated must be positive.")
+
+        if self.attack_order_in_voice < 0:
+            raise ValueError("OnsetGroup attack_order_in_voice must be non-negative.")
+
+        if self.duration_sounding_max is not None:
+            if self.duration_sounding_max.numerator <= 0:
+                raise ValueError("OnsetGroup duration_sounding_max must be positive.")
+
+            if self.is_rest:
+                raise ValueError(
+                    "OnsetGroup duration_sounding_max cannot be set for a rest onset."
+                )
+
+        if self.grace_type is not None:
+            object.__setattr__(
+                self,
+                "grace_type",
+                _normalize_optional_text(self.grace_type, "grace_type"),
+            )
+
+        if self.dynamic_local is not None:
+            object.__setattr__(
+                self,
+                "dynamic_local",
+                _normalize_optional_text(self.dynamic_local, "dynamic_local"),
+            )
+
+
+@dataclass(frozen=True)
+class NoteEvent:
+    """One note attached to an onset group."""
+
+    note_id: str
+    onset_id: str
+    part_id: str
+    staff_id: str
+    time: ScoreTime
+    attack_duration: ScoreTime
+    sounding_duration: ScoreTime
+    pitch: Pitch | None = None
+    velocity: int | None = None
+    string_number: int | None = None
+    show_string_number: bool | None = None
+    techniques: TechniquePayload | None = None
+
+    def __post_init__(self) -> None:
+        _require_identifier_prefix(self.note_id, NOTE_PREFIX, "note_id")
+        _require_identifier_prefix(self.onset_id, ONSET_PREFIX, "onset_id")
+        _require_identifier_prefix(self.part_id, PART_PREFIX, "part_id")
+        _require_identifier_prefix(self.staff_id, STAFF_PREFIX, "staff_id")
+        if not self.note_id.startswith(f"{NOTE_PREFIX}:{self.onset_id}:"):
+            raise ValueError("NoteEvent note_id must encode the owning onset_id.")
+
+        if not self.staff_id.startswith(f"{STAFF_PREFIX}:{self.part_id}:"):
+            raise ValueError("NoteEvent staff_id must belong to the owning part_id.")
+
+        self.time.require_non_negative("NoteEvent time")
+        if self.attack_duration.numerator <= 0:
+            raise ValueError("NoteEvent attack_duration must be positive.")
+
+        if self.sounding_duration.numerator <= 0:
+            raise ValueError("NoteEvent sounding_duration must be positive.")
+
+        if self.velocity is not None and self.velocity < 0:
+            raise ValueError("NoteEvent velocity must be non-negative when provided.")
+
+        if self.string_number is not None and self.string_number <= 0:
+            raise ValueError("NoteEvent string_number must be positive when provided.")
+
+        if self.show_string_number and self.string_number is None:
+            raise ValueError(
+                "NoteEvent show_string_number requires string_number to be present."
+            )
+
+
+@dataclass(frozen=True)
+class PointControlEvent:
+    """One point-local score control event."""
+
+    control_id: str
+    kind: PointControlKind
+    scope: ControlScope
+    target_ref: str
+    time: ScoreTime
+    value: PointControlValue
+
+    def __post_init__(self) -> None:
+        _require_identifier_prefix(self.control_id, POINT_CONTROL_PREFIX, "control_id")
+        object.__setattr__(
+            self,
+            "kind",
+            _coerce_str_enum(self.kind, PointControlKind, "kind"),
+        )
+        object.__setattr__(
+            self,
+            "scope",
+            _coerce_str_enum(self.scope, ControlScope, "scope"),
+        )
+        self.time.require_non_negative("PointControlEvent time")
+        _validate_control_target_ref(self.scope, self.target_ref)
+        _validate_point_control_value(self.kind, self.value)
+
+
+@dataclass(frozen=True)
+class SpanControlEvent:
+    """One span-local score control event."""
+
+    control_id: str
+    kind: SpanControlKind
+    scope: ControlScope
+    target_ref: str
+    start_time: ScoreTime
+    end_time: ScoreTime
+    value: SpanControlValue
+    start_anchor_ref: str | None = None
+    end_anchor_ref: str | None = None
+
+    def __post_init__(self) -> None:
+        _require_identifier_prefix(self.control_id, SPAN_CONTROL_PREFIX, "control_id")
+        object.__setattr__(
+            self,
+            "kind",
+            _coerce_str_enum(self.kind, SpanControlKind, "kind"),
+        )
+        object.__setattr__(
+            self,
+            "scope",
+            _coerce_str_enum(self.scope, ControlScope, "scope"),
+        )
+        self.start_time.require_non_negative("SpanControlEvent start_time")
+        self.end_time.require_non_negative("SpanControlEvent end_time")
+        if self.end_time <= self.start_time:
+            raise ValueError("SpanControlEvent end_time must be after start_time.")
+
+        _validate_control_target_ref(self.scope, self.target_ref)
+        _validate_span_control_value(self.kind, self.value)
+
+        if self.start_anchor_ref is not None:
+            _validate_anchor_ref(self.start_anchor_ref, "start_anchor_ref")
+
+        if self.end_anchor_ref is not None:
+            _validate_anchor_ref(self.end_anchor_ref, "end_anchor_ref")
+
+
 # Control values are intentionally modeled as strongly typed payload dataclasses
 # grouped by union aliases, rather than as free-form tagged dictionaries.
 PointControlValue: TypeAlias = TempoChangeValue | DynamicChangeValue | FermataValue
@@ -459,6 +662,8 @@ SpanControlValue: TypeAlias = HairpinValue | OttavaValue
 ControlValue: TypeAlias = PointControlValue | SpanControlValue
 
 __all__ = [
+    "Bar",
+    "ControlScope",
     "ControlValue",
     "DynamicChangeValue",
     "FermataValue",
@@ -466,15 +671,20 @@ __all__ = [
     "GenericTechniqueFlags",
     "HairpinDirection",
     "HairpinValue",
+    "NoteEvent",
+    "OnsetGroup",
     "OttavaValue",
     "Part",
     "Pitch",
     "PitchStep",
+    "PointControlEvent",
+    "PointControlKind",
     "PointControlValue",
-    "Bar",
     "RhythmBaseValue",
     "RhythmShape",
     "Staff",
+    "SpanControlEvent",
+    "SpanControlKind",
     "SpanControlValue",
     "StringFrettedTechniquePayload",
     "TechniquePayload",
@@ -516,3 +726,57 @@ def _require_non_negative_optional_integer(value: int | None, field_name: str) -
 def _require_identifier_prefix(value: str, prefix: str, field_name: str) -> None:
     if not value.startswith(f"{prefix}:"):
         raise ValueError(f"{field_name} must start with '{prefix}:'.")
+
+
+def _validate_control_target_ref(scope: ControlScope, target_ref: str) -> None:
+    if scope is ControlScope.SCORE:
+        if target_ref != ControlScope.SCORE.value:
+            raise ValueError("Score-scoped controls must target the literal 'score'.")
+        return
+
+    scope_prefix_map = {
+        ControlScope.PART: PART_PREFIX,
+        ControlScope.STAFF: STAFF_PREFIX,
+        ControlScope.VOICE: VOICE_LANE_PREFIX,
+    }
+    prefix = scope_prefix_map[scope]
+    if not target_ref.startswith(f"{prefix}:"):
+        raise ValueError(
+            f"{scope.value}-scoped controls must target a '{prefix}:' reference."
+        )
+
+
+def _validate_point_control_value(
+    kind: PointControlKind, value: PointControlValue
+) -> None:
+    value_type_by_kind = {
+        PointControlKind.TEMPO_CHANGE: TempoChangeValue,
+        PointControlKind.DYNAMIC_CHANGE: DynamicChangeValue,
+        PointControlKind.FERMATA: FermataValue,
+    }
+    expected_type = value_type_by_kind[kind]
+    if not isinstance(value, expected_type):
+        raise ValueError(
+            f"PointControlEvent kind '{kind.value}' requires {expected_type.__name__}."
+        )
+
+
+def _validate_span_control_value(
+    kind: SpanControlKind, value: SpanControlValue
+) -> None:
+    value_type_by_kind = {
+        SpanControlKind.HAIRPIN: HairpinValue,
+        SpanControlKind.OTTAVA: OttavaValue,
+    }
+    expected_type = value_type_by_kind[kind]
+    if not isinstance(value, expected_type):
+        raise ValueError(
+            f"SpanControlEvent kind '{kind.value}' requires {expected_type.__name__}."
+        )
+
+
+def _validate_anchor_ref(value: str, field_name: str) -> None:
+    if value.startswith(f"{ONSET_PREFIX}:") or value.startswith(f"{NOTE_PREFIX}:"):
+        return
+
+    raise ValueError(f"{field_name} must reference an onset or note identifier.")
