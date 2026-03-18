@@ -80,6 +80,15 @@ class SpanControlKind(StrEnum):
     OTTAVA = "ottava"
 
 
+class EdgeType(StrEnum):
+    """Intrinsic edge families allowed in the canonical IR document."""
+
+    CONTAINS = "contains"
+    NEXT_IN_VOICE = "next_in_voice"
+    TIE_TO = "tie_to"
+    TECHNIQUE_TO = "technique_to"
+
+
 @dataclass(frozen=True)
 class Transposition:
     """Written-to-sounding transposition context for one part."""
@@ -655,6 +664,57 @@ class SpanControlEvent:
             _validate_anchor_ref(self.end_anchor_ref, "end_anchor_ref")
 
 
+CANONICAL_CONTAINMENT_PATHS: tuple[tuple[str, str], ...] = (
+    (PART_PREFIX, STAFF_PREFIX),
+    (BAR_PREFIX, VOICE_LANE_PREFIX),
+    (VOICE_LANE_PREFIX, ONSET_PREFIX),
+    (ONSET_PREFIX, NOTE_PREFIX),
+)
+
+
+@dataclass(frozen=True)
+class Edge:
+    """Sparse intrinsic edge between two IR entities."""
+
+    source_id: str
+    target_id: str
+    edge_type: EdgeType
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "edge_type",
+            _coerce_str_enum(self.edge_type, EdgeType, "edge_type"),
+        )
+        source_prefix = _identifier_prefix(self.source_id, "source_id")
+        target_prefix = _identifier_prefix(self.target_id, "target_id")
+
+        if self.edge_type is EdgeType.CONTAINS:
+            if (source_prefix, target_prefix) not in CANONICAL_CONTAINMENT_PATHS:
+                raise ValueError(
+                    "Edge contains relationships must follow the canonical "
+                    "Part->Staff, Bar->VoiceLane, VoiceLane->OnsetGroup, or "
+                    "OnsetGroup->NoteEvent paths."
+                )
+            return
+
+        if self.edge_type is EdgeType.NEXT_IN_VOICE:
+            _require_edge_endpoint_prefix(
+                self.source_id, ONSET_PREFIX, "source_id", self.edge_type
+            )
+            _require_edge_endpoint_prefix(
+                self.target_id, ONSET_PREFIX, "target_id", self.edge_type
+            )
+            return
+
+        _require_edge_endpoint_prefix(
+            self.source_id, NOTE_PREFIX, "source_id", self.edge_type
+        )
+        _require_edge_endpoint_prefix(
+            self.target_id, NOTE_PREFIX, "target_id", self.edge_type
+        )
+
+
 # Control values are intentionally modeled as strongly typed payload dataclasses
 # grouped by union aliases, rather than as free-form tagged dictionaries.
 PointControlValue: TypeAlias = TempoChangeValue | DynamicChangeValue | FermataValue
@@ -665,7 +725,10 @@ __all__ = [
     "Bar",
     "ControlScope",
     "ControlValue",
+    "CANONICAL_CONTAINMENT_PATHS",
     "DynamicChangeValue",
+    "Edge",
+    "EdgeType",
     "FermataValue",
     "GeneralTechniquePayload",
     "GenericTechniqueFlags",
@@ -726,6 +789,23 @@ def _require_non_negative_optional_integer(value: int | None, field_name: str) -
 def _require_identifier_prefix(value: str, prefix: str, field_name: str) -> None:
     if not value.startswith(f"{prefix}:"):
         raise ValueError(f"{field_name} must start with '{prefix}:'.")
+
+
+def _identifier_prefix(value: str, field_name: str) -> str:
+    prefix, separator, _ = value.partition(":")
+    if not separator:
+        raise ValueError(f"{field_name} must contain a namespaced identifier prefix.")
+
+    return prefix
+
+
+def _require_edge_endpoint_prefix(
+    value: str, prefix: str, field_name: str, edge_type: EdgeType
+) -> None:
+    if not value.startswith(f"{prefix}:"):
+        raise ValueError(
+            f"Edge type '{edge_type.value}' requires {field_name} to start with '{prefix}:'."
+        )
 
 
 def _validate_control_target_ref(scope: ControlScope, target_ref: str) -> None:

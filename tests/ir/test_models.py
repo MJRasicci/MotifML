@@ -5,9 +5,12 @@ from __future__ import annotations
 import pytest
 
 from motifml.ir.models import (
+    CANONICAL_CONTAINMENT_PATHS,
     Bar,
     ControlScope,
     DynamicChangeValue,
+    Edge,
+    EdgeType,
     FermataValue,
     GeneralTechniquePayload,
     GenericTechniqueFlags,
@@ -357,4 +360,43 @@ def test_event_models_reject_invalid_constraints_and_kind_payload_mismatches():
             start_time=ScoreTime(1, 2),
             end_time=ScoreTime(1, 2),
             value=HairpinValue(direction=HairpinDirection.CRESCENDO),
+        )
+
+
+def test_edge_model_accepts_canonical_intrinsic_edge_families():
+    contains_edge = Edge(
+        source_id="part:track-7",
+        target_id="staff:part:track-7:0",
+        edge_type=EdgeType.CONTAINS,
+    )
+    next_in_voice_edge = Edge(
+        source_id="onset:voice:staff:part:track-7:0:0:0:0",
+        target_id="onset:voice:staff:part:track-7:0:0:0:1",
+        edge_type=EdgeType.NEXT_IN_VOICE,
+    )
+    tie_edge = Edge(
+        source_id="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+        target_id="note:onset:voice:staff:part:track-7:0:0:0:1:0",
+        edge_type=EdgeType.TIE_TO,
+    )
+
+    assert contains_edge.edge_type is EdgeType.CONTAINS
+    assert next_in_voice_edge.edge_type is EdgeType.NEXT_IN_VOICE
+    assert tie_edge.edge_type is EdgeType.TIE_TO
+    assert CANONICAL_CONTAINMENT_PATHS[0] == ("part", "staff")
+
+
+def test_edge_model_rejects_invalid_endpoint_families():
+    with pytest.raises(ValueError, match="canonical"):
+        Edge(
+            source_id="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+            target_id="bar:0",
+            edge_type=EdgeType.CONTAINS,
+        )
+
+    with pytest.raises(ValueError, match="next_in_voice"):
+        Edge(
+            source_id="voice:staff:part:track-7:0:0:0",
+            target_id="onset:voice:staff:part:track-7:0:0:0:1",
+            edge_type=EdgeType.NEXT_IN_VOICE,
         )
