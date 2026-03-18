@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from motifml.ir.models import (
+    Bar,
     DynamicChangeValue,
     FermataValue,
     GeneralTechniquePayload,
@@ -12,16 +13,19 @@ from motifml.ir.models import (
     HairpinDirection,
     HairpinValue,
     OttavaValue,
+    Part,
     Pitch,
     PitchStep,
     RhythmBaseValue,
     RhythmShape,
+    Staff,
     StringFrettedTechniquePayload,
     TechniquePayload,
     TempoChangeValue,
     TimeSignature,
     Transposition,
     TupletRatio,
+    VoiceLane,
 )
 from motifml.ir.time import ScoreTime
 
@@ -29,6 +33,8 @@ EXPECTED_CHROMATIC_OFFSET = -2
 EXPECTED_WRITTEN_MINUS_SOUNDING = 10
 EXPECTED_BEATS_PER_MINUTE = 120.0
 EXPECTED_GENERIC_ACCENT = 2
+EXPECTED_CAPO_FRET = 2
+EXPECTED_STAFF_IDS = ("staff:part:track-7:0", "staff:part:track-7:1")
 
 
 def test_transposition_keeps_chromatic_and_octave_context_minimal():
@@ -153,3 +159,82 @@ def test_technique_payloads_remain_typed_without_using_free_form_dicts():
 
     with pytest.raises(ValueError, match="slide_types"):
         StringFrettedTechniquePayload(slide_types=(1, -1))
+
+
+def test_structure_models_validate_identity_relationships_and_optional_fields():
+    part = Part(
+        part_id="part:track-7",
+        instrument_family=1,
+        instrument_kind=2,
+        role=3,
+        transposition=Transposition(chromatic=0, octave=0),
+        staff_ids=EXPECTED_STAFF_IDS,
+    )
+    staff = Staff(
+        staff_id=EXPECTED_STAFF_IDS[0],
+        part_id=part.part_id,
+        staff_index=0,
+        tuning_pitches=(64, 59, 55, 50, 45, 40),
+        capo_fret=EXPECTED_CAPO_FRET,
+    )
+    bar = Bar(
+        bar_id="bar:0",
+        bar_index=0,
+        start=ScoreTime(0, 1),
+        duration=ScoreTime(4, 4),
+        time_signature=TimeSignature(4, 4),
+        key_mode=" major ",
+        triplet_feel=" swing ",
+    )
+    voice_lane = VoiceLane(
+        voice_lane_id="voice:staff:part:track-7:0:0:0",
+        voice_lane_chain_id="voice-chain:part:track-7:staff:part:track-7:0:0",
+        part_id=part.part_id,
+        staff_id=staff.staff_id,
+        bar_id=bar.bar_id,
+        voice_index=0,
+    )
+
+    assert part.staff_ids == EXPECTED_STAFF_IDS
+    assert staff.capo_fret == EXPECTED_CAPO_FRET
+    assert bar.key_mode == "major"
+    assert bar.triplet_feel == "swing"
+    assert voice_lane.voice_index == 0
+
+
+def test_structure_models_reject_inconsistent_ownership_and_invalid_geometry():
+    with pytest.raises(ValueError, match="staff_ids must contain at least one"):
+        Part(
+            part_id="part:track-7",
+            instrument_family=1,
+            instrument_kind=2,
+            role=3,
+            transposition=Transposition(),
+            staff_ids=(),
+        )
+
+    with pytest.raises(ValueError, match="owning part_id"):
+        Staff(
+            staff_id="staff:part:track-8:0",
+            part_id="part:track-7",
+            staff_index=0,
+        )
+
+    with pytest.raises(ValueError, match="duration must be positive"):
+        Bar(
+            bar_id="bar:0",
+            bar_index=0,
+            start=ScoreTime(0, 1),
+            duration=ScoreTime(0, 1),
+            time_signature=TimeSignature(4, 4),
+        )
+
+    with pytest.raises(ValueError, match="voice_lane_chain_id"):
+        VoiceLane(
+            voice_lane_id="voice:staff:part:track-7:0:0:0",
+            voice_lane_chain_id="voice-chain:part:track-7:staff:part:track-8:0:0",
+            part_id="part:track-7",
+            staff_id="staff:part:track-7:0",
+            bar_id="bar:0",
+            voice_index=0,
+        )

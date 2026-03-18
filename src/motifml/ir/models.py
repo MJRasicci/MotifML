@@ -6,6 +6,13 @@ from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TypeAlias, TypeVar
 
+from motifml.ir.ids import (
+    BAR_PREFIX,
+    PART_PREFIX,
+    STAFF_PREFIX,
+    VOICE_LANE_CHAIN_PREFIX,
+    VOICE_LANE_PREFIX,
+)
 from motifml.ir.time import ScoreTime
 
 _StrEnumT = TypeVar("_StrEnumT", bound=StrEnum)
@@ -299,6 +306,152 @@ class TechniquePayload:
     string_fretted: StringFrettedTechniquePayload | None = None
 
 
+@dataclass(frozen=True)
+class Part:
+    """Track-level IR structure without free-form textual metadata."""
+
+    part_id: str
+    instrument_family: int
+    instrument_kind: int
+    role: int
+    transposition: Transposition
+    staff_ids: tuple[str, ...]
+
+    def __post_init__(self) -> None:
+        _require_identifier_prefix(self.part_id, PART_PREFIX, "part_id")
+        normalized_staff_ids = tuple(self.staff_ids)
+        if not normalized_staff_ids:
+            raise ValueError("Part staff_ids must contain at least one staff.")
+
+        if len(set(normalized_staff_ids)) != len(normalized_staff_ids):
+            raise ValueError("Part staff_ids must be unique within the part.")
+
+        for staff_identifier in normalized_staff_ids:
+            _require_identifier_prefix(staff_identifier, STAFF_PREFIX, "staff_ids")
+            if not staff_identifier.startswith(f"{STAFF_PREFIX}:{self.part_id}:"):
+                raise ValueError(
+                    "Part staff_ids must belong to the owning part identifier."
+                )
+
+        object.__setattr__(self, "staff_ids", normalized_staff_ids)
+
+
+@dataclass(frozen=True)
+class Staff:
+    """Staff-level structure and performance context owned by one part."""
+
+    staff_id: str
+    part_id: str
+    staff_index: int
+    tuning_pitches: tuple[int, ...] | None = None
+    capo_fret: int | None = None
+
+    def __post_init__(self) -> None:
+        _require_identifier_prefix(self.staff_id, STAFF_PREFIX, "staff_id")
+        _require_identifier_prefix(self.part_id, PART_PREFIX, "part_id")
+        if not self.staff_id.startswith(f"{STAFF_PREFIX}:{self.part_id}:"):
+            raise ValueError("Staff staff_id must encode the owning part_id.")
+
+        if self.staff_index < 0:
+            raise ValueError("Staff staff_index must be non-negative.")
+
+        if self.tuning_pitches is not None:
+            tuning_pitches = tuple(self.tuning_pitches)
+            if not tuning_pitches:
+                raise ValueError(
+                    "Staff tuning_pitches must be non-empty when provided."
+                )
+
+            object.__setattr__(self, "tuning_pitches", tuning_pitches)
+
+        if self.capo_fret is not None and self.capo_fret < 0:
+            raise ValueError("Staff capo_fret must be non-negative when provided.")
+
+
+@dataclass(frozen=True)
+class Bar:
+    """Score-wide written bar geometry and local meter context."""
+
+    bar_id: str
+    bar_index: int
+    start: ScoreTime
+    duration: ScoreTime
+    time_signature: TimeSignature
+    key_accidental_count: int | None = None
+    key_mode: str | None = None
+    triplet_feel: str | None = None
+    anacrusis_context: str | None = None
+
+    def __post_init__(self) -> None:
+        _require_identifier_prefix(self.bar_id, BAR_PREFIX, "bar_id")
+        if self.bar_index < 0:
+            raise ValueError("Bar bar_index must be non-negative.")
+
+        self.start.require_non_negative("Bar start")
+        if self.duration.numerator <= 0:
+            raise ValueError("Bar duration must be positive.")
+
+        if self.key_mode is not None:
+            object.__setattr__(
+                self, "key_mode", _normalize_optional_text(self.key_mode, "key_mode")
+            )
+
+        if self.triplet_feel is not None:
+            object.__setattr__(
+                self,
+                "triplet_feel",
+                _normalize_optional_text(self.triplet_feel, "triplet_feel"),
+            )
+
+        if self.anacrusis_context is not None:
+            object.__setattr__(
+                self,
+                "anacrusis_context",
+                _normalize_optional_text(self.anacrusis_context, "anacrusis_context"),
+            )
+
+
+@dataclass(frozen=True)
+class VoiceLane:
+    """Bar-scoped authored voice lane with a deterministic continuity chain."""
+
+    voice_lane_id: str
+    voice_lane_chain_id: str
+    part_id: str
+    staff_id: str
+    bar_id: str
+    voice_index: int
+
+    def __post_init__(self) -> None:
+        _require_identifier_prefix(
+            self.voice_lane_id, VOICE_LANE_PREFIX, "voice_lane_id"
+        )
+        _require_identifier_prefix(
+            self.voice_lane_chain_id,
+            VOICE_LANE_CHAIN_PREFIX,
+            "voice_lane_chain_id",
+        )
+        _require_identifier_prefix(self.part_id, PART_PREFIX, "part_id")
+        _require_identifier_prefix(self.staff_id, STAFF_PREFIX, "staff_id")
+        _require_identifier_prefix(self.bar_id, BAR_PREFIX, "bar_id")
+
+        if not self.staff_id.startswith(f"{STAFF_PREFIX}:{self.part_id}:"):
+            raise ValueError("VoiceLane staff_id must belong to the owning part_id.")
+
+        if not self.voice_lane_id.startswith(f"{VOICE_LANE_PREFIX}:{self.staff_id}:"):
+            raise ValueError("VoiceLane voice_lane_id must encode the owning staff_id.")
+
+        if not self.voice_lane_chain_id.startswith(
+            f"{VOICE_LANE_CHAIN_PREFIX}:{self.part_id}:{self.staff_id}:"
+        ):
+            raise ValueError(
+                "VoiceLane voice_lane_chain_id must encode the owning part and staff."
+            )
+
+        if self.voice_index < 0:
+            raise ValueError("VoiceLane voice_index must be non-negative.")
+
+
 # Control values are intentionally modeled as strongly typed payload dataclasses
 # grouped by union aliases, rather than as free-form tagged dictionaries.
 PointControlValue: TypeAlias = TempoChangeValue | DynamicChangeValue | FermataValue
@@ -314,11 +467,14 @@ __all__ = [
     "HairpinDirection",
     "HairpinValue",
     "OttavaValue",
+    "Part",
     "Pitch",
     "PitchStep",
     "PointControlValue",
+    "Bar",
     "RhythmBaseValue",
     "RhythmShape",
+    "Staff",
     "SpanControlValue",
     "StringFrettedTechniquePayload",
     "TechniquePayload",
@@ -326,6 +482,7 @@ __all__ = [
     "TimeSignature",
     "Transposition",
     "TupletRatio",
+    "VoiceLane",
 ]
 
 
@@ -354,3 +511,8 @@ def _normalize_optional_text(value: str, field_name: str) -> str:
 def _require_non_negative_optional_integer(value: int | None, field_name: str) -> None:
     if value is not None and value < 0:
         raise ValueError(f"{field_name} must be non-negative when provided.")
+
+
+def _require_identifier_prefix(value: str, prefix: str, field_name: str) -> None:
+    if not value.startswith(f"{prefix}:"):
+        raise ValueError(f"{field_name} must start with '{prefix}:'.")
