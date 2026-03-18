@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from motifml.ir.time import ScoreTime
 
@@ -16,6 +16,14 @@ NOTE_PREFIX = "note"
 POINT_CONTROL_PREFIX = "ctrlp"
 SPAN_CONTROL_PREFIX = "ctrls"
 PHRASE_PREFIX = "phrase"
+
+
+class SupportsSortKey(Protocol):
+    """Protocol for value objects that expose a stable sort key."""
+
+    def sort_key(self) -> tuple[Any, ...]:
+        """Return a stable sort key representation."""
+
 
 __all__ = [
     "BAR_PREFIX",
@@ -162,7 +170,7 @@ def onset_sort_key(
 
 def note_sort_key(
     string_number: int | None,
-    pitch: int | str | None,
+    pitch: SupportsSortKey | int | str | None,
     note_identifier: str,
 ) -> tuple[int, Any, str]:
     """Return the canonical sort key for notes within one onset."""
@@ -171,6 +179,9 @@ def note_sort_key(
         return (0, string_number, note_identifier)
 
     if pitch is not None:
+        if hasattr(pitch, "sort_key"):
+            return (1, pitch.sort_key(), note_identifier)
+
         return (1, _normalized_value_sort_key(pitch), note_identifier)
 
     return (2, 0, note_identifier)

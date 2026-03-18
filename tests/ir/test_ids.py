@@ -37,6 +37,7 @@ from motifml.ir.ids import (
     voice_lane_id,
     voice_lane_sort_key,
 )
+from motifml.ir.models import Pitch
 from motifml.ir.time import ScoreTime
 
 EXPECTED_PREFIXES = (
@@ -240,6 +241,11 @@ def test_note_sort_helpers_respect_string_number_then_pitch_then_identifier():
         )
     ] == ["note:a", "note:b", "note:c", "note:d"]
     assert note_sort_key(None, "C4", "note:e") == (1, (1, "c4"), "note:e")
+    assert note_sort_key(None, Pitch(step="C", octave=4), "note:f") == (
+        1,
+        (4, "C", ""),
+        "note:f",
+    )
 
 
 def test_family_specific_sort_helpers_return_expected_canonical_keys():

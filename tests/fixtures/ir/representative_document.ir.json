@@ -1,0 +1,259 @@
+{
+  "metadata": {
+    "ir_schema_version": "1.0.0",
+    "corpus_build_version": "build-1",
+    "generator_version": "0.1.0",
+    "source_document_hash": "abc123",
+    "time_unit": "whole_note_fraction"
+  },
+  "parts": [
+    {
+      "part_id": "part:track-a",
+      "instrument_family": 1,
+      "instrument_kind": 2,
+      "role": 3,
+      "transposition": {
+        "chromatic": -2,
+        "octave": 1
+      },
+      "staff_ids": [
+        "staff:part:track-a:0"
+      ]
+    },
+    {
+      "part_id": "part:track-b",
+      "instrument_family": 2,
+      "instrument_kind": 3,
+      "role": 4,
+      "transposition": {
+        "chromatic": 0,
+        "octave": 0
+      },
+      "staff_ids": [
+        "staff:part:track-b:0"
+      ]
+    }
+  ],
+  "staves": [
+    {
+      "staff_id": "staff:part:track-a:0",
+      "part_id": "part:track-a",
+      "staff_index": 0
+    },
+    {
+      "staff_id": "staff:part:track-b:0",
+      "part_id": "part:track-b",
+      "staff_index": 0
+    }
+  ],
+  "bars": [
+    {
+      "bar_id": "bar:0",
+      "bar_index": 0,
+      "start": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "time_signature": {
+        "numerator": 4,
+        "denominator": 4
+      }
+    },
+    {
+      "bar_id": "bar:1",
+      "bar_index": 1,
+      "start": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "time_signature": {
+        "numerator": 4,
+        "denominator": 4
+      }
+    }
+  ],
+  "voice_lanes": [
+    {
+      "voice_lane_id": "voice:staff:part:track-a:0:0:0",
+      "voice_lane_chain_id": "voice-chain:part:track-a:staff:part:track-a:0:0",
+      "part_id": "part:track-a",
+      "staff_id": "staff:part:track-a:0",
+      "bar_id": "bar:0",
+      "voice_index": 0
+    },
+    {
+      "voice_lane_id": "voice:staff:part:track-a:0:1:0",
+      "voice_lane_chain_id": "voice-chain:part:track-a:staff:part:track-a:0:0",
+      "part_id": "part:track-a",
+      "staff_id": "staff:part:track-a:0",
+      "bar_id": "bar:1",
+      "voice_index": 0
+    }
+  ],
+  "point_control_events": [
+    {
+      "control_id": "ctrlp:score:0",
+      "kind": "tempo_change",
+      "scope": "score",
+      "target_ref": "score",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "value": {
+        "beats_per_minute": 120.0
+      }
+    },
+    {
+      "control_id": "ctrlp:score:1",
+      "kind": "dynamic_change",
+      "scope": "score",
+      "target_ref": "score",
+      "time": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "value": {
+        "marking": "mf"
+      }
+    }
+  ],
+  "span_control_events": [
+    {
+      "control_id": "ctrls:staff:0",
+      "kind": "hairpin",
+      "scope": "staff",
+      "target_ref": "staff:part:track-a:0",
+      "start_time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "end_time": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "value": {
+        "direction": "crescendo",
+        "niente": false
+      }
+    }
+  ],
+  "onset_groups": [
+    {
+      "onset_id": "onset:voice:staff:part:track-a:0:0:0:0",
+      "voice_lane_id": "voice:staff:part:track-a:0:0:0",
+      "bar_id": "bar:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 0
+    },
+    {
+      "onset_id": "onset:voice:staff:part:track-a:0:0:0:1",
+      "voice_lane_id": "voice:staff:part:track-a:0:0:0",
+      "bar_id": "bar:0",
+      "time": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 1
+    }
+  ],
+  "note_events": [
+    {
+      "note_id": "note:onset:voice:staff:part:track-a:0:0:0:0:0",
+      "onset_id": "onset:voice:staff:part:track-a:0:0:0:0",
+      "part_id": "part:track-a",
+      "staff_id": "staff:part:track-a:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "pitch": {
+        "step": "C",
+        "octave": 4,
+        "accidental": "#"
+      },
+      "string_number": 1,
+      "show_string_number": true
+    },
+    {
+      "note_id": "note:onset:voice:staff:part:track-a:0:0:0:0:1",
+      "onset_id": "onset:voice:staff:part:track-a:0:0:0:0",
+      "part_id": "part:track-a",
+      "staff_id": "staff:part:track-a:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "pitch": {
+        "step": "E",
+        "octave": 4
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "bar:0",
+      "target_id": "voice:staff:part:track-a:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:track-a:0:0:0:0",
+      "target_id": "note:onset:voice:staff:part:track-a:0:0:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "part:track-a",
+      "target_id": "staff:part:track-a:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:track-a:0:0:0",
+      "target_id": "onset:voice:staff:part:track-a:0:0:0:0",
+      "edge_type": "contains"
+    }
+  ],
+  "optional_overlays": {
+    "phrase_spans": []
+  },
+  "optional_views": {
+    "playback_instances": [],
+    "derived_edge_sets": []
+  }
+}
