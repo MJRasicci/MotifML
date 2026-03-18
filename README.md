@@ -73,6 +73,7 @@ The `data/` directory follows a staged structure:
 
 ```
 data/
+├── 00_corpus/            # Drop local source files here before the first run
 ├── 01_raw/
 ├── 02_intermediate/
 ├── 03_primary/
@@ -107,7 +108,35 @@ uv sync --extra dev
 
 ---
 
-### 3. Run the pipeline
+### 3. Add your source corpus and Motif CLI
+
+Place your source files anywhere under `data/00_corpus/` and put the
+[Motif CLI](https://github.com/MJRasicci/Motif) binary in `tools/`.
+
+```text
+data/00_corpus/<your source files and folders>
+tools/motif-cli
+```
+
+On the first Kedro run, MotifML will automatically build `data/01_raw/motif_json`
+from `data/00_corpus/` before the ingestion pipeline loads the raw corpus.
+It rebuilds automatically when the source corpus contents or the `motif-cli`
+binary changes. The build fingerprint is stored in
+`data/02_intermediate/ingestion/raw_motif_json_build_state.json`.
+
+If you only want to build and summarize the raw corpus first:
+
+```bash
+uv run kedro run --pipeline=ingestion
+```
+
+This writes a deterministic file-level manifest to
+`data/02_intermediate/ingestion/raw_motif_json_manifest.json` and a corpus summary to
+`data/08_reporting/ingestion/raw_motif_json_summary.json`.
+
+---
+
+### 4. Run the pipeline
 
 ```bash
 uv run kedro run
@@ -115,7 +144,7 @@ uv run kedro run
 
 ---
 
-### 4. Launch visualization tools
+### 5. Launch visualization tools
 
 ```bash
 uv run kedro viz
@@ -204,4 +233,3 @@ MIT — see `LICENSE.md`.
 
 * The datasets used for training are intentionally excluded from version control.
 * GPU support is optional and environment-dependent
-* The project prioritizes correctness, structure, and reproducibility over rapid prototyping

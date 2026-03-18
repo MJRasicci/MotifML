@@ -2,3 +2,22 @@
 #
 # Documentation for this file format can be found in "The Data Catalog"
 # Link: https://docs.kedro.org/en/stable/catalog-data/introduction/#data-catalog
+
+raw_motif_json_corpus:
+  type: motifml.datasets.motif_json_corpus_dataset.MotifJsonCorpusDataset
+  filepath: data/01_raw/motif_json
+  glob_pattern: "**/*.json"
+  autobuild:
+    source_filepath: data/00_corpus
+    source_glob_pattern: "**/*"
+    cli_filepath: tools/motif-cli
+    build_state_filepath: data/02_intermediate/ingestion/raw_motif_json_build_state.json
+    clean_output_on_rebuild: true
+
+raw_motif_json_manifest:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/02_intermediate/ingestion/raw_motif_json_manifest.json
+
+raw_motif_json_summary:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/ingestion/raw_motif_json_summary.json

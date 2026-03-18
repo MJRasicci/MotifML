@@ -17,6 +17,7 @@ htmlcov/
 .ruff_cache/
 *.egg-info/
 uv.lock
+.viz/
 
 # --- OS / IDE
 .DS_Store
