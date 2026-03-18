@@ -1,0 +1,982 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://motifml.dev/schema/motifml-ir-document.schema.json",
+  "title": "MotifML IR Document",
+  "description": "Canonical persisted intermediate representation document for MotifML.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "metadata",
+    "parts",
+    "staves",
+    "bars",
+    "voice_lanes",
+    "point_control_events",
+    "span_control_events",
+    "onset_groups",
+    "note_events",
+    "edges",
+    "optional_overlays",
+    "optional_views"
+  ],
+  "properties": {
+    "metadata": {
+      "$ref": "#/$defs/IrDocumentMetadata"
+    },
+    "parts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Part"
+      }
+    },
+    "staves": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Staff"
+      }
+    },
+    "bars": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Bar"
+      }
+    },
+    "voice_lanes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/VoiceLane"
+      }
+    },
+    "point_control_events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/PointControlEvent"
+      }
+    },
+    "span_control_events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/SpanControlEvent"
+      }
+    },
+    "onset_groups": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/OnsetGroup"
+      }
+    },
+    "note_events": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/NoteEvent"
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Edge"
+      }
+    },
+    "optional_overlays": {
+      "$ref": "#/$defs/OptionalOverlays"
+    },
+    "optional_views": {
+      "$ref": "#/$defs/OptionalViews"
+    }
+  },
+  "$defs": {
+    "ScoreTime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "numerator",
+        "denominator"
+      ],
+      "properties": {
+        "numerator": {
+          "type": "integer"
+        },
+        "denominator": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "Transposition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "chromatic",
+        "octave"
+      ],
+      "properties": {
+        "chromatic": {
+          "type": "integer"
+        },
+        "octave": {
+          "type": "integer"
+        }
+      }
+    },
+    "TimeSignature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "numerator",
+        "denominator"
+      ],
+      "properties": {
+        "numerator": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "denominator": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "TupletRatio": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "numerator",
+        "denominator"
+      ],
+      "properties": {
+        "numerator": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "denominator": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "RhythmShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_value",
+        "augmentation_dots"
+      ],
+      "properties": {
+        "base_value": {
+          "type": "string",
+          "enum": [
+            "Unknown",
+            "Whole",
+            "Half",
+            "Quarter",
+            "Eighth",
+            "Sixteenth",
+            "ThirtySecond",
+            "SixtyFourth",
+            "OneHundredTwentyEighth",
+            "TwoHundredFiftySixth"
+          ]
+        },
+        "augmentation_dots": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "primary_tuplet": {
+          "$ref": "#/$defs/TupletRatio"
+        },
+        "secondary_tuplet": {
+          "$ref": "#/$defs/TupletRatio"
+        }
+      }
+    },
+    "Pitch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "step",
+        "octave"
+      ],
+      "properties": {
+        "step": {
+          "type": "string",
+          "enum": [
+            "A",
+            "B",
+            "C",
+            "D",
+            "E",
+            "F",
+            "G"
+          ]
+        },
+        "octave": {
+          "type": "integer"
+        },
+        "accidental": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "GenericTechniqueFlags": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tie_origin",
+        "tie_destination",
+        "legato_origin",
+        "legato_destination",
+        "let_ring",
+        "muted",
+        "palm_muted"
+      ],
+      "properties": {
+        "tie_origin": {
+          "type": "boolean"
+        },
+        "tie_destination": {
+          "type": "boolean"
+        },
+        "legato_origin": {
+          "type": "boolean"
+        },
+        "legato_destination": {
+          "type": "boolean"
+        },
+        "accent": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "ornament": {
+          "type": "string",
+          "minLength": 1
+        },
+        "vibrato": {
+          "type": "string",
+          "minLength": 1
+        },
+        "let_ring": {
+          "type": "boolean"
+        },
+        "muted": {
+          "type": "boolean"
+        },
+        "palm_muted": {
+          "type": "boolean"
+        },
+        "trill": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "GeneralTechniquePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ornament": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "StringFrettedTechniquePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "slide_types",
+        "tapped",
+        "left_hand_tapped",
+        "bend_enabled",
+        "whammy_enabled"
+      ],
+      "properties": {
+        "slide_types": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "hopo_type": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tapped": {
+          "type": "boolean"
+        },
+        "left_hand_tapped": {
+          "type": "boolean"
+        },
+        "harmonic_type": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "harmonic_kind": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "harmonic_fret": {
+          "type": "number",
+          "minimum": 0
+        },
+        "bend_enabled": {
+          "type": "boolean"
+        },
+        "whammy_enabled": {
+          "type": "boolean"
+        }
+      }
+    },
+    "TechniquePayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "generic"
+      ],
+      "properties": {
+        "generic": {
+          "$ref": "#/$defs/GenericTechniqueFlags"
+        },
+        "general": {
+          "$ref": "#/$defs/GeneralTechniquePayload"
+        },
+        "string_fretted": {
+          "$ref": "#/$defs/StringFrettedTechniquePayload"
+        }
+      }
+    },
+    "TempoChangeValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "beats_per_minute"
+      ],
+      "properties": {
+        "beats_per_minute": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "DynamicChangeValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "marking"
+      ],
+      "properties": {
+        "marking": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "FermataValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fermata_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "length_scale": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "HairpinValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "direction",
+        "niente"
+      ],
+      "properties": {
+        "direction": {
+          "type": "string",
+          "enum": [
+            "crescendo",
+            "decrescendo"
+          ]
+        },
+        "niente": {
+          "type": "boolean"
+        }
+      }
+    },
+    "OttavaValue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "octave_shift"
+      ],
+      "properties": {
+        "octave_shift": {
+          "type": "integer",
+          "not": {
+            "const": 0
+          }
+        }
+      }
+    },
+    "Part": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "part_id",
+        "instrument_family",
+        "instrument_kind",
+        "role",
+        "transposition",
+        "staff_ids"
+      ],
+      "properties": {
+        "part_id": {
+          "type": "string"
+        },
+        "instrument_family": {
+          "type": "integer"
+        },
+        "instrument_kind": {
+          "type": "integer"
+        },
+        "role": {
+          "type": "integer"
+        },
+        "transposition": {
+          "$ref": "#/$defs/Transposition"
+        },
+        "staff_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "Staff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "staff_id",
+        "part_id",
+        "staff_index"
+      ],
+      "properties": {
+        "staff_id": {
+          "type": "string"
+        },
+        "part_id": {
+          "type": "string"
+        },
+        "staff_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tuning_pitches": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "capo_fret": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "Bar": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bar_id",
+        "bar_index",
+        "start",
+        "duration",
+        "time_signature"
+      ],
+      "properties": {
+        "bar_id": {
+          "type": "string"
+        },
+        "bar_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "start": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "duration": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "time_signature": {
+          "$ref": "#/$defs/TimeSignature"
+        },
+        "key_accidental_count": {
+          "type": "integer"
+        },
+        "key_mode": {
+          "type": "string",
+          "minLength": 1
+        },
+        "triplet_feel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "anacrusis_context": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "VoiceLane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "voice_lane_id",
+        "voice_lane_chain_id",
+        "part_id",
+        "staff_id",
+        "bar_id",
+        "voice_index"
+      ],
+      "properties": {
+        "voice_lane_id": {
+          "type": "string"
+        },
+        "voice_lane_chain_id": {
+          "type": "string"
+        },
+        "part_id": {
+          "type": "string"
+        },
+        "staff_id": {
+          "type": "string"
+        },
+        "bar_id": {
+          "type": "string"
+        },
+        "voice_index": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "OnsetGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "onset_id",
+        "voice_lane_id",
+        "bar_id",
+        "time",
+        "duration_notated",
+        "is_rest",
+        "attack_order_in_voice"
+      ],
+      "properties": {
+        "onset_id": {
+          "type": "string"
+        },
+        "voice_lane_id": {
+          "type": "string"
+        },
+        "bar_id": {
+          "type": "string"
+        },
+        "time": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "duration_notated": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "is_rest": {
+          "type": "boolean"
+        },
+        "attack_order_in_voice": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "duration_sounding_max": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "grace_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dynamic_local": {
+          "type": "string",
+          "minLength": 1
+        },
+        "techniques": {
+          "$ref": "#/$defs/TechniquePayload"
+        },
+        "rhythm_shape": {
+          "$ref": "#/$defs/RhythmShape"
+        }
+      }
+    },
+    "NoteEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "note_id",
+        "onset_id",
+        "part_id",
+        "staff_id",
+        "time",
+        "attack_duration",
+        "sounding_duration"
+      ],
+      "properties": {
+        "note_id": {
+          "type": "string"
+        },
+        "onset_id": {
+          "type": "string"
+        },
+        "part_id": {
+          "type": "string"
+        },
+        "staff_id": {
+          "type": "string"
+        },
+        "time": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "attack_duration": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "sounding_duration": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "pitch": {
+          "$ref": "#/$defs/Pitch"
+        },
+        "velocity": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "string_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "show_string_number": {
+          "type": "boolean"
+        },
+        "techniques": {
+          "$ref": "#/$defs/TechniquePayload"
+        }
+      }
+    },
+    "PointControlEvent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "control_id",
+            "kind",
+            "scope",
+            "target_ref",
+            "time",
+            "value"
+          ],
+          "properties": {
+            "control_id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "tempo_change"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "score",
+                "part",
+                "staff",
+                "voice"
+              ]
+            },
+            "target_ref": {
+              "type": "string"
+            },
+            "time": {
+              "$ref": "#/$defs/ScoreTime"
+            },
+            "value": {
+              "$ref": "#/$defs/TempoChangeValue"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "control_id",
+            "kind",
+            "scope",
+            "target_ref",
+            "time",
+            "value"
+          ],
+          "properties": {
+            "control_id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "dynamic_change"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "score",
+                "part",
+                "staff",
+                "voice"
+              ]
+            },
+            "target_ref": {
+              "type": "string"
+            },
+            "time": {
+              "$ref": "#/$defs/ScoreTime"
+            },
+            "value": {
+              "$ref": "#/$defs/DynamicChangeValue"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "control_id",
+            "kind",
+            "scope",
+            "target_ref",
+            "time",
+            "value"
+          ],
+          "properties": {
+            "control_id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "fermata"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "score",
+                "part",
+                "staff",
+                "voice"
+              ]
+            },
+            "target_ref": {
+              "type": "string"
+            },
+            "time": {
+              "$ref": "#/$defs/ScoreTime"
+            },
+            "value": {
+              "$ref": "#/$defs/FermataValue"
+            }
+          }
+        }
+      ]
+    },
+    "SpanControlEvent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "control_id",
+            "kind",
+            "scope",
+            "target_ref",
+            "start_time",
+            "end_time",
+            "value"
+          ],
+          "properties": {
+            "control_id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "hairpin"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "score",
+                "part",
+                "staff",
+                "voice"
+              ]
+            },
+            "target_ref": {
+              "type": "string"
+            },
+            "start_time": {
+              "$ref": "#/$defs/ScoreTime"
+            },
+            "end_time": {
+              "$ref": "#/$defs/ScoreTime"
+            },
+            "value": {
+              "$ref": "#/$defs/HairpinValue"
+            },
+            "start_anchor_ref": {
+              "type": "string"
+            },
+            "end_anchor_ref": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "control_id",
+            "kind",
+            "scope",
+            "target_ref",
+            "start_time",
+            "end_time",
+            "value"
+          ],
+          "properties": {
+            "control_id": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "ottava"
+            },
+            "scope": {
+              "type": "string",
+              "enum": [
+                "score",
+                "part",
+                "staff",
+                "voice"
+              ]
+            },
+            "target_ref": {
+              "type": "string"
+            },
+            "start_time": {
+              "$ref": "#/$defs/ScoreTime"
+            },
+            "end_time": {
+              "$ref": "#/$defs/ScoreTime"
+            },
+            "value": {
+              "$ref": "#/$defs/OttavaValue"
+            },
+            "start_anchor_ref": {
+              "type": "string"
+            },
+            "end_anchor_ref": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "Edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "target_id",
+        "edge_type"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string"
+        },
+        "target_id": {
+          "type": "string"
+        },
+        "edge_type": {
+          "type": "string",
+          "enum": [
+            "contains",
+            "next_in_voice",
+            "tie_to",
+            "technique_to"
+          ]
+        }
+      }
+    },
+    "IrDocumentMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ir_schema_version",
+        "corpus_build_version",
+        "generator_version",
+        "source_document_hash",
+        "time_unit"
+      ],
+      "properties": {
+        "ir_schema_version": {
+          "const": "1.0.0"
+        },
+        "corpus_build_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "generator_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_document_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "time_unit": {
+          "const": "whole_note_fraction"
+        },
+        "compiled_resolution_hint": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "OptionalOverlays": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phrase_spans"
+      ],
+      "properties": {
+        "phrase_spans": {
+          "type": "array"
+        }
+      }
+    },
+    "OptionalViews": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "playback_instances",
+        "derived_edge_sets"
+      ],
+      "properties": {
+        "playback_instances": {
+          "type": "array"
+        },
+        "derived_edge_sets": {
+          "type": "array"
+        }
+      }
+    }
+  }
+}
