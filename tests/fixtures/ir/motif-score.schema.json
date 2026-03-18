@@ -41,13 +41,13 @@
           "transposition": {
             "type": "object",
             "properties": {
-              "isSpecified": {
-                "type": "boolean"
-              },
               "chromatic": {
                 "type": "integer"
               },
               "octave": {
+                "type": "integer"
+              },
+              "writtenMinusSoundingSemitones": {
                 "type": "integer"
               }
             }
@@ -116,35 +116,8 @@
                                   "graceType": {
                                     "type": "string"
                                   },
-                                  "dynamic": {
-                                    "type": "string"
-                                  },
-                                  "golpe": {
-                                    "type": "string"
-                                  },
                                   "slashed": {
                                     "type": "boolean"
-                                  },
-                                  "hairpin": {
-                                    "type": "string"
-                                  },
-                                  "ottavia": {
-                                    "type": "string"
-                                  },
-                                  "legatoOrigin": {
-                                    "type": [
-                                      "boolean",
-                                      "null"
-                                    ]
-                                  },
-                                  "legatoDestination": {
-                                    "type": [
-                                      "boolean",
-                                      "null"
-                                    ]
-                                  },
-                                  "pickStrokeDirection": {
-                                    "type": "string"
                                   },
                                   "slapped": {
                                     "type": "boolean"
@@ -164,29 +137,14 @@
                                   "arpeggio": {
                                     "type": "boolean"
                                   },
-                                  "brushDurationTicks": {
-                                    "type": [
-                                      "integer",
-                                      "null"
-                                    ]
-                                  },
                                   "rasgueado": {
                                     "type": "boolean"
-                                  },
-                                  "rasgueadoPattern": {
-                                    "type": "string"
                                   },
                                   "deadSlapped": {
                                     "type": "boolean"
                                   },
                                   "tremolo": {
                                     "type": "boolean"
-                                  },
-                                  "tremoloValue": {
-                                    "type": "string"
-                                  },
-                                  "freeText": {
-                                    "type": "string"
                                   },
                                   "whammyBar": {
                                     "type": [
@@ -245,10 +203,87 @@
                                     }
                                   },
                                   "offset": {
-                                    "type": "number"
+                                    "type": "object",
+                                    "properties": {
+                                      "numerator": {
+                                        "type": "integer"
+                                      },
+                                      "denominator": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "numerator",
+                                      "denominator"
+                                    ]
                                   },
                                   "duration": {
-                                    "type": "number"
+                                    "type": "object",
+                                    "properties": {
+                                      "numerator": {
+                                        "type": "integer"
+                                      },
+                                      "denominator": {
+                                        "type": "integer"
+                                      }
+                                    },
+                                    "required": [
+                                      "numerator",
+                                      "denominator"
+                                    ]
+                                  },
+                                  "rhythm": {
+                                    "type": [
+                                      "object",
+                                      "null"
+                                    ],
+                                    "properties": {
+                                      "baseValue": {
+                                        "enum": [
+                                          "Unknown",
+                                          "Whole",
+                                          "Half",
+                                          "Quarter",
+                                          "Eighth",
+                                          "Sixteenth",
+                                          "ThirtySecond",
+                                          "SixtyFourth",
+                                          "OneHundredTwentyEighth",
+                                          "TwoHundredFiftySixth"
+                                        ]
+                                      },
+                                      "augmentationDots": {
+                                        "type": "integer"
+                                      },
+                                      "primaryTuplet": {
+                                        "type": [
+                                          "object",
+                                          "null"
+                                        ],
+                                        "properties": {
+                                          "numerator": {
+                                            "type": "integer"
+                                          },
+                                          "denominator": {
+                                            "type": "integer"
+                                          }
+                                        }
+                                      },
+                                      "secondaryTuplet": {
+                                        "type": [
+                                          "object",
+                                          "null"
+                                        ],
+                                        "properties": {
+                                          "numerator": {
+                                            "type": "integer"
+                                          },
+                                          "denominator": {
+                                            "type": "integer"
+                                          }
+                                        }
+                                      }
+                                    }
                                   },
                                   "notes": {
                                     "type": "array",
@@ -264,13 +299,7 @@
                                             "null"
                                           ]
                                         },
-                                        "midiPitch": {
-                                          "type": [
-                                            "integer",
-                                            "null"
-                                          ]
-                                        },
-                                        "concertPitch": {
+                                        "pitch": {
                                           "type": [
                                             "object",
                                             "null"
@@ -283,30 +312,7 @@
                                               "type": "string"
                                             },
                                             "octave": {
-                                              "type": [
-                                                "integer",
-                                                "null"
-                                              ]
-                                            }
-                                          }
-                                        },
-                                        "transposedPitch": {
-                                          "type": [
-                                            "object",
-                                            "null"
-                                          ],
-                                          "properties": {
-                                            "step": {
-                                              "type": "string"
-                                            },
-                                            "accidental": {
-                                              "type": "string"
-                                            },
-                                            "octave": {
-                                              "type": [
-                                                "integer",
-                                                "null"
-                                              ]
+                                              "type": "integer"
                                             }
                                           }
                                         },
@@ -320,10 +326,34 @@
                                           ]
                                         },
                                         "duration": {
-                                          "type": "number"
+                                          "type": "object",
+                                          "properties": {
+                                            "numerator": {
+                                              "type": "integer"
+                                            },
+                                            "denominator": {
+                                              "type": "integer"
+                                            }
+                                          },
+                                          "required": [
+                                            "numerator",
+                                            "denominator"
+                                          ]
                                         },
-                                        "tieExtendedFromPrevious": {
-                                          "type": "boolean"
+                                        "soundingDuration": {
+                                          "type": "object",
+                                          "properties": {
+                                            "numerator": {
+                                              "type": "integer"
+                                            },
+                                            "denominator": {
+                                              "type": "integer"
+                                            }
+                                          },
+                                          "required": [
+                                            "numerator",
+                                            "denominator"
+                                          ]
                                         },
                                         "articulation": {
                                           "type": "object",
@@ -387,18 +417,6 @@
                                             },
                                             "hopoType": {
                                               "type": "integer"
-                                            },
-                                            "hopoOriginNoteId": {
-                                              "type": [
-                                                "integer",
-                                                "null"
-                                              ]
-                                            },
-                                            "hopoDestinationNoteId": {
-                                              "type": [
-                                                "integer",
-                                                "null"
-                                              ]
                                             },
                                             "slides": {
                                               "type": "array",
@@ -490,16 +508,30 @@
                                                   ]
                                                 }
                                               }
+                                            },
+                                            "relations": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "kind": {
+                                                    "enum": [
+                                                      "Legato",
+                                                      "HammerOn",
+                                                      "PullOff",
+                                                      "Slide",
+                                                      "Tie"
+                                                    ]
+                                                  },
+                                                  "targetNoteId": {
+                                                    "type": "integer"
+                                                  }
+                                                }
+                                              }
                                             }
                                           }
                                         }
                                       }
-                                    }
-                                  },
-                                  "midiPitches": {
-                                    "type": "array",
-                                    "items": {
-                                      "type": "integer"
                                     }
                                   }
                                 }
@@ -534,6 +566,36 @@
           "timeSignature": {
             "type": "string"
           },
+          "start": {
+            "type": "object",
+            "properties": {
+              "numerator": {
+                "type": "integer"
+              },
+              "denominator": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "numerator",
+              "denominator"
+            ]
+          },
+          "duration": {
+            "type": "object",
+            "properties": {
+              "numerator": {
+                "type": "integer"
+              },
+              "denominator": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "numerator",
+              "denominator"
+            ]
+          },
           "doubleBar": {
             "type": "boolean"
           },
@@ -546,20 +608,11 @@
           "repeatStart": {
             "type": "boolean"
           },
-          "repeatStartAttributePresent": {
-            "type": "boolean"
-          },
           "repeatEnd": {
-            "type": "boolean"
-          },
-          "repeatEndAttributePresent": {
             "type": "boolean"
           },
           "repeatCount": {
             "type": "integer"
-          },
-          "repeatCountAttributePresent": {
-            "type": "boolean"
           },
           "alternateEndings": {
             "type": "string"
@@ -569,9 +622,6 @@
           },
           "sectionText": {
             "type": "string"
-          },
-          "hasExplicitEmptySection": {
-            "type": "boolean"
           },
           "jump": {
             "type": "string"
@@ -587,52 +637,157 @@
           },
           "keyMode": {
             "type": "string"
-          },
-          "keyTransposeAs": {
-            "type": "string"
-          },
-          "directionProperties": {
-            "type": "object",
-            "additionalProperties": {
-              "type": "string"
-            }
-          },
-          "fermatas": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "type": {
-                  "type": "string"
-                },
-                "offset": {
-                  "type": "string"
-                },
-                "length": {
-                  "type": [
-                    "number",
-                    "null"
-                  ]
-                }
-              }
-            }
           }
         }
       }
     },
-    "tempoChanges": {
+    "pointControls": {
       "type": "array",
       "items": {
         "type": "object",
         "properties": {
-          "barIndex": {
-            "type": "integer"
+          "kind": {
+            "enum": [
+              "Tempo",
+              "Dynamic",
+              "Fermata"
+            ]
+          },
+          "scope": {
+            "enum": [
+              "Score",
+              "Track",
+              "Staff",
+              "Voice"
+            ]
+          },
+          "trackId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "staffIndex": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "voiceIndex": {
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "position": {
-            "type": "integer"
+            "type": "object",
+            "properties": {
+              "barIndex": {
+                "type": "integer"
+              },
+              "offset": {
+                "type": "object",
+                "properties": {
+                  "numerator": {
+                    "type": "integer"
+                  },
+                  "denominator": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "numerator",
+                  "denominator"
+                ]
+              }
+            }
           },
-          "beatsPerMinute": {
-            "type": "number"
+          "value": {
+            "type": "string"
+          },
+          "numericValue": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "placement": {
+            "type": "string"
+          },
+          "length": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "spanControls": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "enum": [
+              "Hairpin",
+              "Ottava",
+              "Legato"
+            ]
+          },
+          "scope": {
+            "enum": [
+              "Score",
+              "Track",
+              "Staff",
+              "Voice"
+            ]
+          },
+          "trackId": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "staffIndex": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "voiceIndex": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "start": {
+            "type": "object",
+            "properties": {
+              "barIndex": {
+                "type": "integer"
+              },
+              "offset": {
+                "$ref": "#/properties/pointControls/items/properties/position/properties/offset"
+              }
+            }
+          },
+          "end": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "properties": {
+              "barIndex": {
+                "type": "integer"
+              },
+              "offset": {
+                "$ref": "#/properties/pointControls/items/properties/position/properties/offset"
+              }
+            }
+          },
+          "value": {
+            "type": "string"
           }
         }
       }
