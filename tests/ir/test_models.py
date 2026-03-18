@@ -16,8 +16,12 @@ from motifml.ir.models import (
     GenericTechniqueFlags,
     HairpinDirection,
     HairpinValue,
+    IrDocumentMetadata,
+    MotifMlIrDocument,
     NoteEvent,
     OnsetGroup,
+    OptionalOverlays,
+    OptionalViews,
     OttavaValue,
     Part,
     Pitch,
@@ -33,6 +37,7 @@ from motifml.ir.models import (
     TechniquePayload,
     TempoChangeValue,
     TimeSignature,
+    TimeUnit,
     Transposition,
     TupletRatio,
     VoiceLane,
@@ -399,4 +404,55 @@ def test_edge_model_rejects_invalid_endpoint_families():
             source_id="voice:staff:part:track-7:0:0:0",
             target_id="onset:voice:staff:part:track-7:0:0:0:1",
             edge_type=EdgeType.NEXT_IN_VOICE,
+        )
+
+
+def test_document_metadata_and_envelope_use_stable_typed_containers():
+    metadata = IrDocumentMetadata(
+        ir_schema_version="1.0.0",
+        corpus_build_version="build-1",
+        generator_version="0.1.0",
+        source_document_hash="abc123",
+    )
+    document = MotifMlIrDocument(
+        metadata=metadata,
+        parts=[
+            Part(
+                part_id="part:track-7",
+                instrument_family=1,
+                instrument_kind=2,
+                role=3,
+                transposition=Transposition(),
+                staff_ids=EXPECTED_STAFF_IDS,
+            )
+        ],
+        optional_overlays=OptionalOverlays(phrase_spans=["placeholder"]),
+        optional_views=OptionalViews(
+            playback_instances=["playback"], derived_edge_sets=["derived"]
+        ),
+    )
+
+    assert metadata.time_unit is TimeUnit.WHOLE_NOTE_FRACTION
+    assert document.parts[0].part_id == "part:track-7"
+    assert document.optional_overlays.phrase_spans == ("placeholder",)
+    assert document.optional_views.playback_instances == ("playback",)
+    assert document.optional_views.derived_edge_sets == ("derived",)
+
+
+def test_document_metadata_rejects_invalid_required_fields():
+    with pytest.raises(ValueError, match="ir_schema_version"):
+        IrDocumentMetadata(
+            ir_schema_version=" ",
+            corpus_build_version="build-1",
+            generator_version="0.1.0",
+            source_document_hash="abc123",
+        )
+
+    with pytest.raises(ValueError, match="compiled_resolution_hint"):
+        IrDocumentMetadata(
+            ir_schema_version="1.0.0",
+            corpus_build_version="build-1",
+            generator_version="0.1.0",
+            source_document_hash="abc123",
+            compiled_resolution_hint=0,
         )

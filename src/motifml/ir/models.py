@@ -89,6 +89,12 @@ class EdgeType(StrEnum):
     TECHNIQUE_TO = "technique_to"
 
 
+class TimeUnit(StrEnum):
+    """Supported canonical score-time units for persisted IR documents."""
+
+    WHOLE_NOTE_FRACTION = "whole_note_fraction"
+
+
 @dataclass(frozen=True)
 class Transposition:
     """Written-to-sounding transposition context for one part."""
@@ -715,6 +721,105 @@ class Edge:
         )
 
 
+@dataclass(frozen=True)
+class IrDocumentMetadata:
+    """Build and schema metadata for one IR document."""
+
+    ir_schema_version: str
+    corpus_build_version: str
+    generator_version: str
+    source_document_hash: str
+    time_unit: TimeUnit = TimeUnit.WHOLE_NOTE_FRACTION
+    compiled_resolution_hint: int | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "time_unit",
+            _coerce_str_enum(self.time_unit, TimeUnit, "time_unit"),
+        )
+        object.__setattr__(
+            self,
+            "ir_schema_version",
+            _normalize_optional_text(self.ir_schema_version, "ir_schema_version"),
+        )
+        object.__setattr__(
+            self,
+            "corpus_build_version",
+            _normalize_optional_text(self.corpus_build_version, "corpus_build_version"),
+        )
+        object.__setattr__(
+            self,
+            "generator_version",
+            _normalize_optional_text(self.generator_version, "generator_version"),
+        )
+        object.__setattr__(
+            self,
+            "source_document_hash",
+            _normalize_optional_text(self.source_document_hash, "source_document_hash"),
+        )
+
+        if self.compiled_resolution_hint is not None:
+            if self.compiled_resolution_hint <= 0:
+                raise ValueError(
+                    "IrDocumentMetadata compiled_resolution_hint must be positive "
+                    "when provided."
+                )
+
+
+@dataclass(frozen=True)
+class OptionalOverlays:
+    """Optional overlay containers kept separate from the canonical backbone."""
+
+    phrase_spans: tuple[object, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "phrase_spans", tuple(self.phrase_spans))
+
+
+@dataclass(frozen=True)
+class OptionalViews:
+    """Optional derived-view containers kept separate from canonical entities."""
+
+    playback_instances: tuple[object, ...] = ()
+    derived_edge_sets: tuple[object, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "playback_instances", tuple(self.playback_instances))
+        object.__setattr__(self, "derived_edge_sets", tuple(self.derived_edge_sets))
+
+
+@dataclass(frozen=True)
+class MotifMlIrDocument:
+    """Top-level canonical IR document for one source score."""
+
+    metadata: IrDocumentMetadata
+    parts: tuple[Part, ...] = ()
+    staves: tuple[Staff, ...] = ()
+    bars: tuple[Bar, ...] = ()
+    voice_lanes: tuple[VoiceLane, ...] = ()
+    point_control_events: tuple[PointControlEvent, ...] = ()
+    span_control_events: tuple[SpanControlEvent, ...] = ()
+    onset_groups: tuple[OnsetGroup, ...] = ()
+    note_events: tuple[NoteEvent, ...] = ()
+    edges: tuple[Edge, ...] = ()
+    optional_overlays: OptionalOverlays = field(default_factory=OptionalOverlays)
+    optional_views: OptionalViews = field(default_factory=OptionalViews)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "parts", tuple(self.parts))
+        object.__setattr__(self, "staves", tuple(self.staves))
+        object.__setattr__(self, "bars", tuple(self.bars))
+        object.__setattr__(self, "voice_lanes", tuple(self.voice_lanes))
+        object.__setattr__(
+            self, "point_control_events", tuple(self.point_control_events)
+        )
+        object.__setattr__(self, "span_control_events", tuple(self.span_control_events))
+        object.__setattr__(self, "onset_groups", tuple(self.onset_groups))
+        object.__setattr__(self, "note_events", tuple(self.note_events))
+        object.__setattr__(self, "edges", tuple(self.edges))
+
+
 # Control values are intentionally modeled as strongly typed payload dataclasses
 # grouped by union aliases, rather than as free-form tagged dictionaries.
 PointControlValue: TypeAlias = TempoChangeValue | DynamicChangeValue | FermataValue
@@ -734,9 +839,13 @@ __all__ = [
     "GenericTechniqueFlags",
     "HairpinDirection",
     "HairpinValue",
+    "IrDocumentMetadata",
+    "MotifMlIrDocument",
     "NoteEvent",
     "OnsetGroup",
     "OttavaValue",
+    "OptionalOverlays",
+    "OptionalViews",
     "Part",
     "Pitch",
     "PitchStep",
@@ -753,6 +862,7 @@ __all__ = [
     "TechniquePayload",
     "TempoChangeValue",
     "TimeSignature",
+    "TimeUnit",
     "Transposition",
     "TupletRatio",
     "VoiceLane",
