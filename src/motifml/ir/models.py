@@ -768,6 +768,58 @@ class IrDocumentMetadata:
 
 
 @dataclass(frozen=True)
+class IrManifestEntry:
+    """File-level build manifest entry for one emitted IR document."""
+
+    source_path: str
+    source_hash: str
+    ir_document_path: str
+    build_timestamp: str
+    node_counts: dict[str, int]
+    edge_counts: dict[str, int]
+    unsupported_features_dropped: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "source_path",
+            _normalize_optional_text(self.source_path, "source_path"),
+        )
+        object.__setattr__(
+            self,
+            "source_hash",
+            _normalize_optional_text(self.source_hash, "source_hash"),
+        )
+        object.__setattr__(
+            self,
+            "ir_document_path",
+            _normalize_optional_text(self.ir_document_path, "ir_document_path"),
+        )
+        object.__setattr__(
+            self,
+            "build_timestamp",
+            _normalize_optional_text(self.build_timestamp, "build_timestamp"),
+        )
+        object.__setattr__(
+            self,
+            "node_counts",
+            _normalize_count_mapping(self.node_counts, "node_counts"),
+        )
+        object.__setattr__(
+            self,
+            "edge_counts",
+            _normalize_count_mapping(self.edge_counts, "edge_counts"),
+        )
+        object.__setattr__(
+            self,
+            "unsupported_features_dropped",
+            _normalize_text_sequence(
+                self.unsupported_features_dropped, "unsupported_features_dropped"
+            ),
+        )
+
+
+@dataclass(frozen=True)
 class OptionalOverlays:
     """Optional overlay containers kept separate from the canonical backbone."""
 
@@ -840,6 +892,7 @@ __all__ = [
     "HairpinDirection",
     "HairpinValue",
     "IrDocumentMetadata",
+    "IrManifestEntry",
     "MotifMlIrDocument",
     "NoteEvent",
     "OnsetGroup",
@@ -889,6 +942,33 @@ def _normalize_optional_text(value: str, field_name: str) -> str:
         raise ValueError(f"{field_name} must be non-empty when provided.")
 
     return normalized
+
+
+def _normalize_count_mapping(value: dict[str, int], field_name: str) -> dict[str, int]:
+    if not isinstance(value, dict):
+        raise TypeError(f"{field_name} must be a mapping of names to counts.")
+
+    normalized: dict[str, int] = {}
+    for raw_key, raw_count in sorted(
+        value.items(), key=lambda item: str(item[0]).casefold()
+    ):
+        key = _normalize_optional_text(str(raw_key), f"{field_name} key")
+        count = int(raw_count)
+        if count < 0:
+            raise ValueError(f"{field_name} values must be non-negative.")
+
+        normalized[key] = count
+
+    return normalized
+
+
+def _normalize_text_sequence(
+    value: tuple[str, ...], field_name: str
+) -> tuple[str, ...]:
+    normalized = tuple(
+        _normalize_optional_text(str(item), f"{field_name} entry") for item in value
+    )
+    return tuple(sorted(normalized, key=str.casefold))
 
 
 def _require_non_negative_optional_integer(value: int | None, field_name: str) -> None:

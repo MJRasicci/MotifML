@@ -21,3 +21,19 @@ raw_motif_json_manifest:
 raw_motif_json_summary:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/ingestion/raw_motif_json_summary.json
+
+motif_ir_manifest:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/02_intermediate/ir/motif_ir_manifest.json
+
+motif_ir_validation_report:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/ir/motif_ir_validation_report.json
+
+motif_ir_summary:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/ir/motif_ir_summary.json
+
+motif_ir_corpus:
+  type: motifml.datasets.motif_ir_corpus_dataset.MotifIrCorpusDataset
+  filepath: data/02_intermediate/ir/documents
