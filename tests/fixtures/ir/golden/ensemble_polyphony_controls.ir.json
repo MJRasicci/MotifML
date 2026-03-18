@@ -1,0 +1,637 @@
+{
+  "metadata": {
+    "ir_schema_version": "1.0.0",
+    "corpus_build_version": "fixture-corpus-v1",
+    "generator_version": "tools/regenerate_ir_fixture_corpus.py",
+    "source_document_hash": "fixture:ensemble_polyphony_controls",
+    "time_unit": "whole_note_fraction"
+  },
+  "parts": [
+    {
+      "part_id": "part:clarinet",
+      "instrument_family": 5,
+      "instrument_kind": 502,
+      "role": 1,
+      "transposition": {
+        "chromatic": 2,
+        "octave": 0
+      },
+      "staff_ids": [
+        "staff:part:clarinet:0"
+      ]
+    },
+    {
+      "part_id": "part:piano",
+      "instrument_family": 8,
+      "instrument_kind": 801,
+      "role": 2,
+      "transposition": {
+        "chromatic": 0,
+        "octave": 0
+      },
+      "staff_ids": [
+        "staff:part:piano:0",
+        "staff:part:piano:1"
+      ]
+    }
+  ],
+  "staves": [
+    {
+      "staff_id": "staff:part:clarinet:0",
+      "part_id": "part:clarinet",
+      "staff_index": 0
+    },
+    {
+      "staff_id": "staff:part:piano:0",
+      "part_id": "part:piano",
+      "staff_index": 0
+    },
+    {
+      "staff_id": "staff:part:piano:1",
+      "part_id": "part:piano",
+      "staff_index": 1
+    }
+  ],
+  "bars": [
+    {
+      "bar_id": "bar:0",
+      "bar_index": 0,
+      "start": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "time_signature": {
+        "numerator": 4,
+        "denominator": 4
+      }
+    },
+    {
+      "bar_id": "bar:1",
+      "bar_index": 1,
+      "start": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "time_signature": {
+        "numerator": 4,
+        "denominator": 4
+      }
+    }
+  ],
+  "voice_lanes": [
+    {
+      "voice_lane_id": "voice:staff:part:clarinet:0:0:0",
+      "voice_lane_chain_id": "voice-chain:part:clarinet:staff:part:clarinet:0:0",
+      "part_id": "part:clarinet",
+      "staff_id": "staff:part:clarinet:0",
+      "bar_id": "bar:0",
+      "voice_index": 0
+    },
+    {
+      "voice_lane_id": "voice:staff:part:piano:0:0:0",
+      "voice_lane_chain_id": "voice-chain:part:piano:staff:part:piano:0:0",
+      "part_id": "part:piano",
+      "staff_id": "staff:part:piano:0",
+      "bar_id": "bar:0",
+      "voice_index": 0
+    },
+    {
+      "voice_lane_id": "voice:staff:part:piano:1:0:0",
+      "voice_lane_chain_id": "voice-chain:part:piano:staff:part:piano:1:0",
+      "part_id": "part:piano",
+      "staff_id": "staff:part:piano:1",
+      "bar_id": "bar:0",
+      "voice_index": 0
+    },
+    {
+      "voice_lane_id": "voice:staff:part:clarinet:0:1:0",
+      "voice_lane_chain_id": "voice-chain:part:clarinet:staff:part:clarinet:0:0",
+      "part_id": "part:clarinet",
+      "staff_id": "staff:part:clarinet:0",
+      "bar_id": "bar:1",
+      "voice_index": 0
+    },
+    {
+      "voice_lane_id": "voice:staff:part:piano:0:1:0",
+      "voice_lane_chain_id": "voice-chain:part:piano:staff:part:piano:0:0",
+      "part_id": "part:piano",
+      "staff_id": "staff:part:piano:0",
+      "bar_id": "bar:1",
+      "voice_index": 0
+    },
+    {
+      "voice_lane_id": "voice:staff:part:piano:1:1:0",
+      "voice_lane_chain_id": "voice-chain:part:piano:staff:part:piano:1:0",
+      "part_id": "part:piano",
+      "staff_id": "staff:part:piano:1",
+      "bar_id": "bar:1",
+      "voice_index": 0
+    }
+  ],
+  "point_control_events": [
+    {
+      "control_id": "ctrlp:part:0",
+      "kind": "dynamic_change",
+      "scope": "part",
+      "target_ref": "part:clarinet",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "value": {
+        "marking": "mp"
+      }
+    },
+    {
+      "control_id": "ctrlp:score:0",
+      "kind": "tempo_change",
+      "scope": "score",
+      "target_ref": "score",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "value": {
+        "beats_per_minute": 120.0
+      }
+    },
+    {
+      "control_id": "ctrlp:score:1",
+      "kind": "tempo_change",
+      "scope": "score",
+      "target_ref": "score",
+      "time": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "value": {
+        "beats_per_minute": 132.0
+      }
+    },
+    {
+      "control_id": "ctrlp:score:2",
+      "kind": "fermata",
+      "scope": "score",
+      "target_ref": "score",
+      "time": {
+        "numerator": 2,
+        "denominator": 1
+      },
+      "value": {
+        "fermata_type": "normal",
+        "length_scale": 1.5
+      }
+    }
+  ],
+  "span_control_events": [
+    {
+      "control_id": "ctrls:part:0",
+      "kind": "hairpin",
+      "scope": "part",
+      "target_ref": "part:clarinet",
+      "start_time": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "end_time": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "value": {
+        "direction": "crescendo",
+        "niente": false
+      }
+    },
+    {
+      "control_id": "ctrls:staff:0",
+      "kind": "ottava",
+      "scope": "staff",
+      "target_ref": "staff:part:piano:0",
+      "start_time": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "end_time": {
+        "numerator": 2,
+        "denominator": 1
+      },
+      "value": {
+        "octave_shift": 1
+      }
+    }
+  ],
+  "onset_groups": [
+    {
+      "onset_id": "onset:voice:staff:part:clarinet:0:0:0:0",
+      "voice_lane_id": "voice:staff:part:clarinet:0:0:0",
+      "bar_id": "bar:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 0,
+      "duration_sounding_max": {
+        "numerator": 1,
+        "denominator": 2
+      }
+    },
+    {
+      "onset_id": "onset:voice:staff:part:clarinet:0:1:0:0",
+      "voice_lane_id": "voice:staff:part:clarinet:0:1:0",
+      "bar_id": "bar:1",
+      "time": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 0,
+      "duration_sounding_max": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "onset_id": "onset:voice:staff:part:piano:0:0:0:0",
+      "voice_lane_id": "voice:staff:part:piano:0:0:0",
+      "bar_id": "bar:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 0,
+      "duration_sounding_max": {
+        "numerator": 1,
+        "denominator": 2
+      }
+    },
+    {
+      "onset_id": "onset:voice:staff:part:piano:0:1:0:0",
+      "voice_lane_id": "voice:staff:part:piano:0:1:0",
+      "bar_id": "bar:1",
+      "time": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 0,
+      "duration_sounding_max": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "onset_id": "onset:voice:staff:part:piano:1:0:0:0",
+      "voice_lane_id": "voice:staff:part:piano:1:0:0",
+      "bar_id": "bar:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 0,
+      "duration_sounding_max": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "onset_id": "onset:voice:staff:part:piano:1:1:0:0",
+      "voice_lane_id": "voice:staff:part:piano:1:1:0",
+      "bar_id": "bar:1",
+      "time": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 0,
+      "duration_sounding_max": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    }
+  ],
+  "note_events": [
+    {
+      "note_id": "note:onset:voice:staff:part:clarinet:0:0:0:0:0",
+      "onset_id": "onset:voice:staff:part:clarinet:0:0:0:0",
+      "part_id": "part:clarinet",
+      "staff_id": "staff:part:clarinet:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "pitch": {
+        "step": "D",
+        "octave": 5
+      }
+    },
+    {
+      "note_id": "note:onset:voice:staff:part:clarinet:0:1:0:0:0",
+      "onset_id": "onset:voice:staff:part:clarinet:0:1:0:0",
+      "part_id": "part:clarinet",
+      "staff_id": "staff:part:clarinet:0",
+      "time": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "pitch": {
+        "step": "G",
+        "octave": 5
+      }
+    },
+    {
+      "note_id": "note:onset:voice:staff:part:piano:0:0:0:0:0",
+      "onset_id": "onset:voice:staff:part:piano:0:0:0:0",
+      "part_id": "part:piano",
+      "staff_id": "staff:part:piano:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "pitch": {
+        "step": "C",
+        "octave": 5
+      }
+    },
+    {
+      "note_id": "note:onset:voice:staff:part:piano:0:0:0:0:1",
+      "onset_id": "onset:voice:staff:part:piano:0:0:0:0",
+      "part_id": "part:piano",
+      "staff_id": "staff:part:piano:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "pitch": {
+        "step": "E",
+        "octave": 5
+      }
+    },
+    {
+      "note_id": "note:onset:voice:staff:part:piano:0:1:0:0:0",
+      "onset_id": "onset:voice:staff:part:piano:0:1:0:0",
+      "part_id": "part:piano",
+      "staff_id": "staff:part:piano:0",
+      "time": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "pitch": {
+        "step": "D",
+        "octave": 6
+      }
+    },
+    {
+      "note_id": "note:onset:voice:staff:part:piano:1:0:0:0:0",
+      "onset_id": "onset:voice:staff:part:piano:1:0:0:0",
+      "part_id": "part:piano",
+      "staff_id": "staff:part:piano:1",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "pitch": {
+        "step": "C",
+        "octave": 3
+      }
+    },
+    {
+      "note_id": "note:onset:voice:staff:part:piano:1:1:0:0:0",
+      "onset_id": "onset:voice:staff:part:piano:1:1:0:0",
+      "part_id": "part:piano",
+      "staff_id": "staff:part:piano:1",
+      "time": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "pitch": {
+        "step": "F",
+        "octave": 2
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "bar:0",
+      "target_id": "voice:staff:part:clarinet:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "bar:0",
+      "target_id": "voice:staff:part:piano:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "bar:0",
+      "target_id": "voice:staff:part:piano:1:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "bar:1",
+      "target_id": "voice:staff:part:clarinet:0:1:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "bar:1",
+      "target_id": "voice:staff:part:piano:0:1:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "bar:1",
+      "target_id": "voice:staff:part:piano:1:1:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:clarinet:0:0:0:0",
+      "target_id": "note:onset:voice:staff:part:clarinet:0:0:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:clarinet:0:0:0:0",
+      "target_id": "onset:voice:staff:part:clarinet:0:1:0:0",
+      "edge_type": "next_in_voice"
+    },
+    {
+      "source_id": "onset:voice:staff:part:clarinet:0:1:0:0",
+      "target_id": "note:onset:voice:staff:part:clarinet:0:1:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:piano:0:0:0:0",
+      "target_id": "note:onset:voice:staff:part:piano:0:0:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:piano:0:0:0:0",
+      "target_id": "note:onset:voice:staff:part:piano:0:0:0:0:1",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:piano:0:0:0:0",
+      "target_id": "onset:voice:staff:part:piano:0:1:0:0",
+      "edge_type": "next_in_voice"
+    },
+    {
+      "source_id": "onset:voice:staff:part:piano:0:1:0:0",
+      "target_id": "note:onset:voice:staff:part:piano:0:1:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:piano:1:0:0:0",
+      "target_id": "note:onset:voice:staff:part:piano:1:0:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:piano:1:0:0:0",
+      "target_id": "onset:voice:staff:part:piano:1:1:0:0",
+      "edge_type": "next_in_voice"
+    },
+    {
+      "source_id": "onset:voice:staff:part:piano:1:1:0:0",
+      "target_id": "note:onset:voice:staff:part:piano:1:1:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "part:clarinet",
+      "target_id": "staff:part:clarinet:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "part:piano",
+      "target_id": "staff:part:piano:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "part:piano",
+      "target_id": "staff:part:piano:1",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:clarinet:0:0:0",
+      "target_id": "onset:voice:staff:part:clarinet:0:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:clarinet:0:1:0",
+      "target_id": "onset:voice:staff:part:clarinet:0:1:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:piano:0:0:0",
+      "target_id": "onset:voice:staff:part:piano:0:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:piano:0:1:0",
+      "target_id": "onset:voice:staff:part:piano:0:1:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:piano:1:0:0",
+      "target_id": "onset:voice:staff:part:piano:1:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:piano:1:1:0",
+      "target_id": "onset:voice:staff:part:piano:1:1:0:0",
+      "edge_type": "contains"
+    }
+  ],
+  "optional_overlays": {
+    "phrase_spans": []
+  },
+  "optional_views": {
+    "playback_instances": [],
+    "derived_edge_sets": []
+  }
+}

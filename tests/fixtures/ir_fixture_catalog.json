@@ -1,0 +1,88 @@
+{
+  "catalog_version": "1.0.0",
+  "regeneration_command": "uv run python tools/regenerate_ir_fixture_corpus.py",
+  "required_coverage": [
+    "single-track monophonic",
+    "multi-track polyphonic",
+    "rests",
+    "tuplets",
+    "ties",
+    "hammer-on/pull-off",
+    "slide links",
+    "bends",
+    "harmonics",
+    "grace notes",
+    "tempo changes",
+    "dynamics",
+    "fermatas",
+    "hairpins",
+    "ottava",
+    "pickup bars",
+    "transposed instruments",
+    "multi-staff parts",
+    "disappearing/reappearing voices"
+  ],
+  "raw_schema_path": "ir/motif-score.schema.json",
+  "ir_schema_path": "../../src/motifml/ir/schema/motifml-ir-document.schema.json",
+  "allowed_golden_ir_review_statuses": [
+    "provisional_pending_human_review",
+    "approved_by_human"
+  ],
+  "fixtures": [
+    {
+      "fixture_id": "single_track_monophonic_pickup",
+      "description": "Lead-guitar pickup phrase with a tied continuation and an explicit rest.",
+      "covers": [
+        "single-track monophonic",
+        "rests",
+        "ties",
+        "pickup bars"
+      ],
+      "raw_motif_json_path": "motif_json/single_track_monophonic_pickup.json",
+      "golden_ir_path": "ir/golden/single_track_monophonic_pickup.ir.json",
+      "golden_ir_review_status": "provisional_pending_human_review"
+    },
+    {
+      "fixture_id": "ensemble_polyphony_controls",
+      "description": "Clarinet-plus-piano excerpt with transposition, multi-staff writing, polyphony, and authored point/span controls.",
+      "covers": [
+        "multi-track polyphonic",
+        "tempo changes",
+        "dynamics",
+        "fermatas",
+        "hairpins",
+        "ottava",
+        "transposed instruments",
+        "multi-staff parts"
+      ],
+      "raw_motif_json_path": "motif_json/ensemble_polyphony_controls.json",
+      "golden_ir_path": "ir/golden/ensemble_polyphony_controls.ir.json",
+      "golden_ir_review_status": "provisional_pending_human_review"
+    },
+    {
+      "fixture_id": "guitar_techniques_tuplets",
+      "description": "Single-staff guitar line with grace notes, triplets, linked-note techniques, bends, and harmonics.",
+      "covers": [
+        "tuplets",
+        "hammer-on/pull-off",
+        "slide links",
+        "bends",
+        "harmonics",
+        "grace notes"
+      ],
+      "raw_motif_json_path": "motif_json/guitar_techniques_tuplets.json",
+      "golden_ir_path": null,
+      "golden_ir_review_status": null
+    },
+    {
+      "fixture_id": "voice_reentry",
+      "description": "Keyboard texture where the second written voice drops out for a bar and later reappears.",
+      "covers": [
+        "disappearing/reappearing voices"
+      ],
+      "raw_motif_json_path": "motif_json/voice_reentry.json",
+      "golden_ir_path": null,
+      "golden_ir_review_status": null
+    }
+  ]
+}

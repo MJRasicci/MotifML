@@ -1,0 +1,437 @@
+{
+  "title": "Ensemble Control Study",
+  "artist": "Fixture Suite",
+  "album": "IR Corpus",
+  "tracks": [
+    {
+      "id": 1,
+      "name": "Clarinet in Bb",
+      "instrument": {
+        "family": 5,
+        "kind": 502,
+        "role": 1
+      },
+      "transposition": {
+        "chromatic": 2,
+        "octave": 0,
+        "writtenMinusSoundingSemitones": 2
+      },
+      "staves": [
+        {
+          "staffIndex": 0,
+          "measures": [
+            {
+              "index": 0,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 200,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "notes": [
+                        {
+                          "id": 2000,
+                          "velocity": 76,
+                          "pitch": {
+                            "step": "D",
+                            "octave": 5
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 201,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 1
+                      },
+                      "notes": [
+                        {
+                          "id": 2001,
+                          "velocity": 82,
+                          "pitch": {
+                            "step": "G",
+                            "octave": 5
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Piano",
+      "instrument": {
+        "family": 8,
+        "kind": 801,
+        "role": 2
+      },
+      "transposition": {
+        "chromatic": 0,
+        "octave": 0,
+        "writtenMinusSoundingSemitones": 0
+      },
+      "staves": [
+        {
+          "staffIndex": 0,
+          "measures": [
+            {
+              "index": 0,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 210,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "notes": [
+                        {
+                          "id": 2100,
+                          "velocity": 72,
+                          "pitch": {
+                            "step": "C",
+                            "octave": 5
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          }
+                        },
+                        {
+                          "id": 2101,
+                          "velocity": 72,
+                          "pitch": {
+                            "step": "E",
+                            "octave": 5
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 211,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 1
+                      },
+                      "notes": [
+                        {
+                          "id": 2102,
+                          "velocity": 78,
+                          "pitch": {
+                            "step": "D",
+                            "octave": 6
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "staffIndex": 1,
+          "measures": [
+            {
+              "index": 0,
+              "staffIndex": 1,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 220,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 1
+                      },
+                      "notes": [
+                        {
+                          "id": 2200,
+                          "velocity": 68,
+                          "pitch": {
+                            "step": "C",
+                            "octave": 3
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "staffIndex": 1,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 221,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 1
+                      },
+                      "notes": [
+                        {
+                          "id": 2201,
+                          "velocity": 68,
+                          "pitch": {
+                            "step": "F",
+                            "octave": 2
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "timelineBars": [
+    {
+      "index": 0,
+      "timeSignature": "4/4",
+      "start": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "index": 1,
+      "timeSignature": "4/4",
+      "start": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    }
+  ],
+  "pointControls": [
+    {
+      "kind": "Tempo",
+      "scope": "Score",
+      "position": {
+        "barIndex": 0,
+        "offset": {
+          "numerator": 0,
+          "denominator": 1
+        }
+      },
+      "numericValue": 120.0
+    },
+    {
+      "kind": "Tempo",
+      "scope": "Score",
+      "position": {
+        "barIndex": 1,
+        "offset": {
+          "numerator": 0,
+          "denominator": 1
+        }
+      },
+      "numericValue": 132.0
+    },
+    {
+      "kind": "Dynamic",
+      "scope": "Track",
+      "trackId": 1,
+      "position": {
+        "barIndex": 0,
+        "offset": {
+          "numerator": 0,
+          "denominator": 1
+        }
+      },
+      "value": "mp"
+    },
+    {
+      "kind": "Fermata",
+      "scope": "Score",
+      "position": {
+        "barIndex": 1,
+        "offset": {
+          "numerator": 1,
+          "denominator": 1
+        }
+      },
+      "value": "normal",
+      "length": 1.5,
+      "placement": "end"
+    }
+  ],
+  "spanControls": [
+    {
+      "kind": "Hairpin",
+      "scope": "Track",
+      "trackId": 1,
+      "start": {
+        "barIndex": 0,
+        "offset": {
+          "numerator": 1,
+          "denominator": 4
+        }
+      },
+      "end": {
+        "barIndex": 1,
+        "offset": {
+          "numerator": 0,
+          "denominator": 1
+        }
+      },
+      "value": "crescendo"
+    },
+    {
+      "kind": "Ottava",
+      "scope": "Staff",
+      "trackId": 2,
+      "staffIndex": 0,
+      "start": {
+        "barIndex": 1,
+        "offset": {
+          "numerator": 0,
+          "denominator": 1
+        }
+      },
+      "end": {
+        "barIndex": 1,
+        "offset": {
+          "numerator": 1,
+          "denominator": 1
+        }
+      },
+      "value": "8va"
+    }
+  ],
+  "anacrusis": false,
+  "playbackMasterBarSequence": [
+    0,
+    1
+  ]
+}

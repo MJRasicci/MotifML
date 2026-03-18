@@ -1,0 +1,237 @@
+{
+  "title": "Pickup Study",
+  "artist": "Fixture Suite",
+  "album": "IR Corpus",
+  "tracks": [
+    {
+      "id": 1,
+      "name": "Lead Guitar",
+      "instrument": {
+        "family": 1,
+        "kind": 101,
+        "role": 1
+      },
+      "transposition": {
+        "chromatic": 0,
+        "octave": 0,
+        "writtenMinusSoundingSemitones": 0
+      },
+      "staves": [
+        {
+          "staffIndex": 0,
+          "tuning": {
+            "pitches": [
+              64,
+              59,
+              55,
+              50,
+              45,
+              40
+            ],
+            "label": "EADGBE"
+          },
+          "measures": [
+            {
+              "index": 0,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 100,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 4
+                      },
+                      "notes": [
+                        {
+                          "id": 1000,
+                          "velocity": 84,
+                          "pitch": {
+                            "step": "E",
+                            "octave": 4
+                          },
+                          "showStringNumber": true,
+                          "stringNumber": 1,
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 4
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          },
+                          "articulation": {
+                            "tieOrigin": true,
+                            "relations": [
+                              {
+                                "kind": "Tie",
+                                "targetNoteId": 1001
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 101,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 4
+                      },
+                      "notes": []
+                    },
+                    {
+                      "id": 102,
+                      "offset": {
+                        "numerator": 1,
+                        "denominator": 4
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 4
+                      },
+                      "notes": [
+                        {
+                          "id": 1001,
+                          "velocity": 80,
+                          "pitch": {
+                            "step": "E",
+                            "octave": 4
+                          },
+                          "showStringNumber": true,
+                          "stringNumber": 1,
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 4
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 4
+                          },
+                          "articulation": {
+                            "tieDestination": true
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": 103,
+                      "offset": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "notes": [
+                        {
+                          "id": 1002,
+                          "velocity": 88,
+                          "pitch": {
+                            "step": "G",
+                            "octave": 4
+                          },
+                          "showStringNumber": true,
+                          "stringNumber": 1,
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "timelineBars": [
+    {
+      "index": 0,
+      "timeSignature": "4/4",
+      "start": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 4
+      }
+    },
+    {
+      "index": 1,
+      "timeSignature": "4/4",
+      "start": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    }
+  ],
+  "pointControls": [
+    {
+      "kind": "Tempo",
+      "scope": "Score",
+      "position": {
+        "barIndex": 0,
+        "offset": {
+          "numerator": 0,
+          "denominator": 1
+        }
+      },
+      "numericValue": 96.0
+    },
+    {
+      "kind": "Dynamic",
+      "scope": "Track",
+      "trackId": 1,
+      "position": {
+        "barIndex": 0,
+        "offset": {
+          "numerator": 0,
+          "denominator": 1
+        }
+      },
+      "value": "mp"
+    }
+  ],
+  "spanControls": [],
+  "anacrusis": true,
+  "playbackMasterBarSequence": [
+    0,
+    1
+  ]
+}

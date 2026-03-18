@@ -1,0 +1,262 @@
+{
+  "title": "Voice Reentry Etude",
+  "artist": "Fixture Suite",
+  "album": "IR Corpus",
+  "tracks": [
+    {
+      "id": 4,
+      "name": "Keyboard",
+      "instrument": {
+        "family": 8,
+        "kind": 802,
+        "role": 2
+      },
+      "transposition": {
+        "chromatic": 0,
+        "octave": 0,
+        "writtenMinusSoundingSemitones": 0
+      },
+      "staves": [
+        {
+          "staffIndex": 0,
+          "measures": [
+            {
+              "index": 0,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 400,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "notes": [
+                        {
+                          "id": 4000,
+                          "velocity": 72,
+                          "pitch": {
+                            "step": "C",
+                            "octave": 4
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "voiceIndex": 1,
+                  "beats": [
+                    {
+                      "id": 401,
+                      "offset": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "notes": [
+                        {
+                          "id": 4001,
+                          "velocity": 68,
+                          "pitch": {
+                            "step": "G",
+                            "octave": 5
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 402,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 1
+                      },
+                      "notes": [
+                        {
+                          "id": 4002,
+                          "velocity": 70,
+                          "pitch": {
+                            "step": "D",
+                            "octave": 4
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 1
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "index": 2,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 403,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "notes": [
+                        {
+                          "id": 4003,
+                          "velocity": 72,
+                          "pitch": {
+                            "step": "E",
+                            "octave": 4
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "voiceIndex": 1,
+                  "beats": [
+                    {
+                      "id": 404,
+                      "offset": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 2
+                      },
+                      "notes": [
+                        {
+                          "id": 4004,
+                          "velocity": 68,
+                          "pitch": {
+                            "step": "A",
+                            "octave": 5
+                          },
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 2
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "timelineBars": [
+    {
+      "index": 0,
+      "timeSignature": "4/4",
+      "start": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "index": 1,
+      "timeSignature": "4/4",
+      "start": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "index": 2,
+      "timeSignature": "4/4",
+      "start": {
+        "numerator": 2,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    }
+  ],
+  "pointControls": [],
+  "spanControls": [],
+  "anacrusis": false,
+  "playbackMasterBarSequence": [
+    0,
+    1,
+    2
+  ]
+}

@@ -1,0 +1,263 @@
+{
+  "title": "Technique Triplets",
+  "artist": "Fixture Suite",
+  "album": "IR Corpus",
+  "tracks": [
+    {
+      "id": 3,
+      "name": "Technique Guitar",
+      "instrument": {
+        "family": 1,
+        "kind": 102,
+        "role": 1
+      },
+      "transposition": {
+        "chromatic": 0,
+        "octave": 0,
+        "writtenMinusSoundingSemitones": 0
+      },
+      "staves": [
+        {
+          "staffIndex": 0,
+          "tuning": {
+            "pitches": [
+              64,
+              59,
+              55,
+              50,
+              45,
+              40
+            ],
+            "label": "EADGBE"
+          },
+          "measures": [
+            {
+              "index": 0,
+              "staffIndex": 0,
+              "voices": [
+                {
+                  "voiceIndex": 0,
+                  "beats": [
+                    {
+                      "id": 300,
+                      "graceType": "acciaccatura",
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 16
+                      },
+                      "notes": [
+                        {
+                          "id": 3000,
+                          "velocity": 72,
+                          "pitch": {
+                            "step": "D",
+                            "octave": 4
+                          },
+                          "showStringNumber": true,
+                          "stringNumber": 3,
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 16
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 16
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": 301,
+                      "offset": {
+                        "numerator": 0,
+                        "denominator": 1
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 12
+                      },
+                      "rhythm": {
+                        "baseValue": "Eighth",
+                        "augmentationDots": 0,
+                        "primaryTuplet": {
+                          "numerator": 3,
+                          "denominator": 2
+                        }
+                      },
+                      "notes": [
+                        {
+                          "id": 3001,
+                          "velocity": 88,
+                          "pitch": {
+                            "step": "E",
+                            "octave": 4
+                          },
+                          "showStringNumber": true,
+                          "stringNumber": 2,
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 12
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 12
+                          },
+                          "articulation": {
+                            "hopoOrigin": true,
+                            "hopoType": 1,
+                            "slides": [
+                              1
+                            ],
+                            "harmonic": {
+                              "type": 1,
+                              "typeName": "natural",
+                              "kind": 1,
+                              "fret": 5.0,
+                              "enabled": true
+                            },
+                            "bend": {
+                              "enabled": true,
+                              "type": 1,
+                              "originValue": 0.0,
+                              "destinationValue": 1.0
+                            },
+                            "relations": [
+                              {
+                                "kind": "HammerOn",
+                                "targetNoteId": 3002
+                              },
+                              {
+                                "kind": "Slide",
+                                "targetNoteId": 3003
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": 302,
+                      "offset": {
+                        "numerator": 1,
+                        "denominator": 12
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 12
+                      },
+                      "rhythm": {
+                        "baseValue": "Eighth",
+                        "augmentationDots": 0,
+                        "primaryTuplet": {
+                          "numerator": 3,
+                          "denominator": 2
+                        }
+                      },
+                      "notes": [
+                        {
+                          "id": 3002,
+                          "velocity": 90,
+                          "pitch": {
+                            "step": "F",
+                            "octave": 4
+                          },
+                          "showStringNumber": true,
+                          "stringNumber": 2,
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 12
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 12
+                          },
+                          "articulation": {
+                            "hopoOrigin": true,
+                            "hopoDestination": true,
+                            "hopoType": 2,
+                            "relations": [
+                              {
+                                "kind": "PullOff",
+                                "targetNoteId": 3003
+                              }
+                            ]
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "id": 303,
+                      "offset": {
+                        "numerator": 1,
+                        "denominator": 6
+                      },
+                      "duration": {
+                        "numerator": 1,
+                        "denominator": 12
+                      },
+                      "rhythm": {
+                        "baseValue": "Eighth",
+                        "augmentationDots": 0,
+                        "primaryTuplet": {
+                          "numerator": 3,
+                          "denominator": 2
+                        }
+                      },
+                      "notes": [
+                        {
+                          "id": 3003,
+                          "velocity": 86,
+                          "pitch": {
+                            "step": "G",
+                            "octave": 4
+                          },
+                          "showStringNumber": true,
+                          "stringNumber": 2,
+                          "duration": {
+                            "numerator": 1,
+                            "denominator": 12
+                          },
+                          "soundingDuration": {
+                            "numerator": 1,
+                            "denominator": 12
+                          },
+                          "articulation": {
+                            "hopoDestination": true
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "timelineBars": [
+    {
+      "index": 0,
+      "timeSignature": "4/4",
+      "start": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    }
+  ],
+  "pointControls": [],
+  "spanControls": [],
+  "anacrusis": false,
+  "playbackMasterBarSequence": [
+    0
+  ]
+}

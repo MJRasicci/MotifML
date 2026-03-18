@@ -1,0 +1,348 @@
+{
+  "metadata": {
+    "ir_schema_version": "1.0.0",
+    "corpus_build_version": "fixture-corpus-v1",
+    "generator_version": "tools/regenerate_ir_fixture_corpus.py",
+    "source_document_hash": "fixture:single_track_monophonic_pickup",
+    "time_unit": "whole_note_fraction"
+  },
+  "parts": [
+    {
+      "part_id": "part:lead-guitar",
+      "instrument_family": 1,
+      "instrument_kind": 101,
+      "role": 1,
+      "transposition": {
+        "chromatic": 0,
+        "octave": 0
+      },
+      "staff_ids": [
+        "staff:part:lead-guitar:0"
+      ]
+    }
+  ],
+  "staves": [
+    {
+      "staff_id": "staff:part:lead-guitar:0",
+      "part_id": "part:lead-guitar",
+      "staff_index": 0,
+      "tuning_pitches": [
+        64,
+        59,
+        55,
+        50,
+        45,
+        40
+      ]
+    }
+  ],
+  "bars": [
+    {
+      "bar_id": "bar:0",
+      "bar_index": 0,
+      "start": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "time_signature": {
+        "numerator": 4,
+        "denominator": 4
+      }
+    },
+    {
+      "bar_id": "bar:1",
+      "bar_index": 1,
+      "start": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "time_signature": {
+        "numerator": 4,
+        "denominator": 4
+      },
+      "anacrusis_context": "pickup-continuation"
+    }
+  ],
+  "voice_lanes": [
+    {
+      "voice_lane_id": "voice:staff:part:lead-guitar:0:0:0",
+      "voice_lane_chain_id": "voice-chain:part:lead-guitar:staff:part:lead-guitar:0:0",
+      "part_id": "part:lead-guitar",
+      "staff_id": "staff:part:lead-guitar:0",
+      "bar_id": "bar:0",
+      "voice_index": 0
+    },
+    {
+      "voice_lane_id": "voice:staff:part:lead-guitar:0:1:0",
+      "voice_lane_chain_id": "voice-chain:part:lead-guitar:staff:part:lead-guitar:0:0",
+      "part_id": "part:lead-guitar",
+      "staff_id": "staff:part:lead-guitar:0",
+      "bar_id": "bar:1",
+      "voice_index": 0
+    }
+  ],
+  "point_control_events": [
+    {
+      "control_id": "ctrlp:part:0",
+      "kind": "dynamic_change",
+      "scope": "part",
+      "target_ref": "part:lead-guitar",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "value": {
+        "marking": "mp"
+      }
+    },
+    {
+      "control_id": "ctrlp:score:0",
+      "kind": "tempo_change",
+      "scope": "score",
+      "target_ref": "score",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "value": {
+        "beats_per_minute": 96.0
+      }
+    }
+  ],
+  "span_control_events": [],
+  "onset_groups": [
+    {
+      "onset_id": "onset:voice:staff:part:lead-guitar:0:0:0:0",
+      "voice_lane_id": "voice:staff:part:lead-guitar:0:0:0",
+      "bar_id": "bar:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 0,
+      "duration_sounding_max": {
+        "numerator": 1,
+        "denominator": 2
+      }
+    },
+    {
+      "onset_id": "onset:voice:staff:part:lead-guitar:0:1:0:0",
+      "voice_lane_id": "voice:staff:part:lead-guitar:0:1:0",
+      "bar_id": "bar:1",
+      "time": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "is_rest": true,
+      "attack_order_in_voice": 0
+    },
+    {
+      "onset_id": "onset:voice:staff:part:lead-guitar:0:1:0:1",
+      "voice_lane_id": "voice:staff:part:lead-guitar:0:1:0",
+      "bar_id": "bar:1",
+      "time": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 1,
+      "duration_sounding_max": {
+        "numerator": 1,
+        "denominator": 4
+      }
+    },
+    {
+      "onset_id": "onset:voice:staff:part:lead-guitar:0:1:0:2",
+      "voice_lane_id": "voice:staff:part:lead-guitar:0:1:0",
+      "bar_id": "bar:1",
+      "time": {
+        "numerator": 3,
+        "denominator": 4
+      },
+      "duration_notated": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "is_rest": false,
+      "attack_order_in_voice": 2,
+      "duration_sounding_max": {
+        "numerator": 1,
+        "denominator": 2
+      }
+    }
+  ],
+  "note_events": [
+    {
+      "note_id": "note:onset:voice:staff:part:lead-guitar:0:0:0:0:0",
+      "onset_id": "onset:voice:staff:part:lead-guitar:0:0:0:0",
+      "part_id": "part:lead-guitar",
+      "staff_id": "staff:part:lead-guitar:0",
+      "time": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "pitch": {
+        "step": "E",
+        "octave": 4
+      },
+      "string_number": 1,
+      "show_string_number": true
+    },
+    {
+      "note_id": "note:onset:voice:staff:part:lead-guitar:0:1:0:1:0",
+      "onset_id": "onset:voice:staff:part:lead-guitar:0:1:0:1",
+      "part_id": "part:lead-guitar",
+      "staff_id": "staff:part:lead-guitar:0",
+      "time": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 4
+      },
+      "pitch": {
+        "step": "E",
+        "octave": 4
+      },
+      "string_number": 1,
+      "show_string_number": true
+    },
+    {
+      "note_id": "note:onset:voice:staff:part:lead-guitar:0:1:0:2:0",
+      "onset_id": "onset:voice:staff:part:lead-guitar:0:1:0:2",
+      "part_id": "part:lead-guitar",
+      "staff_id": "staff:part:lead-guitar:0",
+      "time": {
+        "numerator": 3,
+        "denominator": 4
+      },
+      "attack_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "sounding_duration": {
+        "numerator": 1,
+        "denominator": 2
+      },
+      "pitch": {
+        "step": "G",
+        "octave": 4
+      },
+      "string_number": 1,
+      "show_string_number": true
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "bar:0",
+      "target_id": "voice:staff:part:lead-guitar:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "bar:1",
+      "target_id": "voice:staff:part:lead-guitar:0:1:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "note:onset:voice:staff:part:lead-guitar:0:0:0:0:0",
+      "target_id": "note:onset:voice:staff:part:lead-guitar:0:1:0:1:0",
+      "edge_type": "tie_to"
+    },
+    {
+      "source_id": "onset:voice:staff:part:lead-guitar:0:0:0:0",
+      "target_id": "note:onset:voice:staff:part:lead-guitar:0:0:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:lead-guitar:0:0:0:0",
+      "target_id": "onset:voice:staff:part:lead-guitar:0:1:0:0",
+      "edge_type": "next_in_voice"
+    },
+    {
+      "source_id": "onset:voice:staff:part:lead-guitar:0:1:0:0",
+      "target_id": "onset:voice:staff:part:lead-guitar:0:1:0:1",
+      "edge_type": "next_in_voice"
+    },
+    {
+      "source_id": "onset:voice:staff:part:lead-guitar:0:1:0:1",
+      "target_id": "note:onset:voice:staff:part:lead-guitar:0:1:0:1:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "onset:voice:staff:part:lead-guitar:0:1:0:1",
+      "target_id": "onset:voice:staff:part:lead-guitar:0:1:0:2",
+      "edge_type": "next_in_voice"
+    },
+    {
+      "source_id": "onset:voice:staff:part:lead-guitar:0:1:0:2",
+      "target_id": "note:onset:voice:staff:part:lead-guitar:0:1:0:2:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "part:lead-guitar",
+      "target_id": "staff:part:lead-guitar:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:lead-guitar:0:0:0",
+      "target_id": "onset:voice:staff:part:lead-guitar:0:0:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:lead-guitar:0:1:0",
+      "target_id": "onset:voice:staff:part:lead-guitar:0:1:0:0",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:lead-guitar:0:1:0",
+      "target_id": "onset:voice:staff:part:lead-guitar:0:1:0:1",
+      "edge_type": "contains"
+    },
+    {
+      "source_id": "voice:staff:part:lead-guitar:0:1:0",
+      "target_id": "onset:voice:staff:part:lead-guitar:0:1:0:2",
+      "edge_type": "contains"
+    }
+  ],
+  "optional_overlays": {
+    "phrase_spans": []
+  },
+  "optional_views": {
+    "playback_instances": [],
+    "derived_edge_sets": []
+  }
+}
