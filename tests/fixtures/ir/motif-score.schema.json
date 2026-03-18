@@ -1,0 +1,650 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Motif Score",
+  "description": "Schema for score.json inside a native .motif archive.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "artist": {
+      "type": "string"
+    },
+    "album": {
+      "type": "string"
+    },
+    "tracks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "instrument": {
+            "type": "object",
+            "properties": {
+              "family": {
+                "type": "integer"
+              },
+              "kind": {
+                "type": "integer"
+              },
+              "role": {
+                "type": "integer"
+              }
+            }
+          },
+          "transposition": {
+            "type": "object",
+            "properties": {
+              "isSpecified": {
+                "type": "boolean"
+              },
+              "chromatic": {
+                "type": "integer"
+              },
+              "octave": {
+                "type": "integer"
+              }
+            }
+          },
+          "staves": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "staffIndex": {
+                  "type": "integer"
+                },
+                "tuning": {
+                  "type": "object",
+                  "properties": {
+                    "pitches": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer"
+                      }
+                    },
+                    "label": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "capoFret": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "measures": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "index": {
+                        "type": "integer"
+                      },
+                      "staffIndex": {
+                        "type": "integer"
+                      },
+                      "clef": {
+                        "type": "string"
+                      },
+                      "simileMark": {
+                        "type": "string"
+                      },
+                      "voices": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "voiceIndex": {
+                              "type": "integer"
+                            },
+                            "beats": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "integer"
+                                  },
+                                  "graceType": {
+                                    "type": "string"
+                                  },
+                                  "dynamic": {
+                                    "type": "string"
+                                  },
+                                  "golpe": {
+                                    "type": "string"
+                                  },
+                                  "slashed": {
+                                    "type": "boolean"
+                                  },
+                                  "hairpin": {
+                                    "type": "string"
+                                  },
+                                  "ottavia": {
+                                    "type": "string"
+                                  },
+                                  "legatoOrigin": {
+                                    "type": [
+                                      "boolean",
+                                      "null"
+                                    ]
+                                  },
+                                  "legatoDestination": {
+                                    "type": [
+                                      "boolean",
+                                      "null"
+                                    ]
+                                  },
+                                  "pickStrokeDirection": {
+                                    "type": "string"
+                                  },
+                                  "slapped": {
+                                    "type": "boolean"
+                                  },
+                                  "popped": {
+                                    "type": "boolean"
+                                  },
+                                  "palmMuted": {
+                                    "type": "boolean"
+                                  },
+                                  "brush": {
+                                    "type": "boolean"
+                                  },
+                                  "brushIsUp": {
+                                    "type": "boolean"
+                                  },
+                                  "arpeggio": {
+                                    "type": "boolean"
+                                  },
+                                  "brushDurationTicks": {
+                                    "type": [
+                                      "integer",
+                                      "null"
+                                    ]
+                                  },
+                                  "rasgueado": {
+                                    "type": "boolean"
+                                  },
+                                  "rasgueadoPattern": {
+                                    "type": "string"
+                                  },
+                                  "deadSlapped": {
+                                    "type": "boolean"
+                                  },
+                                  "tremolo": {
+                                    "type": "boolean"
+                                  },
+                                  "tremoloValue": {
+                                    "type": "string"
+                                  },
+                                  "freeText": {
+                                    "type": "string"
+                                  },
+                                  "whammyBar": {
+                                    "type": [
+                                      "object",
+                                      "null"
+                                    ],
+                                    "properties": {
+                                      "enabled": {
+                                        "type": "boolean"
+                                      },
+                                      "extended": {
+                                        "type": "boolean"
+                                      },
+                                      "originValue": {
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      },
+                                      "middleValue": {
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      },
+                                      "destinationValue": {
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      },
+                                      "originOffset": {
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      },
+                                      "middleOffset1": {
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      },
+                                      "middleOffset2": {
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      },
+                                      "destinationOffset": {
+                                        "type": [
+                                          "number",
+                                          "null"
+                                        ]
+                                      }
+                                    }
+                                  },
+                                  "offset": {
+                                    "type": "number"
+                                  },
+                                  "duration": {
+                                    "type": "number"
+                                  },
+                                  "notes": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "integer"
+                                        },
+                                        "velocity": {
+                                          "type": [
+                                            "integer",
+                                            "null"
+                                          ]
+                                        },
+                                        "midiPitch": {
+                                          "type": [
+                                            "integer",
+                                            "null"
+                                          ]
+                                        },
+                                        "concertPitch": {
+                                          "type": [
+                                            "object",
+                                            "null"
+                                          ],
+                                          "properties": {
+                                            "step": {
+                                              "type": "string"
+                                            },
+                                            "accidental": {
+                                              "type": "string"
+                                            },
+                                            "octave": {
+                                              "type": [
+                                                "integer",
+                                                "null"
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        "transposedPitch": {
+                                          "type": [
+                                            "object",
+                                            "null"
+                                          ],
+                                          "properties": {
+                                            "step": {
+                                              "type": "string"
+                                            },
+                                            "accidental": {
+                                              "type": "string"
+                                            },
+                                            "octave": {
+                                              "type": [
+                                                "integer",
+                                                "null"
+                                              ]
+                                            }
+                                          }
+                                        },
+                                        "showStringNumber": {
+                                          "type": "boolean"
+                                        },
+                                        "stringNumber": {
+                                          "type": [
+                                            "integer",
+                                            "null"
+                                          ]
+                                        },
+                                        "duration": {
+                                          "type": "number"
+                                        },
+                                        "tieExtendedFromPrevious": {
+                                          "type": "boolean"
+                                        },
+                                        "articulation": {
+                                          "type": "object",
+                                          "properties": {
+                                            "leftFingering": {
+                                              "type": "string"
+                                            },
+                                            "rightFingering": {
+                                              "type": "string"
+                                            },
+                                            "ornament": {
+                                              "type": "string"
+                                            },
+                                            "letRing": {
+                                              "type": "boolean"
+                                            },
+                                            "vibrato": {
+                                              "type": "string"
+                                            },
+                                            "tieOrigin": {
+                                              "type": "boolean"
+                                            },
+                                            "tieDestination": {
+                                              "type": "boolean"
+                                            },
+                                            "trill": {
+                                              "type": [
+                                                "integer",
+                                                "null"
+                                              ]
+                                            },
+                                            "trillSpeed": {
+                                              "type": "integer"
+                                            },
+                                            "accent": {
+                                              "type": [
+                                                "integer",
+                                                "null"
+                                              ]
+                                            },
+                                            "antiAccent": {
+                                              "type": "boolean"
+                                            },
+                                            "palmMuted": {
+                                              "type": "boolean"
+                                            },
+                                            "muted": {
+                                              "type": "boolean"
+                                            },
+                                            "tapped": {
+                                              "type": "boolean"
+                                            },
+                                            "leftHandTapped": {
+                                              "type": "boolean"
+                                            },
+                                            "hopoOrigin": {
+                                              "type": "boolean"
+                                            },
+                                            "hopoDestination": {
+                                              "type": "boolean"
+                                            },
+                                            "hopoType": {
+                                              "type": "integer"
+                                            },
+                                            "hopoOriginNoteId": {
+                                              "type": [
+                                                "integer",
+                                                "null"
+                                              ]
+                                            },
+                                            "hopoDestinationNoteId": {
+                                              "type": [
+                                                "integer",
+                                                "null"
+                                              ]
+                                            },
+                                            "slides": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "integer"
+                                              }
+                                            },
+                                            "harmonic": {
+                                              "type": [
+                                                "object",
+                                                "null"
+                                              ],
+                                              "properties": {
+                                                "type": {
+                                                  "type": [
+                                                    "integer",
+                                                    "null"
+                                                  ]
+                                                },
+                                                "typeName": {
+                                                  "type": "string"
+                                                },
+                                                "kind": {
+                                                  "type": "integer"
+                                                },
+                                                "fret": {
+                                                  "type": [
+                                                    "number",
+                                                    "null"
+                                                  ]
+                                                },
+                                                "enabled": {
+                                                  "type": "boolean"
+                                                }
+                                              }
+                                            },
+                                            "bend": {
+                                              "type": [
+                                                "object",
+                                                "null"
+                                              ],
+                                              "properties": {
+                                                "enabled": {
+                                                  "type": "boolean"
+                                                },
+                                                "type": {
+                                                  "type": "integer"
+                                                },
+                                                "originOffset": {
+                                                  "type": [
+                                                    "number",
+                                                    "null"
+                                                  ]
+                                                },
+                                                "originValue": {
+                                                  "type": [
+                                                    "number",
+                                                    "null"
+                                                  ]
+                                                },
+                                                "middleOffset1": {
+                                                  "type": [
+                                                    "number",
+                                                    "null"
+                                                  ]
+                                                },
+                                                "middleOffset2": {
+                                                  "type": [
+                                                    "number",
+                                                    "null"
+                                                  ]
+                                                },
+                                                "middleValue": {
+                                                  "type": [
+                                                    "number",
+                                                    "null"
+                                                  ]
+                                                },
+                                                "destinationOffset": {
+                                                  "type": [
+                                                    "number",
+                                                    "null"
+                                                  ]
+                                                },
+                                                "destinationValue": {
+                                                  "type": [
+                                                    "number",
+                                                    "null"
+                                                  ]
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  },
+                                  "midiPitches": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "integer"
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "beats": {
+                        "type": "array",
+                        "items": {
+                          "$ref": "#/properties/tracks/items/properties/staves/items/properties/measures/items/properties/voices/items/properties/beats/items"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "timelineBars": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer"
+          },
+          "timeSignature": {
+            "type": "string"
+          },
+          "doubleBar": {
+            "type": "boolean"
+          },
+          "freeTime": {
+            "type": "boolean"
+          },
+          "tripletFeel": {
+            "type": "string"
+          },
+          "repeatStart": {
+            "type": "boolean"
+          },
+          "repeatStartAttributePresent": {
+            "type": "boolean"
+          },
+          "repeatEnd": {
+            "type": "boolean"
+          },
+          "repeatEndAttributePresent": {
+            "type": "boolean"
+          },
+          "repeatCount": {
+            "type": "integer"
+          },
+          "repeatCountAttributePresent": {
+            "type": "boolean"
+          },
+          "alternateEndings": {
+            "type": "string"
+          },
+          "sectionLetter": {
+            "type": "string"
+          },
+          "sectionText": {
+            "type": "string"
+          },
+          "hasExplicitEmptySection": {
+            "type": "boolean"
+          },
+          "jump": {
+            "type": "string"
+          },
+          "target": {
+            "type": "string"
+          },
+          "keyAccidentalCount": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "keyMode": {
+            "type": "string"
+          },
+          "keyTransposeAs": {
+            "type": "string"
+          },
+          "directionProperties": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "fermatas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                },
+                "offset": {
+                  "type": "string"
+                },
+                "length": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "tempoChanges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "barIndex": {
+            "type": "integer"
+          },
+          "position": {
+            "type": "integer"
+          },
+          "beatsPerMinute": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "anacrusis": {
+      "type": "boolean"
+    },
+    "playbackMasterBarSequence": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    }
+  }
+}
