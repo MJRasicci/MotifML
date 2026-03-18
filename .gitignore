@@ -30,3 +30,6 @@ tools/motif-cli.exe
 
 # --- Output Files
 *.log
+
+# --- Temp Folder
+temp/
