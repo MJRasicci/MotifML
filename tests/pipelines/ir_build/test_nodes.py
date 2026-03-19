@@ -7,10 +7,12 @@ from copy import deepcopy
 from pathlib import Path
 
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
+from motifml.ir.models import TimeSignature
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.ir_build.models import DiagnosticSeverity
 from motifml.pipelines.ir_build.nodes import (
     build_written_time_map,
+    emit_bars,
     emit_parts_and_staves,
     validate_canonical_score_surface,
 )
@@ -20,6 +22,7 @@ EXPECTED_INVALID_SCORE_TIME_ERRORS = 2
 EXPECTED_TIME_MAP_CONTIGUITY_ERRORS = 1
 EXPECTED_TRANSPOSED_CHROMATIC = 2
 EXPECTED_CAPO_FRET = 2
+EXPECTED_KEY_ACCIDENTALS = -2
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "motif_json"
 
 
@@ -320,6 +323,50 @@ def test_emit_parts_and_staves_extracts_tuning_and_capo_context():
     assert result.staves[0].capo_fret == EXPECTED_CAPO_FRET
 
 
+def test_emit_bars_maps_standard_bars_from_the_written_time_map():
+    score = _minimal_canonical_score()
+    score["timelineBars"].append(
+        {
+            "index": 1,
+            "timeSignature": "4/4",
+            "start": {"numerator": 1, "denominator": 1},
+            "duration": {"numerator": 1, "denominator": 1},
+        }
+    )
+
+    result = _emit_bars_result(score=score, relative_path="bars.json")
+
+    assert result.passed is True
+    assert [bar.bar_id for bar in result.bars] == ["bar:0", "bar:1"]
+    assert result.bars[0].start == ScoreTime(0, 1)
+    assert result.bars[1].duration == ScoreTime(1, 1)
+
+
+def test_emit_bars_extracts_key_and_triplet_feel_metadata():
+    score = _minimal_canonical_score()
+    score["timelineBars"][0]["keyAccidentalCount"] = 0
+    score["timelineBars"][0]["keyMode"] = "major"
+    score["timelineBars"].append(
+        {
+            "index": 1,
+            "timeSignature": "3/4",
+            "start": {"numerator": 1, "denominator": 1},
+            "duration": {"numerator": 3, "denominator": 4},
+            "keyAccidentalCount": EXPECTED_KEY_ACCIDENTALS,
+            "keyMode": "minor",
+            "tripletFeel": "eighth",
+        }
+    )
+
+    result = _emit_bars_result(score=score, relative_path="bar-metadata.json")
+
+    assert result.passed is True
+    assert result.bars[1].time_signature == TimeSignature(3, 4)
+    assert result.bars[1].key_accidental_count == EXPECTED_KEY_ACCIDENTALS
+    assert result.bars[1].key_mode == "minor"
+    assert result.bars[1].triplet_feel == "eighth"
+
+
 def _build_written_time_map_result(
     score: dict[str, object],
     relative_path: str,
@@ -350,6 +397,23 @@ def _emit_parts_and_staves_result(
     ]
     validation_results = validate_canonical_score_surface(documents)
     return emit_parts_and_staves(documents, validation_results)[0]
+
+
+def _emit_bars_result(
+    score: dict[str, object],
+    relative_path: str,
+):
+    documents = [
+        MotifJsonDocument(
+            relative_path=relative_path,
+            sha256=relative_path,
+            file_size_bytes=0,
+            score=score,
+        )
+    ]
+    validation_results = validate_canonical_score_surface(documents)
+    written_time_maps = build_written_time_map(documents, validation_results)
+    return emit_bars(documents, written_time_maps)[0]
 
 
 def _minimal_canonical_score() -> dict[str, object]:

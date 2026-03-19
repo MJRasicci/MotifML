@@ -6,11 +6,13 @@ from collections.abc import Mapping
 from typing import Any
 
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
+from motifml.ir.ids import bar_id as build_bar_id
 from motifml.ir.ids import part_id as build_part_id
 from motifml.ir.ids import staff_id as build_staff_id
-from motifml.ir.models import Part, Staff, Transposition
+from motifml.ir.models import Bar, Part, Staff, TimeSignature, Transposition
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.ir_build.models import (
+    BarEmissionResult,
     CanonicalScoreValidationResult,
     DiagnosticSeverity,
     IrBuildDiagnostic,
@@ -170,6 +172,59 @@ def emit_parts_and_staves(
                 source_hash=document.sha256,
                 parts=parts,
                 staves=staves,
+                diagnostics=tuple(diagnostics),
+            )
+        )
+
+    return emissions
+
+
+def emit_bars(
+    documents: list[MotifJsonDocument],
+    written_time_maps: list[WrittenTimeMapResult],
+) -> list[BarEmissionResult]:
+    """Emit IR bars from raw timeline metadata and written time maps."""
+    written_time_maps_by_path = {
+        result.relative_path: result for result in written_time_maps
+    }
+    emissions: list[BarEmissionResult] = []
+
+    for document in sorted(documents, key=lambda item: item.relative_path.casefold()):
+        written_time_map = written_time_maps_by_path.get(document.relative_path)
+        diagnostics: list[IrBuildDiagnostic] = []
+        bars: tuple[Bar, ...] = ()
+
+        if written_time_map is None:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="missing_written_time_map",
+                    message="written time map emission must run before bar emission.",
+                )
+            )
+        elif not written_time_map.passed:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="written_time_map_failed",
+                    message=(
+                        "bars cannot be emitted because the written time map "
+                        "contains fatal diagnostics."
+                    ),
+                )
+            )
+        else:
+            bars, emitted_diagnostics = _emit_bar_models(
+                score=document.score,
+                written_time_map=written_time_map,
+            )
+            diagnostics.extend(emitted_diagnostics)
+
+        emissions.append(
+            BarEmissionResult(
+                relative_path=document.relative_path,
+                source_hash=document.sha256,
+                bars=bars,
                 diagnostics=tuple(diagnostics),
             )
         )
@@ -553,6 +608,119 @@ def _emit_staff_models(
     sortable_staffs.sort(key=lambda item: (item[0], item[1]))
     emitted_staves.extend(staff for _, _, staff in sortable_staffs)
     return emitted_staves
+
+
+def _emit_bar_models(
+    score: dict[str, Any],
+    written_time_map: WrittenTimeMapResult,
+) -> tuple[tuple[Bar, ...], list[IrBuildDiagnostic]]:
+    diagnostics: list[IrBuildDiagnostic] = []
+    timeline_bars = score.get("timelineBars")
+    if not isinstance(timeline_bars, list):
+        diagnostics.append(
+            _error(
+                path="timelineBars",
+                code="missing_canonical_field",
+                message="canonical field 'timelineBars' is required.",
+            )
+        )
+        return (), diagnostics
+
+    written_time_entries = {entry.bar_index: entry for entry in written_time_map.bars}
+    seen_bar_indexes: set[int] = set()
+    sortable_bars: list[tuple[int, int, Bar]] = []
+
+    for ordinal, timeline_bar in enumerate(timeline_bars):
+        bar_path = f"timelineBars[{ordinal}]"
+        if not isinstance(timeline_bar, Mapping):
+            diagnostics.append(
+                _error(
+                    path=bar_path,
+                    code="invalid_canonical_field",
+                    message="timelineBars entries must be objects.",
+                )
+            )
+            continue
+
+        bar_index = _coerce_required_int(
+            timeline_bar.get("index"),
+            path=f"{bar_path}.index",
+            diagnostics=diagnostics,
+        )
+        if bar_index is None:
+            continue
+
+        if bar_index in seen_bar_indexes:
+            diagnostics.append(
+                _error(
+                    path=f"{bar_path}.index",
+                    code="duplicate_bar_index",
+                    message=f"bar index {bar_index} appears more than once.",
+                )
+            )
+            continue
+
+        written_time_entry = written_time_entries.get(bar_index)
+        if written_time_entry is None:
+            diagnostics.append(
+                _error(
+                    path=bar_path,
+                    code="missing_written_time_entry",
+                    message=f"no written time map entry exists for bar index {bar_index}.",
+                )
+            )
+            continue
+
+        time_signature = _coerce_time_signature(
+            timeline_bar.get("timeSignature"),
+            path=f"{bar_path}.timeSignature",
+            diagnostics=diagnostics,
+        )
+        if time_signature is None:
+            continue
+
+        key_accidental_count = _coerce_optional_int(
+            timeline_bar.get("keyAccidentalCount"),
+            path=f"{bar_path}.keyAccidentalCount",
+            diagnostics=diagnostics,
+        )
+        key_mode = _coerce_optional_str(
+            timeline_bar.get("keyMode"),
+            path=f"{bar_path}.keyMode",
+            diagnostics=diagnostics,
+        )
+        triplet_feel = _coerce_optional_str(
+            timeline_bar.get("tripletFeel"),
+            path=f"{bar_path}.tripletFeel",
+            diagnostics=diagnostics,
+        )
+
+        try:
+            bar = Bar(
+                bar_id=build_bar_id(bar_index),
+                bar_index=bar_index,
+                start=written_time_entry.start,
+                duration=written_time_entry.duration,
+                time_signature=time_signature,
+                key_accidental_count=key_accidental_count,
+                key_mode=key_mode,
+                triplet_feel=triplet_feel,
+            )
+        except ValueError as exc:
+            diagnostics.append(
+                _error(
+                    path=bar_path,
+                    code="invalid_canonical_field",
+                    message=str(exc),
+                )
+            )
+            continue
+
+        seen_bar_indexes.add(bar_index)
+        sortable_bars.append((bar_index, ordinal, bar))
+
+    sortable_bars.sort(key=lambda item: (item[0], item[1]))
+    return tuple(bar for _, _, bar in sortable_bars), diagnostics
 
 
 def _validate_track_surfaces(
@@ -1019,6 +1187,38 @@ def _coerce_optional_int(
     return _coerce_required_int(value, path, diagnostics)
 
 
+def _coerce_optional_str(
+    value: Any,
+    path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> str | None:
+    if value is None:
+        return None
+
+    if not isinstance(value, str):
+        diagnostics.append(
+            _error(
+                path=path,
+                code="invalid_canonical_field",
+                message="field must be a string when present.",
+            )
+        )
+        return None
+
+    normalized = value.strip()
+    if not normalized:
+        diagnostics.append(
+            _error(
+                path=path,
+                code="invalid_canonical_field",
+                message="field must be non-empty when present.",
+            )
+        )
+        return None
+
+    return normalized
+
+
 def _coerce_optional_tuning_pitches(
     value: Any,
     path: str,
@@ -1084,6 +1284,47 @@ def _coerce_transposition(
         return None
 
     return Transposition(chromatic=chromatic, octave=octave)
+
+
+def _coerce_time_signature(
+    value: Any,
+    path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> TimeSignature | None:
+    if not isinstance(value, str):
+        diagnostics.append(
+            _error(
+                path=path,
+                code="invalid_canonical_field",
+                message="timeSignature must be a string.",
+            )
+        )
+        return None
+
+    numerator_text, separator, denominator_text = value.partition("/")
+    if separator != "/":
+        diagnostics.append(
+            _error(
+                path=path,
+                code="invalid_canonical_field",
+                message="timeSignature must use the '<numerator>/<denominator>' form.",
+            )
+        )
+        return None
+
+    try:
+        numerator = int(numerator_text)
+        denominator = int(denominator_text)
+        return TimeSignature(numerator=numerator, denominator=denominator)
+    except ValueError as exc:
+        diagnostics.append(
+            _error(
+                path=path,
+                code="invalid_canonical_field",
+                message=str(exc),
+            )
+        )
+        return None
 
 
 def _has_relation_hints(articulation: Mapping[str, Any]) -> bool:
