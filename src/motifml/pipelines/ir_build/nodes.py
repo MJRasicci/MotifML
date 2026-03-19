@@ -11,6 +11,8 @@ from motifml.pipelines.ir_build.models import (
     CanonicalScoreValidationResult,
     DiagnosticSeverity,
     IrBuildDiagnostic,
+    WrittenTimeMapEntry,
+    WrittenTimeMapResult,
 )
 
 REQUIRED_TOP_LEVEL_LIST_FIELDS = (
@@ -50,6 +52,68 @@ def validate_canonical_score_surface(
             documents, key=lambda item: item.relative_path.casefold()
         )
     ]
+
+
+def build_written_time_map(
+    documents: list[MotifJsonDocument],
+    validation_results: list[CanonicalScoreValidationResult],
+) -> list[WrittenTimeMapResult]:
+    """Build deterministic bar-level written time maps from canonical timeline bars.
+
+    Args:
+        documents: Raw Motif JSON corpus documents.
+        validation_results: Surface-validation results from
+            `validate_canonical_score_surface`.
+
+    Returns:
+        One typed written-time-map result per input document.
+    """
+    validation_results_by_path = {
+        result.relative_path: result for result in validation_results
+    }
+    written_time_maps: list[WrittenTimeMapResult] = []
+
+    for document in sorted(documents, key=lambda item: item.relative_path.casefold()):
+        validation_result = validation_results_by_path.get(document.relative_path)
+        diagnostics: list[IrBuildDiagnostic] = []
+        bars: tuple[WrittenTimeMapEntry, ...] = ()
+
+        if validation_result is None:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="missing_validation_result",
+                    message=(
+                        "canonical score surface validation must run before written "
+                        "time-map construction."
+                    ),
+                )
+            )
+        elif not validation_result.passed:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="canonical_surface_validation_failed",
+                    message=(
+                        "written time map cannot be built because the canonical "
+                        "score surface validation failed."
+                    ),
+                )
+            )
+        else:
+            bars, built_diagnostics = _build_written_time_map_entries(document.score)
+            diagnostics.extend(built_diagnostics)
+
+        written_time_maps.append(
+            WrittenTimeMapResult(
+                relative_path=document.relative_path,
+                source_hash=document.sha256,
+                bars=bars,
+                diagnostics=tuple(diagnostics),
+            )
+        )
+
+    return written_time_maps
 
 
 def _validate_document_surface(score: dict[str, Any]) -> list[IrBuildDiagnostic]:
@@ -106,6 +170,119 @@ def _validate_timeline_bars(
             diagnostics=diagnostics,
             require_positive=True,
         )
+
+
+def _build_written_time_map_entries(
+    score: dict[str, Any],
+) -> tuple[tuple[WrittenTimeMapEntry, ...], list[IrBuildDiagnostic]]:
+    diagnostics: list[IrBuildDiagnostic] = []
+    timeline_bars = score.get("timelineBars")
+    if not isinstance(timeline_bars, list):
+        diagnostics.append(
+            _error(
+                path="timelineBars",
+                code="missing_canonical_field",
+                message="canonical field 'timelineBars' is required.",
+            )
+        )
+        return (), diagnostics
+
+    raw_entries: list[tuple[int, int, ScoreTime, ScoreTime]] = []
+    seen_bar_indexes: set[int] = set()
+    anacrusis_flag = _coerce_optional_bool(score.get("anacrusis"), diagnostics)
+
+    for ordinal, timeline_bar in enumerate(timeline_bars):
+        timeline_bar_path = f"timelineBars[{ordinal}]"
+        if not isinstance(timeline_bar, Mapping):
+            diagnostics.append(
+                _error(
+                    path=timeline_bar_path,
+                    code="invalid_canonical_field",
+                    message="timelineBars entries must be objects.",
+                )
+            )
+            continue
+
+        bar_index = timeline_bar.get("index")
+        if not isinstance(bar_index, int):
+            diagnostics.append(
+                _error(
+                    path=f"{timeline_bar_path}.index",
+                    code="invalid_canonical_field",
+                    message="timelineBars entries must include an integer index.",
+                )
+            )
+            continue
+
+        if bar_index in seen_bar_indexes:
+            diagnostics.append(
+                _error(
+                    path=f"{timeline_bar_path}.index",
+                    code="duplicate_bar_index",
+                    message=f"bar index {bar_index} appears more than once.",
+                )
+            )
+            continue
+
+        start = _coerce_score_time(
+            timeline_bar.get("start"),
+            path=f"{timeline_bar_path}.start",
+            diagnostics=diagnostics,
+            require_positive=False,
+        )
+        duration = _coerce_score_time(
+            timeline_bar.get("duration"),
+            path=f"{timeline_bar_path}.duration",
+            diagnostics=diagnostics,
+            require_positive=True,
+        )
+        if start is None or duration is None:
+            continue
+
+        seen_bar_indexes.add(bar_index)
+        raw_entries.append((bar_index, ordinal, start, duration))
+
+    raw_entries.sort(key=lambda item: item[0])
+
+    bars: list[WrittenTimeMapEntry] = []
+    previous_entry: WrittenTimeMapEntry | None = None
+    for position, (bar_index, ordinal, start, duration) in enumerate(raw_entries):
+        bar = WrittenTimeMapEntry(
+            bar_index=bar_index,
+            start=start,
+            duration=duration,
+            is_anacrusis=anacrusis_flag and position == 0,
+        )
+        if previous_entry is not None:
+            expected_start = previous_entry.start + previous_entry.duration
+            if bar.start < expected_start:
+                diagnostics.append(
+                    _error(
+                        path=f"timelineBars[{ordinal}].start",
+                        code="overlapping_bar_geometry",
+                        message=(
+                            "timeline bars must be contiguous and non-overlapping; "
+                            "this bar starts before the previous bar ends."
+                        ),
+                    )
+                )
+            elif bar.start > expected_start:
+                diagnostics.append(
+                    _error(
+                        path=f"timelineBars[{ordinal}].start",
+                        code="non_contiguous_bar_geometry",
+                        message=(
+                            "timeline bars must be contiguous and non-overlapping; "
+                            "this bar starts after a gap."
+                        ),
+                    )
+                )
+
+        bars.append(bar)
+        previous_entry = bar
+
+    diagnostics.extend(_build_bar_geometry_warnings(score, raw_entries, tuple(bars)))
+    return tuple(bars), diagnostics
 
 
 def _validate_track_surfaces(
@@ -375,8 +552,7 @@ def _require_score_time_field(
     *,
     require_positive: bool,
 ) -> None:
-    value = mapping.get(field_name)
-    if value is None:
+    if field_name not in mapping:
         diagnostics.append(
             _error(
                 path=path,
@@ -386,58 +562,144 @@ def _require_score_time_field(
         )
         return
 
-    if not isinstance(value, Mapping):
-        diagnostics.append(
-            _error(
-                path=path,
-                code="invalid_canonical_field",
-                message=f"canonical field '{field_name}' must be a ScoreTime object.",
-            )
-        )
-        return
+    _coerce_score_time(
+        mapping[field_name],
+        path=path,
+        diagnostics=diagnostics,
+        require_positive=require_positive,
+    )
 
-    numerator = value.get("numerator")
-    denominator = value.get("denominator")
-    if not isinstance(numerator, int) or not isinstance(denominator, int):
+
+def _coerce_score_time(
+    value: Any,
+    path: str,
+    diagnostics: list[IrBuildDiagnostic],
+    *,
+    require_positive: bool,
+) -> ScoreTime | None:
+    score_time: ScoreTime | None = None
+    message: str | None = None
+
+    if value is None:
+        message = "canonical ScoreTime field is required."
+    elif not isinstance(value, Mapping):
+        message = "canonical field must be a ScoreTime object."
+    else:
+        numerator = value.get("numerator")
+        denominator = value.get("denominator")
+        if not isinstance(numerator, int) or not isinstance(denominator, int):
+            message = "ScoreTime fields must include integer numerator and denominator values."
+        else:
+            try:
+                score_time = ScoreTime(numerator=numerator, denominator=denominator)
+            except ValueError as exc:
+                message = str(exc)
+            else:
+                if require_positive and score_time.numerator <= 0:
+                    message = "ScoreTime durations must be positive."
+                elif not require_positive and score_time.numerator < 0:
+                    message = "ScoreTime positions must be non-negative."
+
+    if message is not None:
         diagnostics.append(
             _error(
                 path=path,
-                code="invalid_canonical_field",
-                message="ScoreTime fields must include integer numerator and denominator values.",
+                code=(
+                    "missing_canonical_field"
+                    if value is None
+                    else "invalid_canonical_field"
+                ),
+                message=message,
             )
         )
-        return
+        return None
+
+    return score_time
+
+
+def _coerce_optional_bool(
+    value: Any,
+    diagnostics: list[IrBuildDiagnostic],
+) -> bool:
+    if value is None:
+        return False
+
+    if isinstance(value, bool):
+        return value
+
+    diagnostics.append(
+        _error(
+            path="anacrusis",
+            code="invalid_canonical_field",
+            message="anacrusis must be a boolean when present.",
+        )
+    )
+    return False
+
+
+def _build_bar_geometry_warnings(
+    score: dict[str, Any],
+    raw_entries: list[tuple[int, int, ScoreTime, ScoreTime]],
+    bars: tuple[WrittenTimeMapEntry, ...],
+) -> list[IrBuildDiagnostic]:
+    if not bars or not raw_entries:
+        return []
+
+    first_bar = bars[0]
+    _, first_ordinal, _, _ = raw_entries[0]
+    nominal_duration = _parse_nominal_bar_duration(score["timelineBars"][first_ordinal])
+    if nominal_duration is None:
+        return []
+
+    if first_bar.is_anacrusis and first_bar.duration >= nominal_duration:
+        return [
+            _warning(
+                path=f"timelineBars[{first_ordinal}].duration",
+                code="suspicious_bar_geometry",
+                message=(
+                    "anacrusis is true but the first bar is not shorter than its "
+                    "nominal time-signature duration."
+                ),
+            )
+        ]
+
+    if not first_bar.is_anacrusis and first_bar.duration < nominal_duration:
+        return [
+            _warning(
+                path=f"timelineBars[{first_ordinal}].duration",
+                code="suspicious_bar_geometry",
+                message=(
+                    "the first bar is shorter than its nominal time-signature "
+                    "duration but anacrusis is not set."
+                ),
+            )
+        ]
+
+    return []
+
+
+def _parse_nominal_bar_duration(timeline_bar: Any) -> ScoreTime | None:
+    if not isinstance(timeline_bar, Mapping):
+        return None
+
+    time_signature = timeline_bar.get("timeSignature")
+    if not isinstance(time_signature, str):
+        return None
+
+    numerator_text, separator, denominator_text = time_signature.partition("/")
+    if separator != "/":
+        return None
 
     try:
-        score_time = ScoreTime(numerator=numerator, denominator=denominator)
-    except ValueError as exc:
-        diagnostics.append(
-            _error(
-                path=path,
-                code="invalid_canonical_field",
-                message=str(exc),
-            )
-        )
-        return
+        numerator = int(numerator_text)
+        denominator = int(denominator_text)
+    except ValueError:
+        return None
 
-    if require_positive and score_time.numerator <= 0:
-        diagnostics.append(
-            _error(
-                path=path,
-                code="invalid_canonical_field",
-                message="ScoreTime durations must be positive.",
-            )
-        )
-        return
-
-    if not require_positive and score_time.numerator < 0:
-        diagnostics.append(
-            _error(
-                path=path,
-                code="invalid_canonical_field",
-                message="ScoreTime positions must be non-negative.",
-            )
-        )
+    try:
+        return ScoreTime(numerator=numerator, denominator=denominator)
+    except ValueError:
+        return None
 
 
 def _has_relation_hints(articulation: Mapping[str, Any]) -> bool:

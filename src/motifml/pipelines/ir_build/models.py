@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from motifml.ir.time import ScoreTime
+
 
 class DiagnosticSeverity(StrEnum):
     """Supported severities for IR build diagnostics."""
@@ -79,6 +81,83 @@ class CanonicalScoreValidationResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
+@dataclass(frozen=True)
+class WrittenTimeMapEntry:
+    """One bar-level written-time anchor emitted from `timelineBars`."""
+
+    bar_index: int
+    start: ScoreTime
+    duration: ScoreTime
+    is_anacrusis: bool = False
+
+    def __post_init__(self) -> None:
+        if self.bar_index < 0:
+            raise ValueError("bar_index must be non-negative.")
+
+        self.start.require_non_negative("WrittenTimeMapEntry start")
+        if self.duration.numerator <= 0:
+            raise ValueError("duration must be positive.")
+
+    def sort_key(self) -> tuple[int, ScoreTime, ScoreTime]:
+        """Return a stable written-time-map entry ordering key."""
+        return (self.bar_index, self.start, self.duration)
+
+
+@dataclass(frozen=True)
+class WrittenTimeMapResult:
+    """Typed written-time-map result for one validated raw score."""
+
+    relative_path: str
+    source_hash: str
+    bars: tuple[WrittenTimeMapEntry, ...] = ()
+    diagnostics: tuple[IrBuildDiagnostic, ...] = ()
+    passed: bool = field(init=False)
+    error_count: int = field(init=False)
+    warning_count: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "relative_path",
+            _normalize_text(self.relative_path, "relative_path"),
+        )
+        object.__setattr__(
+            self,
+            "source_hash",
+            _normalize_text(self.source_hash, "source_hash"),
+        )
+        object.__setattr__(
+            self,
+            "bars",
+            tuple(sorted(self.bars, key=lambda item: item.sort_key())),
+        )
+
+        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        object.__setattr__(self, "diagnostics", diagnostics)
+
+        error_count = sum(
+            1
+            for diagnostic in diagnostics
+            if diagnostic.severity is DiagnosticSeverity.ERROR
+        )
+        warning_count = sum(
+            1
+            for diagnostic in diagnostics
+            if diagnostic.severity is DiagnosticSeverity.WARNING
+        )
+        object.__setattr__(self, "error_count", error_count)
+        object.__setattr__(self, "warning_count", warning_count)
+        object.__setattr__(self, "passed", error_count == 0)
+
+    @property
+    def bar_times(self) -> dict[int, tuple[ScoreTime, ScoreTime]]:
+        """Return the result as a deterministic bar-indexed time map."""
+        return {
+            bar.bar_index: (bar.start, bar.duration)
+            for bar in sorted(self.bars, key=lambda item: item.sort_key())
+        }
+
+
 def _normalize_text(value: str, field_name: str) -> str:
     normalized = value.strip()
     if not normalized:
@@ -91,4 +170,6 @@ __all__ = [
     "CanonicalScoreValidationResult",
     "DiagnosticSeverity",
     "IrBuildDiagnostic",
+    "WrittenTimeMapEntry",
+    "WrittenTimeMapResult",
 ]
