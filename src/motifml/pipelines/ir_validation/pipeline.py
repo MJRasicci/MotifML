@@ -5,6 +5,7 @@ from __future__ import annotations
 from kedro.pipeline import Pipeline, node, pipeline
 
 from motifml.pipelines.ir_validation.nodes import (
+    publish_ir_validation_report,
     report_ir_scale_metrics,
     summarize_ir_corpus,
     validate_ir_documents,
@@ -20,14 +21,20 @@ def create_pipeline(**kwargs: object) -> Pipeline:
             node(
                 func=validate_ir_documents,
                 inputs=["motif_ir_corpus", "params:ir_validation"],
-                outputs="motif_ir_validation_report",
+                outputs="ir_validation_report_model",
                 name="validate_ir_documents",
+            ),
+            node(
+                func=publish_ir_validation_report,
+                inputs="ir_validation_report_model",
+                outputs="motif_ir_validation_report",
+                name="publish_ir_validation_report",
             ),
             node(
                 func=summarize_ir_corpus,
                 inputs=[
                     "motif_ir_corpus",
-                    "motif_ir_validation_report",
+                    "ir_validation_report_model",
                     "motif_ir_manifest",
                 ],
                 outputs="ir_corpus_summary_model",

@@ -42,6 +42,13 @@ def validate_ir_documents(
     ]
 
 
+def publish_ir_validation_report(
+    validation_reports: list[IrDocumentValidationReport],
+) -> list[IrDocumentValidationReport]:
+    """Persist the typed validation report to the configured reporting dataset."""
+    return validation_reports
+
+
 def summarize_ir_corpus(
     documents: list[MotifIrDocumentRecord],
     validation_reports: list[IrDocumentValidationReport],
