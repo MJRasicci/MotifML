@@ -34,7 +34,7 @@ class IrValidationSeverity(StrEnum):
     """Configurable validation severities for IR invariants."""
 
     ERROR = "error"
-    WARNING = "warning"
+    WARN = "warn"
     IGNORE = "ignore"
 
 
@@ -149,7 +149,7 @@ class IrDocumentValidationReport:
         warning_count = sum(
             report.issue_count
             for report in sorted_reports
-            if report.severity is IrValidationSeverity.WARNING
+            if report.severity is IrValidationSeverity.WARN
         )
         object.__setattr__(self, "error_count", error_count)
         object.__setattr__(self, "warning_count", warning_count)
@@ -247,7 +247,7 @@ def coerce_rule_severities(
 
     for raw_rule, raw_severity in rule_severities.items():
         rule = IrValidationRule(raw_rule)
-        normalized[rule] = IrValidationSeverity(raw_severity)
+        normalized[rule] = _coerce_validation_severity(raw_severity)
 
     return normalized
 
@@ -933,6 +933,19 @@ def _normalize_text(value: str, field_name: str) -> str:
         raise ValueError(f"{field_name} must be non-empty.")
 
     return normalized
+
+
+def _coerce_validation_severity(
+    value: IrValidationSeverity | str,
+) -> IrValidationSeverity:
+    if isinstance(value, IrValidationSeverity):
+        return value
+
+    normalized = str(value).strip().casefold()
+    if normalized == "warning":
+        normalized = IrValidationSeverity.WARN.value
+
+    return IrValidationSeverity(normalized)
 
 
 __all__ = [

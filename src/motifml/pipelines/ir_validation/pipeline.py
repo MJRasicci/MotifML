@@ -15,7 +15,7 @@ def create_pipeline(**kwargs: object) -> Pipeline:
         [
             node(
                 func=validate_ir_documents,
-                inputs="motif_ir_corpus",
+                inputs=["motif_ir_corpus", "params:ir_validation"],
                 outputs="motif_ir_validation_report",
                 name="validate_ir_documents",
             )

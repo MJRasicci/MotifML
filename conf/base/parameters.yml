@@ -2,3 +2,19 @@ ir_build_metadata:
   ir_schema_version: "1.0.0"
   corpus_build_version: "ir-build-v1"
   build_timestamp: "2026-03-19T00:00:00-04:00"
+
+ir_validation:
+  rule_severities:
+    onset_ownership: error
+    note_ownership: error
+    note_time_alignment: error
+    voice_lane_onset_timing: error
+    attack_order_contiguity: error
+    sounding_duration_positive: error
+    tie_chain_linear: error
+    voice_lane_chain_stability: error
+    note_order_canonical: error
+    edge_endpoint_reference_integrity: error
+    forbidden_metadata_absent: error
+    phrase_span_validity: error
+    fretted_string_collision: error

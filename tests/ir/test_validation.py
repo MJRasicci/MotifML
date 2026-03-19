@@ -31,6 +31,45 @@ def test_build_document_validation_report_accepts_approved_golden_documents():
     assert report.rule_reports == ()
 
 
+def test_build_document_validation_report_applies_warn_and_ignore_severities():
+    document = deepcopy(_load_golden_document("single_track_monophonic_pickup.ir.json"))
+    object.__setattr__(document.note_events[0], "time", ScoreTime(1, 8))
+
+    error_report = build_document_validation_report(
+        relative_path="single_track_monophonic_pickup.json",
+        source_hash="single_track_monophonic_pickup",
+        document=document,
+    )
+    warn_report = build_document_validation_report(
+        relative_path="single_track_monophonic_pickup.json",
+        source_hash="single_track_monophonic_pickup",
+        document=document,
+        rule_severities={
+            IrValidationRule.NOTE_TIME_ALIGNMENT: "warn",
+        },
+    )
+    ignore_report = build_document_validation_report(
+        relative_path="single_track_monophonic_pickup.json",
+        source_hash="single_track_monophonic_pickup",
+        document=document,
+        rule_severities={
+            IrValidationRule.NOTE_TIME_ALIGNMENT: "ignore",
+        },
+    )
+
+    assert error_report.passed is False
+    assert error_report.error_count == 1
+    assert error_report.warning_count == 0
+    assert warn_report.passed is True
+    assert warn_report.error_count == 0
+    assert warn_report.warning_count == 1
+    assert warn_report.rule_reports[0].severity.value == "warn"
+    assert ignore_report.passed is True
+    assert ignore_report.error_count == 0
+    assert ignore_report.warning_count == 0
+    assert ignore_report.rule_reports == ()
+
+
 def test_validate_document_reports_structural_invariant_failures():
     document = deepcopy(_load_golden_document("single_track_monophonic_pickup.ir.json"))
     voice_lane_onset_indexes = _voice_lane_onset_indexes(document)
