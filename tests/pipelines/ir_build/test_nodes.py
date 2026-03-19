@@ -10,11 +10,16 @@ from motifml import __version__ as MOTIFML_VERSION
 from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
 from motifml.ir.ids import edge_sort_key
-from motifml.ir.models import RhythmBaseValue, TimeSignature
+from motifml.ir.models import (
+    IrManifestDiagnosticCategory,
+    RhythmBaseValue,
+    TimeSignature,
+)
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.ir_build.models import DiagnosticSeverity
 from motifml.pipelines.ir_build.nodes import (
     assemble_ir_document,
+    build_ir_manifest,
     build_written_time_map,
     emit_bars,
     emit_intrinsic_edges,
@@ -47,6 +52,7 @@ EXPECTED_HARMONIC_FRET = 5.0
 EXPECTED_NEXT_IN_VOICE_EDGES_WITH_REENTRY = 3
 EXPECTED_IR_SCHEMA_VERSION = "1.0.0"
 EXPECTED_CORPUS_BUILD_VERSION = "ir-build-v1"
+EXPECTED_BUILD_TIMESTAMP = "2026-03-19T00:00:00-04:00"
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "motif_json"
 
 
@@ -1327,6 +1333,90 @@ def test_assemble_ir_document_returns_records_in_relative_path_order():
     ]
 
 
+def test_build_ir_manifest_reports_paths_counts_and_hashes_for_emitted_documents():
+    score = _load_fixture("ensemble_polyphony_controls.json")
+
+    record, manifest_entry = _build_ir_manifest_result(
+        score=score,
+        relative_path="ensemble_polyphony_controls.json",
+    )
+
+    assert manifest_entry.source_path == "ensemble_polyphony_controls.json"
+    assert manifest_entry.source_hash == "ensemble_polyphony_controls.json"
+    assert (
+        manifest_entry.ir_document_path
+        == "data/02_intermediate/ir/documents/ensemble_polyphony_controls.json.ir.json"
+    )
+    assert manifest_entry.build_timestamp == EXPECTED_BUILD_TIMESTAMP
+    assert manifest_entry.node_counts["Part"] == len(record.document.parts)
+    assert manifest_entry.node_counts["Bar"] == len(record.document.bars)
+    assert manifest_entry.node_counts["NoteEvent"] == len(record.document.note_events)
+    assert manifest_entry.edge_counts["contains"] > 0
+    assert manifest_entry.edge_counts["next_in_voice"] > 0
+    assert manifest_entry.unsupported_features_dropped == ()
+    assert manifest_entry.conversion_diagnostics == ()
+
+
+def test_build_ir_manifest_groups_conversion_diagnostics_by_category():
+    score = _minimal_canonical_score()
+    beat = score["tracks"][0]["staves"][0]["measures"][0]["voices"][0]["beats"][0]
+    beat["brush"] = True
+    note = beat["notes"][0]
+    note["articulation"] = {"tieDestination": True}
+    score["spanControls"] = [
+        {
+            "kind": "Legato",
+            "scope": "Track",
+            "trackId": 1,
+            "start": {
+                "barIndex": 0,
+                "offset": {"numerator": 0, "denominator": 1},
+            },
+            "end": {
+                "barIndex": 0,
+                "offset": {"numerator": 1, "denominator": 4},
+            },
+            "value": "slur",
+        },
+        {
+            "kind": "Ottava",
+            "scope": "Track",
+            "trackId": 1,
+            "start": {
+                "barIndex": 0,
+                "offset": {"numerator": 0, "denominator": 1},
+            },
+            "value": "8va",
+        },
+    ]
+
+    _, manifest_entry = _build_ir_manifest_result(
+        score=score,
+        relative_path="diagnostics.json",
+    )
+
+    assert manifest_entry.unsupported_features_dropped == (
+        "open_ended_span_control",
+        "unsupported_onset_technique",
+        "unsupported_span_control_kind",
+    )
+    assert [summary.code for summary in manifest_entry.conversion_diagnostics] == [
+        "open_ended_span_control",
+        "unsupported_span_control_kind",
+        "missing_canonical_field",
+        "unsupported_onset_technique",
+    ]
+    assert [summary.category for summary in manifest_entry.conversion_diagnostics] == [
+        IrManifestDiagnosticCategory.EXCLUDED,
+        IrManifestDiagnosticCategory.EXCLUDED,
+        IrManifestDiagnosticCategory.MALFORMED,
+        IrManifestDiagnosticCategory.UNSUPPORTED,
+    ]
+    assert manifest_entry.conversion_diagnostics[2].paths == (
+        "tracks[0].staves[0].measures[0].voices[0].beats[0].notes[0].articulation.relations",
+    )
+
+
 def test_assemble_ir_document_preserves_canonical_collection_order():
     score = _load_fixture("single_track_monophonic_pickup.json")
 
@@ -1550,6 +1640,82 @@ def _assemble_ir_document_bundle(
     score: dict[str, object],
     relative_path: str,
 ):
+    (
+        _documents,
+        _validation_results,
+        _written_time_maps,
+        part_staff_emissions,
+        bar_emissions,
+        voice_lane_emissions,
+        onset_group_emissions,
+        note_event_emissions,
+        point_control_emissions,
+        span_control_emissions,
+        intrinsic_edge_emissions,
+        records,
+    ) = _build_ir_pipeline_bundle(
+        score=score,
+        relative_path=relative_path,
+    )
+    return (
+        records[0],
+        part_staff_emissions[0],
+        bar_emissions[0],
+        voice_lane_emissions[0],
+        onset_group_emissions[0],
+        note_event_emissions[0],
+        point_control_emissions[0],
+        span_control_emissions[0],
+        intrinsic_edge_emissions[0],
+    )
+
+
+def _build_ir_manifest_result(
+    score: dict[str, object],
+    relative_path: str,
+):
+    (
+        _documents,
+        validation_results,
+        written_time_maps,
+        part_staff_emissions,
+        bar_emissions,
+        voice_lane_emissions,
+        onset_group_emissions,
+        note_event_emissions,
+        point_control_emissions,
+        span_control_emissions,
+        intrinsic_edge_emissions,
+        records,
+    ) = _build_ir_pipeline_bundle(
+        score=score,
+        relative_path=relative_path,
+    )
+    manifest_entries = build_ir_manifest(
+        records,
+        validation_results,
+        written_time_maps,
+        part_staff_emissions,
+        bar_emissions,
+        voice_lane_emissions,
+        onset_group_emissions,
+        note_event_emissions,
+        point_control_emissions,
+        span_control_emissions,
+        intrinsic_edge_emissions,
+        {
+            "ir_schema_version": EXPECTED_IR_SCHEMA_VERSION,
+            "corpus_build_version": EXPECTED_CORPUS_BUILD_VERSION,
+            "build_timestamp": EXPECTED_BUILD_TIMESTAMP,
+        },
+    )
+    return records[0], manifest_entries[0]
+
+
+def _build_ir_pipeline_bundle(
+    score: dict[str, object],
+    relative_path: str,
+):
     documents = [
         MotifJsonDocument(
             relative_path=relative_path,
@@ -1611,18 +1777,22 @@ def _assemble_ir_document_bundle(
         {
             "ir_schema_version": EXPECTED_IR_SCHEMA_VERSION,
             "corpus_build_version": EXPECTED_CORPUS_BUILD_VERSION,
+            "build_timestamp": EXPECTED_BUILD_TIMESTAMP,
         },
     )
     return (
-        records[0],
-        part_staff_emissions[0],
-        bar_emissions[0],
-        voice_lane_emissions[0],
-        onset_group_emissions[0],
-        note_event_emissions[0],
-        point_control_emissions[0],
-        span_control_emissions[0],
-        intrinsic_edge_emissions[0],
+        documents,
+        validation_results,
+        written_time_maps,
+        part_staff_emissions,
+        bar_emissions,
+        voice_lane_emissions,
+        onset_group_emissions,
+        note_event_emissions,
+        point_control_emissions,
+        span_control_emissions,
+        intrinsic_edge_emissions,
+        records,
     )
 
 

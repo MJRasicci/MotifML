@@ -8,7 +8,11 @@ from pathlib import Path
 
 import yaml
 
-from motifml.ir.models import IrManifestEntry
+from motifml.ir.models import (
+    IrManifestDiagnosticCategory,
+    IrManifestDiagnosticSummary,
+    IrManifestEntry,
+)
 
 CATALOG_PATH = Path(__file__).resolve().parents[2] / "conf" / "base" / "catalog.yml"
 
@@ -22,6 +26,16 @@ def test_ir_manifest_entry_normalizes_count_maps_and_is_json_serializable():
         node_counts={"NoteEvent": 3, "Bar": 1},
         edge_counts={"next_in_voice": 2, "contains": 8},
         unsupported_features_dropped=("tempo changes", "slide links"),
+        conversion_diagnostics=(
+            IrManifestDiagnosticSummary(
+                category=IrManifestDiagnosticCategory.UNSUPPORTED,
+                severity=" warning ",
+                code=" unsupported_note_relation_kind ",
+                count=2,
+                paths=(" score[1] ", " score[0] "),
+                messages=(" slide unsupported ", " hammer-on unsupported "),
+            ),
+        ),
     )
 
     assert entry.source_path == "data/00_corpus/example.json"
@@ -37,6 +51,16 @@ def test_ir_manifest_entry_normalizes_count_maps_and_is_json_serializable():
         "slide links",
         "tempo changes",
     )
+    assert entry.conversion_diagnostics == (
+        IrManifestDiagnosticSummary(
+            category=IrManifestDiagnosticCategory.UNSUPPORTED,
+            severity="warning",
+            code="unsupported_note_relation_kind",
+            count=2,
+            paths=("score[0]", "score[1]"),
+            messages=("hammer-on unsupported", "slide unsupported"),
+        ),
+    )
 
     serialized = json.loads(json.dumps(asdict(entry)))
 
@@ -48,6 +72,16 @@ def test_ir_manifest_entry_normalizes_count_maps_and_is_json_serializable():
         "node_counts": {"Bar": 1, "NoteEvent": 3},
         "edge_counts": {"contains": 8, "next_in_voice": 2},
         "unsupported_features_dropped": ["slide links", "tempo changes"],
+        "conversion_diagnostics": [
+            {
+                "category": "unsupported",
+                "severity": "warning",
+                "code": "unsupported_note_relation_kind",
+                "count": 2,
+                "paths": ["score[0]", "score[1]"],
+                "messages": ["hammer-on unsupported", "slide unsupported"],
+            }
+        ],
     }
 
 

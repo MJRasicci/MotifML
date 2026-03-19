@@ -95,6 +95,15 @@ class TimeUnit(StrEnum):
     WHOLE_NOTE_FRACTION = "whole_note_fraction"
 
 
+class IrManifestDiagnosticCategory(StrEnum):
+    """High-level categories for grouped IR build diagnostics in the manifest."""
+
+    UNSUPPORTED = "unsupported"
+    MALFORMED = "malformed"
+    EXCLUDED = "excluded"
+    OTHER = "other"
+
+
 @dataclass(frozen=True)
 class Transposition:
     """Written-to-sounding transposition context for one part."""
@@ -768,6 +777,49 @@ class IrDocumentMetadata:
 
 
 @dataclass(frozen=True)
+class IrManifestDiagnosticSummary:
+    """Grouped build diagnostic information attached to one manifest entry."""
+
+    category: IrManifestDiagnosticCategory
+    severity: str
+    code: str
+    count: int
+    paths: tuple[str, ...] = ()
+    messages: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "category",
+            _coerce_str_enum(
+                self.category,
+                IrManifestDiagnosticCategory,
+                "category",
+            ),
+        )
+
+        severity = _normalize_optional_text(self.severity, "severity").casefold()
+        if severity not in {"error", "warning"}:
+            raise ValueError("severity must be either 'error' or 'warning'.")
+        object.__setattr__(self, "severity", severity)
+        object.__setattr__(self, "code", _normalize_optional_text(self.code, "code"))
+
+        if self.count <= 0:
+            raise ValueError("count must be positive.")
+
+        object.__setattr__(
+            self,
+            "paths",
+            _normalize_text_sequence(self.paths, "paths"),
+        )
+        object.__setattr__(
+            self,
+            "messages",
+            _normalize_text_sequence(self.messages, "messages"),
+        )
+
+
+@dataclass(frozen=True)
 class IrManifestEntry:
     """File-level build manifest entry for one emitted IR document."""
 
@@ -778,6 +830,7 @@ class IrManifestEntry:
     node_counts: dict[str, int]
     edge_counts: dict[str, int]
     unsupported_features_dropped: tuple[str, ...] = ()
+    conversion_diagnostics: tuple[IrManifestDiagnosticSummary, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -815,6 +868,22 @@ class IrManifestEntry:
             "unsupported_features_dropped",
             _normalize_text_sequence(
                 self.unsupported_features_dropped, "unsupported_features_dropped"
+            ),
+        )
+        object.__setattr__(
+            self,
+            "conversion_diagnostics",
+            tuple(
+                sorted(
+                    self.conversion_diagnostics,
+                    key=lambda item: (
+                        item.category.value,
+                        item.severity,
+                        item.code,
+                        item.paths,
+                        item.messages,
+                    ),
+                )
             ),
         )
 
@@ -892,6 +961,8 @@ __all__ = [
     "HairpinDirection",
     "HairpinValue",
     "IrDocumentMetadata",
+    "IrManifestDiagnosticCategory",
+    "IrManifestDiagnosticSummary",
     "IrManifestEntry",
     "MotifMlIrDocument",
     "NoteEvent",

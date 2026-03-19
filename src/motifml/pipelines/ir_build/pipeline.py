@@ -6,6 +6,7 @@ from kedro.pipeline import Pipeline, node, pipeline
 
 from motifml.pipelines.ir_build.nodes import (
     assemble_ir_document,
+    build_ir_manifest,
     build_written_time_map,
     emit_bars,
     emit_intrinsic_edges,
@@ -131,6 +132,25 @@ def create_pipeline(**kwargs: object) -> Pipeline:
                 ],
                 outputs="motif_ir_corpus",
                 name="assemble_ir_document",
+            ),
+            node(
+                func=build_ir_manifest,
+                inputs=[
+                    "motif_ir_corpus",
+                    "canonical_score_validation_results",
+                    "written_time_maps",
+                    "part_staff_emissions",
+                    "bar_emissions",
+                    "voice_lane_emissions",
+                    "onset_group_emissions",
+                    "note_event_emissions",
+                    "point_control_emissions",
+                    "span_control_emissions",
+                    "intrinsic_edge_emissions",
+                    "params:ir_build_metadata",
+                ],
+                outputs="motif_ir_manifest",
+                name="build_ir_manifest",
             ),
         ],
         tags=["ir_build"],

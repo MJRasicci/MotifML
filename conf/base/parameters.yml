@@ -1,3 +1,4 @@
 ir_build_metadata:
   ir_schema_version: "1.0.0"
   corpus_build_version: "ir-build-v1"
+  build_timestamp: "2026-03-19T00:00:00-04:00"
