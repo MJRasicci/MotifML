@@ -6,37 +6,21 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from motifml import __version__ as MOTIFML_VERSION
+from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
-from motifml.ir.ids import (
-    bar_id as build_bar_id,
-)
-from motifml.ir.ids import (
-    note_id as build_note_id,
-)
-from motifml.ir.ids import (
-    note_sort_key,
-)
-from motifml.ir.ids import (
-    onset_id as build_onset_id,
-)
-from motifml.ir.ids import (
-    part_id as build_part_id,
-)
-from motifml.ir.ids import (
-    point_control_id as build_point_control_id,
-)
-from motifml.ir.ids import (
-    span_control_id as build_span_control_id,
-)
-from motifml.ir.ids import (
-    staff_id as build_staff_id,
-)
+from motifml.ir.ids import bar_id as build_bar_id
+from motifml.ir.ids import note_id as build_note_id
+from motifml.ir.ids import note_sort_key
+from motifml.ir.ids import onset_id as build_onset_id
+from motifml.ir.ids import part_id as build_part_id
+from motifml.ir.ids import point_control_id as build_point_control_id
+from motifml.ir.ids import span_control_id as build_span_control_id
+from motifml.ir.ids import staff_id as build_staff_id
 from motifml.ir.ids import (
     voice_lane_chain_id as build_voice_lane_chain_id,
 )
-from motifml.ir.ids import (
-    voice_lane_id as build_voice_lane_id,
-)
+from motifml.ir.ids import voice_lane_id as build_voice_lane_id
 from motifml.ir.models import (
     Bar,
     ControlScope,
@@ -47,8 +31,12 @@ from motifml.ir.models import (
     GenericTechniqueFlags,
     HairpinDirection,
     HairpinValue,
+    IrDocumentMetadata,
+    MotifMlIrDocument,
     NoteEvent,
     OnsetGroup,
+    OptionalOverlays,
+    OptionalViews,
     OttavaValue,
     Part,
     Pitch,
@@ -63,6 +51,7 @@ from motifml.ir.models import (
     TechniquePayload,
     TempoChangeValue,
     TimeSignature,
+    TimeUnit,
     Transposition,
     TupletRatio,
     VoiceLane,
@@ -1090,6 +1079,208 @@ def emit_span_control_events(
         )
 
     return emissions
+
+
+def assemble_ir_document(  # noqa: PLR0913
+    documents: list[MotifJsonDocument],
+    part_staff_emissions: list[PartStaffEmissionResult],
+    bar_emissions: list[BarEmissionResult],
+    voice_lane_emissions: list[VoiceLaneEmissionResult],
+    onset_group_emissions: list[OnsetGroupEmissionResult],
+    note_event_emissions: list[NoteEventEmissionResult],
+    point_control_emissions: list[PointControlEmissionResult],
+    span_control_emissions: list[SpanControlEmissionResult],
+    intrinsic_edge_emissions: list[IntrinsicEdgeEmissionResult],
+    ir_build_metadata: Mapping[str, Any],
+) -> list[MotifIrDocumentRecord]:
+    """Assemble canonical IR documents from emitted entity families."""
+    part_staff_by_path = {
+        result.relative_path: result for result in part_staff_emissions
+    }
+    bar_by_path = {result.relative_path: result for result in bar_emissions}
+    voice_lane_by_path = {
+        result.relative_path: result for result in voice_lane_emissions
+    }
+    onset_group_by_path = {
+        result.relative_path: result for result in onset_group_emissions
+    }
+    note_event_by_path = {
+        result.relative_path: result for result in note_event_emissions
+    }
+    point_control_by_path = {
+        result.relative_path: result for result in point_control_emissions
+    }
+    span_control_by_path = {
+        result.relative_path: result for result in span_control_emissions
+    }
+    intrinsic_edge_by_path = {
+        result.relative_path: result for result in intrinsic_edge_emissions
+    }
+
+    records: list[MotifIrDocumentRecord] = []
+    for document in sorted(documents, key=lambda item: item.relative_path.casefold()):
+        relative_path = document.relative_path
+        part_staff_emission = _require_assembly_input(
+            part_staff_by_path.get(relative_path),
+            emission_name="part/staff emission",
+            relative_path=relative_path,
+        )
+        bar_emission = _require_assembly_input(
+            bar_by_path.get(relative_path),
+            emission_name="bar emission",
+            relative_path=relative_path,
+        )
+        voice_lane_emission = _require_assembly_input(
+            voice_lane_by_path.get(relative_path),
+            emission_name="voice lane emission",
+            relative_path=relative_path,
+        )
+        onset_group_emission = _require_assembly_input(
+            onset_group_by_path.get(relative_path),
+            emission_name="onset group emission",
+            relative_path=relative_path,
+        )
+        note_event_emission = _require_assembly_input(
+            note_event_by_path.get(relative_path),
+            emission_name="note event emission",
+            relative_path=relative_path,
+        )
+        point_control_emission = _require_assembly_input(
+            point_control_by_path.get(relative_path),
+            emission_name="point control emission",
+            relative_path=relative_path,
+        )
+        span_control_emission = _require_assembly_input(
+            span_control_by_path.get(relative_path),
+            emission_name="span control emission",
+            relative_path=relative_path,
+        )
+        intrinsic_edge_emission = _require_assembly_input(
+            intrinsic_edge_by_path.get(relative_path),
+            emission_name="intrinsic edge emission",
+            relative_path=relative_path,
+        )
+
+        records.append(
+            MotifIrDocumentRecord(
+                relative_path=relative_path,
+                document=_assemble_document_model(
+                    source_hash=document.sha256,
+                    part_staff_emission=part_staff_emission,
+                    bar_emission=bar_emission,
+                    voice_lane_emission=voice_lane_emission,
+                    onset_group_emission=onset_group_emission,
+                    note_event_emission=note_event_emission,
+                    point_control_emission=point_control_emission,
+                    span_control_emission=span_control_emission,
+                    intrinsic_edge_emission=intrinsic_edge_emission,
+                    ir_build_metadata=ir_build_metadata,
+                ),
+            )
+        )
+
+    return records
+
+
+def _require_assembly_input(
+    emission: object,
+    *,
+    emission_name: str,
+    relative_path: str,
+) -> object:
+    if emission is None:
+        raise ValueError(
+            f"Cannot assemble IR document for '{relative_path}': "
+            f"{emission_name} is missing."
+        )
+
+    passed = getattr(emission, "passed", None)
+    if passed is False:
+        raise ValueError(
+            f"Cannot assemble IR document for '{relative_path}': "
+            f"{emission_name} contains fatal diagnostics."
+        )
+
+    return emission
+
+
+def _assemble_document_model(  # noqa: PLR0913
+    *,
+    source_hash: str,
+    part_staff_emission: PartStaffEmissionResult,
+    bar_emission: BarEmissionResult,
+    voice_lane_emission: VoiceLaneEmissionResult,
+    onset_group_emission: OnsetGroupEmissionResult,
+    note_event_emission: NoteEventEmissionResult,
+    point_control_emission: PointControlEmissionResult,
+    span_control_emission: SpanControlEmissionResult,
+    intrinsic_edge_emission: IntrinsicEdgeEmissionResult,
+    ir_build_metadata: Mapping[str, Any],
+) -> MotifMlIrDocument:
+    return MotifMlIrDocument(
+        metadata=_build_ir_document_metadata(
+            source_hash=source_hash,
+            ir_build_metadata=ir_build_metadata,
+        ),
+        # Upstream emission result models already enforce canonical collection order.
+        parts=tuple(part_staff_emission.parts),
+        staves=tuple(part_staff_emission.staves),
+        bars=tuple(bar_emission.bars),
+        voice_lanes=tuple(voice_lane_emission.voice_lanes),
+        point_control_events=tuple(point_control_emission.point_control_events),
+        span_control_events=tuple(span_control_emission.span_control_events),
+        onset_groups=tuple(onset_group_emission.onset_groups),
+        note_events=tuple(note_event_emission.note_events),
+        edges=tuple(intrinsic_edge_emission.edges),
+        optional_overlays=OptionalOverlays(),
+        optional_views=OptionalViews(),
+    )
+
+
+def _build_ir_document_metadata(
+    *,
+    source_hash: str,
+    ir_build_metadata: Mapping[str, Any],
+) -> IrDocumentMetadata:
+    if not isinstance(ir_build_metadata, Mapping):
+        raise ValueError("ir_build_metadata parameters must be a mapping.")
+
+    ir_schema_version = ir_build_metadata.get("ir_schema_version")
+    corpus_build_version = ir_build_metadata.get("corpus_build_version")
+    compiled_resolution_hint = _coerce_optional_positive_int_param(
+        ir_build_metadata.get("compiled_resolution_hint"),
+        field_name="compiled_resolution_hint",
+    )
+
+    if not isinstance(ir_schema_version, str) or not ir_schema_version.strip():
+        raise ValueError(
+            "ir_build_metadata.ir_schema_version must be a non-empty string."
+        )
+    if not isinstance(corpus_build_version, str) or not corpus_build_version.strip():
+        raise ValueError(
+            "ir_build_metadata.corpus_build_version must be a non-empty string."
+        )
+
+    return IrDocumentMetadata(
+        ir_schema_version=ir_schema_version.strip(),
+        corpus_build_version=corpus_build_version.strip(),
+        generator_version=MOTIFML_VERSION,
+        source_document_hash=source_hash,
+        time_unit=TimeUnit.WHOLE_NOTE_FRACTION,
+        compiled_resolution_hint=compiled_resolution_hint,
+    )
+
+
+def _coerce_optional_positive_int_param(value: Any, *, field_name: str) -> int | None:
+    if value is None:
+        return None
+
+    if not isinstance(value, int):
+        raise ValueError(f"ir_build_metadata.{field_name} must be an integer.")
+    if value <= 0:
+        raise ValueError(f"ir_build_metadata.{field_name} must be positive.")
+
+    return value
 
 
 def _validate_document_surface(score: dict[str, Any]) -> list[IrBuildDiagnostic]:

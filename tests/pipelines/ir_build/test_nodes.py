@@ -6,12 +6,15 @@ import json
 from copy import deepcopy
 from pathlib import Path
 
+from motifml import __version__ as MOTIFML_VERSION
+from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
 from motifml.ir.ids import edge_sort_key
 from motifml.ir.models import RhythmBaseValue, TimeSignature
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.ir_build.models import DiagnosticSeverity
 from motifml.pipelines.ir_build.nodes import (
+    assemble_ir_document,
     build_written_time_map,
     emit_bars,
     emit_intrinsic_edges,
@@ -42,6 +45,8 @@ EXPECTED_SINGLE_NOTE_OCTAVE = 4
 EXPECTED_TECHNIQUE_STRING_NUMBER = 2
 EXPECTED_HARMONIC_FRET = 5.0
 EXPECTED_NEXT_IN_VOICE_EDGES_WITH_REENTRY = 3
+EXPECTED_IR_SCHEMA_VERSION = "1.0.0"
+EXPECTED_CORPUS_BUILD_VERSION = "ir-build-v1"
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "motif_json"
 
 
@@ -980,6 +985,162 @@ def test_emit_span_control_events_reports_unsupported_span_kinds():
     assert result.diagnostics[0].severity is DiagnosticSeverity.WARNING
 
 
+def test_assemble_ir_document_builds_complete_documents_with_metadata():
+    score = _load_fixture("ensemble_polyphony_controls.json")
+
+    (
+        record,
+        part_staff_result,
+        bar_result,
+        voice_lane_result,
+        onset_group_result,
+        note_event_result,
+        point_control_result,
+        span_control_result,
+        intrinsic_edge_result,
+    ) = _assemble_ir_document_bundle(
+        score=score,
+        relative_path="ensemble_polyphony_controls.json",
+    )
+
+    assert isinstance(record, MotifIrDocumentRecord)
+    assert record.relative_path == "ensemble_polyphony_controls.json"
+    assert record.document.metadata.ir_schema_version == EXPECTED_IR_SCHEMA_VERSION
+    assert (
+        record.document.metadata.corpus_build_version == EXPECTED_CORPUS_BUILD_VERSION
+    )
+    assert record.document.metadata.generator_version == MOTIFML_VERSION
+    assert (
+        record.document.metadata.source_document_hash
+        == "ensemble_polyphony_controls.json"
+    )
+    assert record.document.metadata.time_unit.value == "whole_note_fraction"
+    assert len(record.document.parts) == len(part_staff_result.parts)
+    assert len(record.document.staves) == len(part_staff_result.staves)
+    assert len(record.document.bars) == len(bar_result.bars)
+    assert len(record.document.voice_lanes) == len(voice_lane_result.voice_lanes)
+    assert len(record.document.onset_groups) == len(onset_group_result.onset_groups)
+    assert len(record.document.note_events) == len(note_event_result.note_events)
+    assert len(record.document.point_control_events) == len(
+        point_control_result.point_control_events
+    )
+    assert len(record.document.span_control_events) == len(
+        span_control_result.span_control_events
+    )
+    assert len(record.document.edges) == len(intrinsic_edge_result.edges)
+    assert record.document.optional_overlays.phrase_spans == ()
+    assert record.document.optional_views.playback_instances == ()
+    assert record.document.optional_views.derived_edge_sets == ()
+
+
+def test_assemble_ir_document_returns_records_in_relative_path_order():
+    documents = [
+        MotifJsonDocument(
+            relative_path="zeta/document.json",
+            sha256="zeta",
+            file_size_bytes=0,
+            score=_minimal_canonical_score(),
+        ),
+        MotifJsonDocument(
+            relative_path="alpha/document.json",
+            sha256="alpha",
+            file_size_bytes=0,
+            score=_minimal_canonical_score(),
+        ),
+    ]
+    validation_results = validate_canonical_score_surface(documents)
+    part_staff_emissions = emit_parts_and_staves(documents, validation_results)
+    written_time_maps = build_written_time_map(documents, validation_results)
+    bar_emissions = emit_bars(documents, written_time_maps)
+    voice_lane_emissions = emit_voice_lanes(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+    )
+    onset_group_emissions = emit_onset_groups(
+        documents,
+        written_time_maps,
+        voice_lane_emissions,
+    )
+    note_event_emissions = emit_note_events(
+        documents,
+        written_time_maps,
+        voice_lane_emissions,
+        onset_group_emissions,
+    )
+    point_control_emissions = emit_point_control_events(
+        documents,
+        written_time_maps,
+        part_staff_emissions,
+        voice_lane_emissions,
+    )
+    span_control_emissions = emit_span_control_events(
+        documents,
+        written_time_maps,
+        part_staff_emissions,
+        voice_lane_emissions,
+    )
+    intrinsic_edge_emissions = emit_intrinsic_edges(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+        voice_lane_emissions,
+        onset_group_emissions,
+        note_event_emissions,
+    )
+
+    records = assemble_ir_document(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+        voice_lane_emissions,
+        onset_group_emissions,
+        note_event_emissions,
+        point_control_emissions,
+        span_control_emissions,
+        intrinsic_edge_emissions,
+        {
+            "ir_schema_version": EXPECTED_IR_SCHEMA_VERSION,
+            "corpus_build_version": EXPECTED_CORPUS_BUILD_VERSION,
+        },
+    )
+
+    assert [record.relative_path for record in records] == [
+        "alpha/document.json",
+        "zeta/document.json",
+    ]
+
+
+def test_assemble_ir_document_preserves_canonical_collection_order():
+    score = _load_fixture("single_track_monophonic_pickup.json")
+
+    record = _assemble_ir_document_result(
+        score=score,
+        relative_path="single_track_monophonic_pickup.json",
+    )
+    document = record.document
+
+    assert [bar.bar_id for bar in document.bars] == ["bar:0", "bar:1"]
+    assert [voice_lane.voice_lane_id for voice_lane in document.voice_lanes] == [
+        "voice:staff:part:1:0:0:0",
+        "voice:staff:part:1:0:1:0",
+    ]
+    assert [onset.onset_id for onset in document.onset_groups] == [
+        "onset:voice:staff:part:1:0:0:0:0",
+        "onset:voice:staff:part:1:0:1:0:0",
+        "onset:voice:staff:part:1:0:1:0:1",
+        "onset:voice:staff:part:1:0:1:0:2",
+    ]
+    edge_records = [
+        (edge.source_id, edge.edge_type.value, edge.target_id)
+        for edge in document.edges
+    ]
+    assert edge_records == sorted(
+        edge_records,
+        key=lambda item: edge_sort_key(item[0], item[1], item[2]),
+    )
+
+
 def _build_written_time_map_result(
     score: dict[str, object],
     relative_path: str,
@@ -1164,6 +1325,96 @@ def _emit_intrinsic_edges_result(
     relative_path: str,
 ):
     return _emit_intrinsic_edges_bundle(
+        score=score,
+        relative_path=relative_path,
+    )[0]
+
+
+def _assemble_ir_document_bundle(
+    score: dict[str, object],
+    relative_path: str,
+):
+    documents = [
+        MotifJsonDocument(
+            relative_path=relative_path,
+            sha256=relative_path,
+            file_size_bytes=0,
+            score=score,
+        )
+    ]
+    validation_results = validate_canonical_score_surface(documents)
+    part_staff_emissions = emit_parts_and_staves(documents, validation_results)
+    written_time_maps = build_written_time_map(documents, validation_results)
+    bar_emissions = emit_bars(documents, written_time_maps)
+    voice_lane_emissions = emit_voice_lanes(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+    )
+    onset_group_emissions = emit_onset_groups(
+        documents,
+        written_time_maps,
+        voice_lane_emissions,
+    )
+    note_event_emissions = emit_note_events(
+        documents,
+        written_time_maps,
+        voice_lane_emissions,
+        onset_group_emissions,
+    )
+    point_control_emissions = emit_point_control_events(
+        documents,
+        written_time_maps,
+        part_staff_emissions,
+        voice_lane_emissions,
+    )
+    span_control_emissions = emit_span_control_events(
+        documents,
+        written_time_maps,
+        part_staff_emissions,
+        voice_lane_emissions,
+    )
+    intrinsic_edge_emissions = emit_intrinsic_edges(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+        voice_lane_emissions,
+        onset_group_emissions,
+        note_event_emissions,
+    )
+    records = assemble_ir_document(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+        voice_lane_emissions,
+        onset_group_emissions,
+        note_event_emissions,
+        point_control_emissions,
+        span_control_emissions,
+        intrinsic_edge_emissions,
+        {
+            "ir_schema_version": EXPECTED_IR_SCHEMA_VERSION,
+            "corpus_build_version": EXPECTED_CORPUS_BUILD_VERSION,
+        },
+    )
+    return (
+        records[0],
+        part_staff_emissions[0],
+        bar_emissions[0],
+        voice_lane_emissions[0],
+        onset_group_emissions[0],
+        note_event_emissions[0],
+        point_control_emissions[0],
+        span_control_emissions[0],
+        intrinsic_edge_emissions[0],
+    )
+
+
+def _assemble_ir_document_result(
+    score: dict[str, object],
+    relative_path: str,
+):
+    return _assemble_ir_document_bundle(
         score=score,
         relative_path=relative_path,
     )[0]

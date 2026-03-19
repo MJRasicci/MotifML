@@ -5,6 +5,7 @@ from __future__ import annotations
 from kedro.pipeline import Pipeline, node, pipeline
 
 from motifml.pipelines.ir_build.nodes import (
+    assemble_ir_document,
     build_written_time_map,
     emit_bars,
     emit_intrinsic_edges,
@@ -113,6 +114,23 @@ def create_pipeline(**kwargs: object) -> Pipeline:
                 ],
                 outputs="span_control_emissions",
                 name="emit_span_control_events",
+            ),
+            node(
+                func=assemble_ir_document,
+                inputs=[
+                    "raw_motif_json_corpus",
+                    "part_staff_emissions",
+                    "bar_emissions",
+                    "voice_lane_emissions",
+                    "onset_group_emissions",
+                    "note_event_emissions",
+                    "point_control_emissions",
+                    "span_control_emissions",
+                    "intrinsic_edge_emissions",
+                    "params:ir_build_metadata",
+                ],
+                outputs="motif_ir_corpus",
+                name="assemble_ir_document",
             ),
         ],
         tags=["ir_build"],
