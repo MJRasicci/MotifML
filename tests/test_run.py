@@ -7,7 +7,7 @@ from kedro.framework.startup import bootstrap_project
 from motifml.pipeline_registry import register_pipelines
 
 EXPECTED_INGESTION_NODE_COUNT = 2
-EXPECTED_IR_BUILD_NODE_COUNT = 6
+EXPECTED_IR_BUILD_NODE_COUNT = 7
 
 
 def test_register_pipelines_exposes_project_pipelines():

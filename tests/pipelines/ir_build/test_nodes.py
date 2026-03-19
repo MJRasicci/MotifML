@@ -15,6 +15,7 @@ from motifml.pipelines.ir_build.nodes import (
     emit_bars,
     emit_parts_and_staves,
     emit_point_control_events,
+    emit_span_control_events,
     emit_voice_lanes,
     validate_canonical_score_surface,
 )
@@ -29,6 +30,7 @@ EXPECTED_POINT_CONTROLS_IN_FIXTURE = 4
 EXPECTED_FIRST_FIXTURE_TEMPO = 120.0
 EXPECTED_SECOND_FIXTURE_TEMPO = 132.0
 EXPECTED_FERMATA_LENGTH_SCALE = 1.5
+EXPECTED_SPAN_CONTROLS_IN_FIXTURE = 2
 EXPECTED_VOICE_LANES_WITH_REENTRY = 5
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "motif_json"
 
@@ -554,6 +556,74 @@ def test_emit_point_control_events_resolves_staff_and_voice_targets():
     ]
 
 
+def test_emit_span_control_events_maps_supported_kinds_in_canonical_order():
+    score = _load_fixture("ensemble_polyphony_controls.json")
+
+    result = _emit_span_control_events_result(
+        score=score,
+        relative_path="ensemble_polyphony_controls.json",
+    )
+
+    assert result.passed is True
+    assert len(result.span_control_events) == EXPECTED_SPAN_CONTROLS_IN_FIXTURE
+    assert [event.control_id for event in result.span_control_events] == [
+        "ctrls:part:0",
+        "ctrls:staff:0",
+    ]
+    assert [event.kind for event in result.span_control_events] == [
+        "hairpin",
+        "ottava",
+    ]
+    assert [event.target_ref for event in result.span_control_events] == [
+        "part:1",
+        "staff:part:2:0",
+    ]
+    assert [event.start_time for event in result.span_control_events] == [
+        ScoreTime(1, 4),
+        ScoreTime(1, 1),
+    ]
+    assert [event.end_time for event in result.span_control_events] == [
+        ScoreTime(1, 1),
+        ScoreTime(2, 1),
+    ]
+    assert result.span_control_events[0].value.direction == "crescendo"
+    assert result.span_control_events[0].value.niente is False
+    assert result.span_control_events[0].start_anchor_ref is None
+    assert result.span_control_events[0].end_anchor_ref is None
+    assert result.span_control_events[1].value.octave_shift == 1
+
+
+def test_emit_span_control_events_reports_unsupported_span_kinds():
+    score = _minimal_canonical_score()
+    score["spanControls"] = [
+        {
+            "kind": "Legato",
+            "scope": "Track",
+            "trackId": 1,
+            "start": {
+                "barIndex": 0,
+                "offset": {"numerator": 0, "denominator": 1},
+            },
+            "end": {
+                "barIndex": 0,
+                "offset": {"numerator": 1, "denominator": 4},
+            },
+            "value": "slur",
+        }
+    ]
+
+    result = _emit_span_control_events_result(
+        score=score,
+        relative_path="unsupported-span-kind.json",
+    )
+
+    assert result.passed is True
+    assert len(result.span_control_events) == 0
+    assert result.warning_count == 1
+    assert result.diagnostics[0].code == "unsupported_span_control_kind"
+    assert result.diagnostics[0].severity is DiagnosticSeverity.WARNING
+
+
 def _build_written_time_map_result(
     score: dict[str, object],
     relative_path: str,
@@ -644,6 +714,35 @@ def _emit_point_control_events_result(
         bar_emissions,
     )
     return emit_point_control_events(
+        documents,
+        written_time_maps,
+        part_staff_emissions,
+        voice_lane_emissions,
+    )[0]
+
+
+def _emit_span_control_events_result(
+    score: dict[str, object],
+    relative_path: str,
+):
+    documents = [
+        MotifJsonDocument(
+            relative_path=relative_path,
+            sha256=relative_path,
+            file_size_bytes=0,
+            score=score,
+        )
+    ]
+    validation_results = validate_canonical_score_surface(documents)
+    part_staff_emissions = emit_parts_and_staves(documents, validation_results)
+    written_time_maps = build_written_time_map(documents, validation_results)
+    bar_emissions = emit_bars(documents, written_time_maps)
+    voice_lane_emissions = emit_voice_lanes(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+    )
+    return emit_span_control_events(
         documents,
         written_time_maps,
         part_staff_emissions,

@@ -10,6 +10,7 @@ from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
 from motifml.ir.ids import bar_id as build_bar_id
 from motifml.ir.ids import part_id as build_part_id
 from motifml.ir.ids import point_control_id as build_point_control_id
+from motifml.ir.ids import span_control_id as build_span_control_id
 from motifml.ir.ids import staff_id as build_staff_id
 from motifml.ir.ids import voice_lane_chain_id as build_voice_lane_chain_id
 from motifml.ir.ids import voice_lane_id as build_voice_lane_id
@@ -18,9 +19,14 @@ from motifml.ir.models import (
     ControlScope,
     DynamicChangeValue,
     FermataValue,
+    HairpinDirection,
+    HairpinValue,
+    OttavaValue,
     Part,
     PointControlEvent,
     PointControlKind,
+    SpanControlEvent,
+    SpanControlKind,
     Staff,
     TempoChangeValue,
     TimeSignature,
@@ -35,6 +41,7 @@ from motifml.pipelines.ir_build.models import (
     IrBuildDiagnostic,
     PartStaffEmissionResult,
     PointControlEmissionResult,
+    SpanControlEmissionResult,
     VoiceLaneEmissionResult,
     WrittenTimeMapEntry,
     WrittenTimeMapResult,
@@ -58,6 +65,10 @@ POINT_CONTROL_KIND_MAP = {
     "Dynamic": PointControlKind.DYNAMIC_CHANGE,
     "Fermata": PointControlKind.FERMATA,
     "Tempo": PointControlKind.TEMPO_CHANGE,
+}
+SPAN_CONTROL_KIND_MAP = {
+    "Hairpin": SpanControlKind.HAIRPIN,
+    "Ottava": SpanControlKind.OTTAVA,
 }
 SOURCE_SCOPE_MAP = {
     "Score": ControlScope.SCORE,
@@ -122,6 +133,32 @@ class _PointControlSeed:
             self.time,
             self.kind.value,
             _point_control_value_sort_key(self.value),
+            self.path,
+        )
+
+
+@dataclass(frozen=True)
+class _SpanControlSeed:
+    path: str
+    scope: ControlScope
+    target_ref: str
+    start_time: ScoreTime
+    end_time: ScoreTime
+    kind: SpanControlKind
+    value: HairpinValue | OttavaValue
+    start_anchor_ref: str | None = None
+    end_anchor_ref: str | None = None
+
+    def sort_key(
+        self,
+    ) -> tuple[str, str, ScoreTime, ScoreTime, str, tuple[object, ...], str]:
+        return (
+            self.scope.value.casefold(),
+            self.target_ref,
+            self.start_time,
+            self.end_time,
+            self.kind.value,
+            _span_control_value_sort_key(self.value),
             self.path,
         )
 
@@ -470,6 +507,86 @@ def emit_point_control_events(
                 relative_path=document.relative_path,
                 source_hash=document.sha256,
                 point_control_events=point_control_events,
+                diagnostics=tuple(diagnostics),
+            )
+        )
+
+    return emissions
+
+
+def emit_span_control_events(
+    documents: list[MotifJsonDocument],
+    written_time_maps: list[WrittenTimeMapResult],
+    part_staff_emissions: list[PartStaffEmissionResult],
+    voice_lane_emissions: list[VoiceLaneEmissionResult],
+) -> list[SpanControlEmissionResult]:
+    """Emit canonical span control events from score-level span controls."""
+    written_time_maps_by_path = {
+        result.relative_path: result for result in written_time_maps
+    }
+    part_staff_by_path = {
+        result.relative_path: result for result in part_staff_emissions
+    }
+    voice_lane_by_path = {
+        result.relative_path: result for result in voice_lane_emissions
+    }
+    emissions: list[SpanControlEmissionResult] = []
+
+    for document in sorted(documents, key=lambda item: item.relative_path.casefold()):
+        written_time_map = written_time_maps_by_path.get(document.relative_path)
+        part_staff_emission = part_staff_by_path.get(document.relative_path)
+        voice_lane_emission = voice_lane_by_path.get(document.relative_path)
+        diagnostics: list[IrBuildDiagnostic] = []
+        span_control_events: tuple[SpanControlEvent, ...] = ()
+
+        if written_time_map is None:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="missing_written_time_map",
+                    message="written time map must run before span control emission.",
+                )
+            )
+        elif part_staff_emission is None:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="missing_part_staff_emission",
+                    message="part/staff emission must run before span control emission.",
+                )
+            )
+        elif voice_lane_emission is None:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="missing_voice_lane_emission",
+                    message="voice lane emission must run before span control emission.",
+                )
+            )
+        else:
+            span_control_events, emitted_diagnostics = _emit_span_control_models(
+                score=document.score,
+                resolution_context=_ControlResolutionContext(
+                    bar_times=written_time_map.bar_times,
+                    known_part_ids=frozenset(
+                        part.part_id for part in part_staff_emission.parts
+                    ),
+                    known_staff_ids=frozenset(
+                        staff.staff_id for staff in part_staff_emission.staves
+                    ),
+                    known_voice_lane_ids=frozenset(
+                        voice_lane.voice_lane_id
+                        for voice_lane in voice_lane_emission.voice_lanes
+                    ),
+                ),
+            )
+            diagnostics.extend(emitted_diagnostics)
+
+        emissions.append(
+            SpanControlEmissionResult(
+                relative_path=document.relative_path,
+                source_hash=document.sha256,
+                span_control_events=span_control_events,
                 diagnostics=tuple(diagnostics),
             )
         )
@@ -1332,7 +1449,7 @@ def _coerce_point_control_seed(
         bar_times=resolution_context.bar_times,
         diagnostics=diagnostics,
     )
-    resolved_target = _resolve_point_control_target(
+    resolved_target = _resolve_control_target(
         raw_point_control=raw_point_control,
         control_path=control_path,
         position=position,
@@ -1451,7 +1568,7 @@ def _resolve_control_position(
     return _ResolvedControlPosition(bar_index=bar_index, time=bar_start + offset)
 
 
-def _resolve_point_control_target(
+def _resolve_control_target(
     raw_point_control: Mapping[str, Any],
     control_path: str,
     position: _ResolvedControlPosition | None,
@@ -1519,7 +1636,7 @@ def _coerce_control_scope(
             _error(
                 path=path,
                 code="missing_canonical_field",
-                message="point controls must include a scope.",
+                message="controls must include a scope.",
             )
         )
         return None
@@ -1529,7 +1646,7 @@ def _coerce_control_scope(
             _error(
                 path=path,
                 code="invalid_canonical_field",
-                message="point control scope must be a string.",
+                message="control scope must be a string.",
             )
         )
         return None
@@ -1540,7 +1657,7 @@ def _coerce_control_scope(
             _error(
                 path=path,
                 code="invalid_canonical_field",
-                message=f"point control scope '{value}' is not supported.",
+                message=f"control scope '{value}' is not supported.",
             )
         )
         return None
@@ -1760,6 +1877,300 @@ def _coerce_fermata_point_control_value(
         diagnostics.append(
             _error(
                 path=control_path,
+                code="invalid_canonical_field",
+                message=str(exc),
+            )
+        )
+        return None
+
+
+def _emit_span_control_models(
+    score: dict[str, Any],
+    resolution_context: _ControlResolutionContext,
+) -> tuple[tuple[SpanControlEvent, ...], list[IrBuildDiagnostic]]:
+    diagnostics: list[IrBuildDiagnostic] = []
+    raw_span_controls = score.get("spanControls")
+    if not isinstance(raw_span_controls, list):
+        diagnostics.append(
+            _error(
+                path="spanControls",
+                code="missing_canonical_field",
+                message="canonical field 'spanControls' is required.",
+            )
+        )
+        return (), diagnostics
+
+    seeds: list[_SpanControlSeed] = []
+    for index, raw_span_control in enumerate(raw_span_controls):
+        control_path = f"spanControls[{index}]"
+        seed = _coerce_span_control_seed(
+            raw_span_control=raw_span_control,
+            control_path=control_path,
+            resolution_context=resolution_context,
+            diagnostics=diagnostics,
+        )
+        if seed is not None:
+            seeds.append(seed)
+
+    seeds.sort(key=lambda item: item.sort_key())
+    scope_ordinals: dict[str, int] = {}
+    span_control_events: list[SpanControlEvent] = []
+
+    for seed in seeds:
+        scope_key = seed.scope.value
+        scope_ordinal = scope_ordinals.get(scope_key, 0)
+        scope_ordinals[scope_key] = scope_ordinal + 1
+        try:
+            span_control_events.append(
+                SpanControlEvent(
+                    control_id=build_span_control_id(scope_key, scope_ordinal),
+                    kind=seed.kind,
+                    scope=seed.scope,
+                    target_ref=seed.target_ref,
+                    start_time=seed.start_time,
+                    end_time=seed.end_time,
+                    value=seed.value,
+                    start_anchor_ref=seed.start_anchor_ref,
+                    end_anchor_ref=seed.end_anchor_ref,
+                )
+            )
+        except ValueError as exc:
+            diagnostics.append(
+                _error(
+                    path=seed.path,
+                    code="invalid_canonical_field",
+                    message=str(exc),
+                )
+            )
+
+    return tuple(span_control_events), diagnostics
+
+
+def _coerce_span_control_seed(
+    raw_span_control: object,
+    control_path: str,
+    resolution_context: _ControlResolutionContext,
+    diagnostics: list[IrBuildDiagnostic],
+) -> _SpanControlSeed | None:
+    if not isinstance(raw_span_control, Mapping):
+        diagnostics.append(
+            _error(
+                path=control_path,
+                code="invalid_canonical_field",
+                message="spanControls entries must be objects.",
+            )
+        )
+        return None
+
+    kind = _coerce_span_control_kind(
+        raw_span_control.get("kind"),
+        path=f"{control_path}.kind",
+        diagnostics=diagnostics,
+    )
+    start_position = _resolve_control_position(
+        value=raw_span_control.get("start"),
+        path=f"{control_path}.start",
+        bar_times=resolution_context.bar_times,
+        diagnostics=diagnostics,
+    )
+    end_position = _resolve_control_position(
+        value=raw_span_control.get("end"),
+        path=f"{control_path}.end",
+        bar_times=resolution_context.bar_times,
+        diagnostics=diagnostics,
+    )
+    resolved_target = _resolve_control_target(
+        raw_point_control=raw_span_control,
+        control_path=control_path,
+        position=start_position,
+        resolution_context=resolution_context,
+        diagnostics=diagnostics,
+    )
+    value = (
+        None
+        if kind is None
+        else _coerce_span_control_value(
+            raw_span_control=raw_span_control,
+            control_path=control_path,
+            kind=kind,
+            diagnostics=diagnostics,
+        )
+    )
+    if (
+        kind is None
+        or start_position is None
+        or end_position is None
+        or resolved_target is None
+        or value is None
+    ):
+        return None
+
+    scope, target_ref = resolved_target
+    return _SpanControlSeed(
+        path=control_path,
+        scope=scope,
+        target_ref=target_ref,
+        start_time=start_position.time,
+        end_time=end_position.time,
+        kind=kind,
+        value=value,
+    )
+
+
+def _coerce_span_control_kind(
+    value: Any,
+    path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> SpanControlKind | None:
+    if value is None:
+        diagnostics.append(
+            _error(
+                path=path,
+                code="missing_canonical_field",
+                message="span controls must include a kind.",
+            )
+        )
+        return None
+
+    if not isinstance(value, str):
+        diagnostics.append(
+            _error(
+                path=path,
+                code="invalid_canonical_field",
+                message="span control kind must be a string.",
+            )
+        )
+        return None
+
+    kind = SPAN_CONTROL_KIND_MAP.get(value)
+    if kind is not None:
+        return kind
+
+    severity = (
+        DiagnosticSeverity.WARNING if value == "Legato" else DiagnosticSeverity.ERROR
+    )
+    diagnostics.append(
+        IrBuildDiagnostic(
+            severity=severity,
+            code="unsupported_span_control_kind",
+            path=path,
+            message=f"span control kind '{value}' is not supported in IR v1.",
+        )
+    )
+    return None
+
+
+def _coerce_span_control_value(
+    raw_span_control: Mapping[str, Any],
+    control_path: str,
+    kind: SpanControlKind,
+    diagnostics: list[IrBuildDiagnostic],
+) -> HairpinValue | OttavaValue | None:
+    if kind is SpanControlKind.HAIRPIN:
+        return _coerce_hairpin_span_control_value(
+            raw_span_control=raw_span_control,
+            control_path=control_path,
+            diagnostics=diagnostics,
+        )
+
+    return _coerce_ottava_span_control_value(
+        raw_span_control=raw_span_control,
+        control_path=control_path,
+        diagnostics=diagnostics,
+    )
+
+
+def _coerce_hairpin_span_control_value(
+    raw_span_control: Mapping[str, Any],
+    control_path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> HairpinValue | None:
+    raw_value = raw_span_control.get("value")
+    if raw_value is None:
+        diagnostics.append(
+            _error(
+                path=f"{control_path}.value",
+                code="missing_canonical_field",
+                message="hairpin span controls must include a value.",
+            )
+        )
+        return None
+
+    if not isinstance(raw_value, str):
+        diagnostics.append(
+            _error(
+                path=f"{control_path}.value",
+                code="invalid_canonical_field",
+                message="hairpin span control value must be a string.",
+            )
+        )
+        return None
+
+    direction = raw_value.strip().casefold()
+    if direction == "diminuendo":
+        direction = HairpinDirection.DECRESCENDO.value
+
+    try:
+        return HairpinValue(direction=direction, niente=False)
+    except ValueError as exc:
+        diagnostics.append(
+            _error(
+                path=f"{control_path}.value",
+                code="invalid_canonical_field",
+                message=str(exc),
+            )
+        )
+        return None
+
+
+def _coerce_ottava_span_control_value(
+    raw_span_control: Mapping[str, Any],
+    control_path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> OttavaValue | None:
+    raw_value = raw_span_control.get("value")
+    if raw_value is None:
+        diagnostics.append(
+            _error(
+                path=f"{control_path}.value",
+                code="missing_canonical_field",
+                message="ottava span controls must include a value.",
+            )
+        )
+        return None
+
+    if not isinstance(raw_value, str):
+        diagnostics.append(
+            _error(
+                path=f"{control_path}.value",
+                code="invalid_canonical_field",
+                message="ottava span control value must be a string.",
+            )
+        )
+        return None
+
+    octave_shift = {
+        "8va": 1,
+        "8vb": -1,
+        "15ma": 2,
+        "15mb": -2,
+    }.get(raw_value.strip().casefold())
+    if octave_shift is None:
+        diagnostics.append(
+            _error(
+                path=f"{control_path}.value",
+                code="invalid_canonical_field",
+                message=f"ottava marking '{raw_value}' is not supported.",
+            )
+        )
+        return None
+
+    try:
+        return OttavaValue(octave_shift=octave_shift)
+    except ValueError as exc:
+        diagnostics.append(
+            _error(
+                path=f"{control_path}.value",
                 code="invalid_canonical_field",
                 message=str(exc),
             )
@@ -2432,6 +2843,15 @@ def _point_control_value_sort_key(
         value.fermata_type or "",
         -1.0 if value.length_scale is None else value.length_scale,
     )
+
+
+def _span_control_value_sort_key(
+    value: HairpinValue | OttavaValue,
+) -> tuple[object, ...]:
+    if isinstance(value, HairpinValue):
+        return (value.direction.value, value.niente)
+
+    return (value.octave_shift,)
 
 
 def _voice_contains_authored_content(beats: list[object]) -> bool:

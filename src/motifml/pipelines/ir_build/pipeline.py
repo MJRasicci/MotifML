@@ -9,6 +9,7 @@ from motifml.pipelines.ir_build.nodes import (
     emit_bars,
     emit_parts_and_staves,
     emit_point_control_events,
+    emit_span_control_events,
     emit_voice_lanes,
     validate_canonical_score_surface,
 )
@@ -64,6 +65,17 @@ def create_pipeline(**kwargs: object) -> Pipeline:
                 ],
                 outputs="point_control_emissions",
                 name="emit_point_control_events",
+            ),
+            node(
+                func=emit_span_control_events,
+                inputs=[
+                    "raw_motif_json_corpus",
+                    "written_time_maps",
+                    "part_staff_emissions",
+                    "voice_lane_emissions",
+                ],
+                outputs="span_control_emissions",
+                name="emit_span_control_events",
             ),
         ],
         tags=["ir_build"],
