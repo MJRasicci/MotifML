@@ -8,10 +8,11 @@ from enum import StrEnum
 from motifml.ir.ids import (
     bar_sort_key,
     part_sort_key,
+    point_control_sort_key,
     staff_sort_key,
     voice_lane_sort_key,
 )
-from motifml.ir.models import Bar, Part, Staff, VoiceLane
+from motifml.ir.models import Bar, Part, PointControlEvent, Staff, VoiceLane
 from motifml.ir.time import ScoreTime
 
 
@@ -336,6 +337,63 @@ class VoiceLaneEmissionResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
+@dataclass(frozen=True)
+class PointControlEmissionResult:
+    """Typed point-control emission result for one validated raw score."""
+
+    relative_path: str
+    source_hash: str
+    point_control_events: tuple[PointControlEvent, ...] = ()
+    diagnostics: tuple[IrBuildDiagnostic, ...] = ()
+    passed: bool = field(init=False)
+    error_count: int = field(init=False)
+    warning_count: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "relative_path",
+            _normalize_text(self.relative_path, "relative_path"),
+        )
+        object.__setattr__(
+            self,
+            "source_hash",
+            _normalize_text(self.source_hash, "source_hash"),
+        )
+        object.__setattr__(
+            self,
+            "point_control_events",
+            tuple(
+                sorted(
+                    self.point_control_events,
+                    key=lambda item: point_control_sort_key(
+                        item.scope,
+                        item.target_ref,
+                        item.time,
+                        item.control_id,
+                    ),
+                )
+            ),
+        )
+
+        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        object.__setattr__(self, "diagnostics", diagnostics)
+
+        error_count = sum(
+            1
+            for diagnostic in diagnostics
+            if diagnostic.severity is DiagnosticSeverity.ERROR
+        )
+        warning_count = sum(
+            1
+            for diagnostic in diagnostics
+            if diagnostic.severity is DiagnosticSeverity.WARNING
+        )
+        object.__setattr__(self, "error_count", error_count)
+        object.__setattr__(self, "warning_count", warning_count)
+        object.__setattr__(self, "passed", error_count == 0)
+
+
 def _normalize_text(value: str, field_name: str) -> str:
     normalized = value.strip()
     if not normalized:
@@ -350,6 +408,7 @@ __all__ = [
     "IrBuildDiagnostic",
     "BarEmissionResult",
     "PartStaffEmissionResult",
+    "PointControlEmissionResult",
     "VoiceLaneEmissionResult",
     "WrittenTimeMapEntry",
     "WrittenTimeMapResult",

@@ -14,6 +14,7 @@ from motifml.pipelines.ir_build.nodes import (
     build_written_time_map,
     emit_bars,
     emit_parts_and_staves,
+    emit_point_control_events,
     emit_voice_lanes,
     validate_canonical_score_surface,
 )
@@ -24,6 +25,10 @@ EXPECTED_TIME_MAP_CONTIGUITY_ERRORS = 1
 EXPECTED_TRANSPOSED_CHROMATIC = 2
 EXPECTED_CAPO_FRET = 2
 EXPECTED_KEY_ACCIDENTALS = -2
+EXPECTED_POINT_CONTROLS_IN_FIXTURE = 4
+EXPECTED_FIRST_FIXTURE_TEMPO = 120.0
+EXPECTED_SECOND_FIXTURE_TEMPO = 132.0
+EXPECTED_FERMATA_LENGTH_SCALE = 1.5
 EXPECTED_VOICE_LANES_WITH_REENTRY = 5
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "motif_json"
 
@@ -451,6 +456,104 @@ def test_emit_voice_lanes_skips_empty_placeholder_voices():
     assert result.voice_lanes[0].voice_index == 0
 
 
+def test_emit_point_control_events_maps_supported_kinds_in_canonical_order():
+    score = _load_fixture("ensemble_polyphony_controls.json")
+
+    result = _emit_point_control_events_result(
+        score=score,
+        relative_path="ensemble_polyphony_controls.json",
+    )
+
+    assert result.passed is True
+    assert len(result.point_control_events) == EXPECTED_POINT_CONTROLS_IN_FIXTURE
+    assert [event.control_id for event in result.point_control_events] == [
+        "ctrlp:part:0",
+        "ctrlp:score:0",
+        "ctrlp:score:1",
+        "ctrlp:score:2",
+    ]
+    assert [event.kind for event in result.point_control_events] == [
+        "dynamic_change",
+        "tempo_change",
+        "tempo_change",
+        "fermata",
+    ]
+    assert [event.target_ref for event in result.point_control_events] == [
+        "part:1",
+        "score",
+        "score",
+        "score",
+    ]
+    assert [event.time for event in result.point_control_events] == [
+        ScoreTime(0, 1),
+        ScoreTime(0, 1),
+        ScoreTime(1, 1),
+        ScoreTime(2, 1),
+    ]
+    assert result.point_control_events[0].value.marking == "mp"
+    assert (
+        result.point_control_events[1].value.beats_per_minute
+        == EXPECTED_FIRST_FIXTURE_TEMPO
+    )
+    assert (
+        result.point_control_events[2].value.beats_per_minute
+        == EXPECTED_SECOND_FIXTURE_TEMPO
+    )
+    assert result.point_control_events[3].value.fermata_type == "normal"
+    assert (
+        result.point_control_events[3].value.length_scale
+        == EXPECTED_FERMATA_LENGTH_SCALE
+    )
+
+
+def test_emit_point_control_events_resolves_staff_and_voice_targets():
+    score = _minimal_canonical_score()
+    score["pointControls"] = [
+        {
+            "kind": "Dynamic",
+            "scope": "Voice",
+            "trackId": 1,
+            "staffIndex": 0,
+            "voiceIndex": 0,
+            "position": {
+                "barIndex": 0,
+                "offset": {"numerator": 0, "denominator": 1},
+            },
+            "value": "ff",
+        },
+        {
+            "kind": "Dynamic",
+            "scope": "Staff",
+            "trackId": 1,
+            "staffIndex": 0,
+            "position": {
+                "barIndex": 0,
+                "offset": {"numerator": 0, "denominator": 1},
+            },
+            "value": "mf",
+        },
+    ]
+
+    result = _emit_point_control_events_result(
+        score=score,
+        relative_path="staff-and-voice-point-controls.json",
+    )
+
+    assert result.passed is True
+    assert [event.control_id for event in result.point_control_events] == [
+        "ctrlp:staff:0",
+        "ctrlp:voice:0",
+    ]
+    assert [event.scope for event in result.point_control_events] == [
+        "staff",
+        "voice",
+    ]
+    assert [event.target_ref for event in result.point_control_events] == [
+        "staff:part:1:0",
+        "voice:staff:part:1:0:0:0",
+    ]
+
+
 def _build_written_time_map_result(
     score: dict[str, object],
     relative_path: str,
@@ -517,6 +620,35 @@ def _emit_voice_lanes_result(
     written_time_maps = build_written_time_map(documents, validation_results)
     bar_emissions = emit_bars(documents, written_time_maps)
     return emit_voice_lanes(documents, part_staff_emissions, bar_emissions)[0]
+
+
+def _emit_point_control_events_result(
+    score: dict[str, object],
+    relative_path: str,
+):
+    documents = [
+        MotifJsonDocument(
+            relative_path=relative_path,
+            sha256=relative_path,
+            file_size_bytes=0,
+            score=score,
+        )
+    ]
+    validation_results = validate_canonical_score_surface(documents)
+    part_staff_emissions = emit_parts_and_staves(documents, validation_results)
+    written_time_maps = build_written_time_map(documents, validation_results)
+    bar_emissions = emit_bars(documents, written_time_maps)
+    voice_lane_emissions = emit_voice_lanes(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+    )
+    return emit_point_control_events(
+        documents,
+        written_time_maps,
+        part_staff_emissions,
+        voice_lane_emissions,
+    )[0]
 
 
 def _minimal_canonical_score() -> dict[str, object]:
