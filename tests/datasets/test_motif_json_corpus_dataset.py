@@ -135,6 +135,79 @@ def test_motif_json_corpus_dataset_skips_autobuild_when_inputs_are_unchanged(tmp
     )
 
 
+def test_motif_json_corpus_dataset_skips_autobuild_when_build_state_paths_differ(
+    tmp_path,
+):
+    source_root = tmp_path / "00_corpus"
+    raw_root = tmp_path / "01_raw" / "motif_json"
+    build_state_path = (
+        tmp_path / "02_intermediate" / "ingestion" / "raw_motif_json_build_state.json"
+    )
+    cli_path = _write_fake_motif_cli(tmp_path / "tools" / "motif-cli")
+    _write_source_file(source_root / "Artist A" / "Alpha.gp5")
+
+    dataset = MotifJsonCorpusDataset(
+        filepath=str(raw_root),
+        autobuild={
+            "source_filepath": str(source_root),
+            "cli_filepath": str(cli_path),
+            "build_state_filepath": str(build_state_path),
+        },
+    )
+
+    first_documents = dataset.load()
+    stored_state = json.loads(build_state_path.read_text(encoding="utf-8"))
+    stored_state["source_filepath"] = "data/00_corpus"
+    stored_state["cli_filepath"] = "tools/motif-cli"
+    stored_state["output_filepath"] = "data/01_raw/motif_json"
+    build_state_path.write_text(json.dumps(stored_state), encoding="utf-8")
+
+    second_documents = dataset.load()
+
+    assert [document.relative_path for document in first_documents] == [
+        "Artist A/Alpha.json"
+    ]
+    assert [document.relative_path for document in second_documents] == [
+        "Artist A/Alpha.json"
+    ]
+    assert (
+        _read_fake_motif_cli_invocations(cli_path) == EXPECTED_INITIAL_AUTOBUILD_COUNT
+    )
+
+
+def test_motif_json_corpus_dataset_rebuilds_when_cli_binary_changes(tmp_path):
+    source_root = tmp_path / "00_corpus"
+    raw_root = tmp_path / "01_raw" / "motif_json"
+    build_state_path = (
+        tmp_path / "02_intermediate" / "ingestion" / "raw_motif_json_build_state.json"
+    )
+    cli_path = _write_fake_motif_cli(tmp_path / "tools" / "motif-cli")
+    _write_source_file(source_root / "Artist A" / "Alpha.gp5")
+
+    dataset = MotifJsonCorpusDataset(
+        filepath=str(raw_root),
+        autobuild={
+            "source_filepath": str(source_root),
+            "cli_filepath": str(cli_path),
+            "build_state_filepath": str(build_state_path),
+        },
+    )
+
+    dataset.load()
+    cli_path.write_text(
+        f"{cli_path.read_text(encoding='utf-8')}\n# hash changes should rebuild\n",
+        encoding="utf-8",
+    )
+    cli_path.chmod(0o755)
+
+    documents = dataset.load()
+
+    assert [document.relative_path for document in documents] == ["Artist A/Alpha.json"]
+    assert (
+        _read_fake_motif_cli_invocations(cli_path) == EXPECTED_REBUILD_AUTOBUILD_COUNT
+    )
+
+
 def test_motif_json_corpus_dataset_rebuilds_and_cleans_stale_outputs_when_source_changes(
     tmp_path,
 ):

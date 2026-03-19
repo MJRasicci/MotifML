@@ -173,7 +173,11 @@ class MotifJsonCorpusDataset(AbstractDataset[None, list[MotifJsonDocument]]):
         current_state = self._build_current_state()
         previous_state = self._load_build_state()
 
-        if previous_state == current_state and self._has_raw_output():
+        if (
+            previous_state is not None
+            and self._raw_corpus_inputs_match(previous_state, current_state)
+            and self._has_raw_output()
+        ):
             return
 
         LOGGER.info(
@@ -189,6 +193,18 @@ class MotifJsonCorpusDataset(AbstractDataset[None, list[MotifJsonDocument]]):
             )
 
         self._write_build_state(current_state)
+
+    @staticmethod
+    def _raw_corpus_inputs_match(
+        previous_state: RawCorpusBuildState,
+        current_state: RawCorpusBuildState,
+    ) -> bool:
+        """Compare only the inputs that affect raw Motif JSON output."""
+
+        return (
+            previous_state.cli_sha256 == current_state.cli_sha256
+            and previous_state.source_files == current_state.source_files
+        )
 
     def _build_current_state(self) -> RawCorpusBuildState:
         if self._source_filepath is None or self._cli_filepath is None:
