@@ -3113,6 +3113,12 @@ def _coerce_note_seed(
     if attack_duration is None or sounding_duration is None:
         return None
 
+    # Motif exports unset string numbers as zero-valued placeholders.
+    if string_number == 0:
+        string_number = None
+        if show_string_number is True:
+            show_string_number = None
+
     return _NoteSeed(
         path=note_path,
         onset_id=onset_group.onset_id,
@@ -3996,7 +4002,7 @@ def _collect_note_relation_material_for_beat(  # noqa: PLR0913
             raw_note_id_lookup.pop(raw_note_id, None)
             ambiguous_raw_note_ids.add(raw_note_id)
             diagnostics.append(
-                _error(
+                _warning(
                     path=f"{relation_seed.path}.id",
                     code="duplicate_raw_note_id",
                     message=(
@@ -4007,7 +4013,7 @@ def _collect_note_relation_material_for_beat(  # noqa: PLR0913
             )
         elif raw_note_id in ambiguous_raw_note_ids:
             diagnostics.append(
-                _error(
+                _warning(
                     path=f"{relation_seed.path}.id",
                     code="duplicate_raw_note_id",
                     message=(
@@ -4219,7 +4225,7 @@ def _resolve_emitted_note_id(
 ) -> str | None:
     if raw_note_id in ambiguous_raw_note_ids:
         diagnostics.append(
-            _error(
+            _warning(
                 path=path,
                 code="ambiguous_note_reference",
                 message=(
@@ -4421,6 +4427,7 @@ def _coerce_point_control_seed(
         path=f"{control_path}.position",
         bar_times=resolution_context.bar_times,
         diagnostics=diagnostics,
+        overflow_is_warning=True,
     )
     resolved_target = _resolve_control_target(
         raw_point_control=raw_point_control,
@@ -4497,6 +4504,8 @@ def _resolve_control_position(
     path: str,
     bar_times: dict[int, tuple[ScoreTime, ScoreTime]],
     diagnostics: list[IrBuildDiagnostic],
+    *,
+    overflow_is_warning: bool = False,
 ) -> _ResolvedControlPosition | None:
     position = _coerce_required_mapping(value, path, diagnostics)
     if position is None:
@@ -4529,12 +4538,20 @@ def _resolve_control_position(
 
     bar_start, bar_duration = bar_time
     if offset > bar_duration:
+        diagnostic = _warning if overflow_is_warning else _error
+        code = (
+            "out_of_range_control_position"
+            if overflow_is_warning
+            else "invalid_canonical_field"
+        )
+        message = (
+            f"control position exceeds the duration of bar {bar_index}; "
+            "the control is skipped."
+            if overflow_is_warning
+            else f"control position exceeds the duration of bar {bar_index}."
+        )
         diagnostics.append(
-            _error(
-                path=f"{path}.offset",
-                code="invalid_canonical_field",
-                message=f"control position exceeds the duration of bar {bar_index}.",
-            )
+            diagnostic(path=f"{path}.offset", code=code, message=message)
         )
         return None
 
@@ -4836,6 +4853,18 @@ def _coerce_fermata_point_control_value(
         path=f"{control_path}.length",
         diagnostics=diagnostics,
     )
+    if length_scale is not None and length_scale <= 0:
+        diagnostics.append(
+            _warning(
+                path=f"{control_path}.length",
+                code="non_positive_fermata_length_scale",
+                message=(
+                    "fermata point control length must be positive when present; "
+                    "dropping the length scale."
+                ),
+            )
+        )
+        length_scale = None
     _coerce_optional_str(
         raw_point_control.get("placement"),
         path=f"{control_path}.placement",
@@ -4946,12 +4975,26 @@ def _coerce_span_control_seed(
         bar_times=resolution_context.bar_times,
         diagnostics=diagnostics,
     )
-    end_position = _resolve_control_position(
-        value=raw_span_control.get("end"),
-        path=f"{control_path}.end",
-        bar_times=resolution_context.bar_times,
-        diagnostics=diagnostics,
-    )
+    raw_end = raw_span_control.get("end")
+    end_position: _ResolvedControlPosition | None = None
+    if raw_end is None:
+        diagnostics.append(
+            _warning(
+                path=f"{control_path}.end",
+                code="open_ended_span_control",
+                message=(
+                    "span controls without an end position are skipped because "
+                    "IR v1 requires bounded spans."
+                ),
+            )
+        )
+    else:
+        end_position = _resolve_control_position(
+            value=raw_end,
+            path=f"{control_path}.end",
+            bar_times=resolution_context.bar_times,
+            diagnostics=diagnostics,
+        )
     resolved_target = _resolve_control_target(
         raw_point_control=raw_span_control,
         control_path=control_path,
@@ -5671,13 +5714,6 @@ def _coerce_optional_str(
 
     normalized = value.strip()
     if not normalized:
-        diagnostics.append(
-            _error(
-                path=path,
-                code="invalid_canonical_field",
-                message="field must be non-empty when present.",
-            )
-        )
         return None
 
     return normalized

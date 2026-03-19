@@ -391,6 +391,17 @@ def test_emit_bars_extracts_key_and_triplet_feel_metadata():
     assert result.bars[1].triplet_feel == "eighth"
 
 
+def test_emit_bars_treats_blank_triplet_feel_as_missing_metadata():
+    score = _minimal_canonical_score()
+    score["timelineBars"][0]["tripletFeel"] = "   "
+
+    result = _emit_bars_result(score=score, relative_path="blank-triplet-feel.json")
+
+    assert result.passed is True
+    assert result.warning_count == 0
+    assert result.bars[0].triplet_feel is None
+
+
 def test_emit_voice_lanes_maps_single_voice_lanes_deterministically():
     score = _minimal_canonical_score()
     score["timelineBars"].append(
@@ -615,6 +626,47 @@ def test_emit_note_events_extracts_ties_and_string_display_metadata():
     assert result.note_events[1].techniques.generic.tie_destination is True
 
 
+def test_emit_note_events_normalizes_placeholder_optional_strings_and_hidden_string_numbers():
+    score = _minimal_canonical_score()
+    beat = score["tracks"][0]["staves"][0]["measures"][0]["voices"][0]["beats"][0]
+    note = beat["notes"][0]
+    beat["graceType"] = ""
+    note["stringNumber"] = 0
+    note["showStringNumber"] = False
+    note["pitch"]["accidental"] = ""
+    note["articulation"] = {"ornament": "", "vibrato": ""}
+
+    result = _emit_note_events_result(
+        score=score,
+        relative_path="placeholder-optionals.json",
+    )
+
+    assert result.passed is True
+    assert result.warning_count == 0
+    assert result.note_events[0].string_number is None
+    assert result.note_events[0].show_string_number is False
+    assert result.note_events[0].pitch is not None
+    assert result.note_events[0].pitch.accidental is None
+
+
+def test_emit_note_events_drops_zero_string_numbers_even_when_display_is_flagged():
+    score = _minimal_canonical_score()
+    note = score["tracks"][0]["staves"][0]["measures"][0]["voices"][0]["beats"][0][
+        "notes"
+    ][0]
+    note["stringNumber"] = 0
+    note["showStringNumber"] = True
+
+    result = _emit_note_events_result(
+        score=score,
+        relative_path="invalid-visible-string-number.json",
+    )
+
+    assert result.passed is True
+    assert result.note_events[0].string_number is None
+    assert result.note_events[0].show_string_number is None
+
+
 def test_emit_note_events_extracts_fretted_string_technique_payloads():
     score = _load_fixture("guitar_techniques_tuplets.json")
 
@@ -819,6 +871,77 @@ def test_emit_intrinsic_edges_reports_dangling_note_relation_targets():
     )
 
 
+def test_emit_intrinsic_edges_skips_ambiguous_relations_when_raw_note_ids_repeat():
+    score = _minimal_canonical_score()
+    score["timelineBars"].append(
+        {
+            "index": 1,
+            "timeSignature": "4/4",
+            "start": {"numerator": 1, "denominator": 1},
+            "duration": {"numerator": 1, "denominator": 1},
+        }
+    )
+    score["tracks"][0]["staves"][0]["measures"][0]["voices"][0]["beats"][0]["notes"][0][
+        "articulation"
+    ] = {
+        "relations": [
+            {
+                "kind": "Tie",
+                "targetNoteId": 1000,
+            }
+        ]
+    }
+    score["tracks"][0]["staves"][0]["measures"].append(
+        {
+            "index": 1,
+            "voices": [
+                {
+                    "voiceIndex": 0,
+                    "beats": [
+                        {
+                            "id": 101,
+                            "offset": {"numerator": 0, "denominator": 1},
+                            "duration": {"numerator": 1, "denominator": 4},
+                            "notes": [
+                                {
+                                    "id": 1000,
+                                    "pitch": {"step": "C", "octave": 4},
+                                    "duration": {"numerator": 1, "denominator": 4},
+                                    "soundingDuration": {
+                                        "numerator": 1,
+                                        "denominator": 4,
+                                    },
+                                }
+                            ],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    result = _emit_intrinsic_edges_result(
+        score=score,
+        relative_path="ambiguous-note-ids.json",
+    )
+
+    expected_codes = [
+        "ambiguous_note_reference",
+        "ambiguous_note_reference",
+        "duplicate_raw_note_id",
+    ]
+    assert result.passed is True
+    assert not any(edge.edge_type.value == "tie_to" for edge in result.edges)
+    assert result.warning_count == len(expected_codes)
+    assert (
+        sorted(diagnostic.code for diagnostic in result.diagnostics) == expected_codes
+    )
+    assert all(
+        diagnostic.severity is DiagnosticSeverity.WARNING
+        for diagnostic in result.diagnostics
+    )
+
+
 def test_emit_point_control_events_maps_supported_kinds_in_canonical_order():
     score = _load_fixture("ensemble_polyphony_controls.json")
 
@@ -867,6 +990,71 @@ def test_emit_point_control_events_maps_supported_kinds_in_canonical_order():
         result.point_control_events[3].value.length_scale
         == EXPECTED_FERMATA_LENGTH_SCALE
     )
+
+
+def test_emit_point_control_events_skips_out_of_range_positions_with_warning():
+    score = _minimal_canonical_score()
+    score["pointControls"] = [
+        {
+            "kind": "Tempo",
+            "scope": "Score",
+            "trackId": None,
+            "staffIndex": None,
+            "voiceIndex": None,
+            "position": {
+                "barIndex": 0,
+                "offset": {"numerator": 5, "denominator": 4},
+            },
+            "value": "",
+            "numericValue": 120,
+            "placement": "",
+            "length": None,
+        }
+    ]
+
+    result = _emit_point_control_events_result(
+        score=score,
+        relative_path="out-of-range-point-control.json",
+    )
+
+    assert result.passed is True
+    assert len(result.point_control_events) == 0
+    assert result.warning_count == 1
+    assert result.diagnostics[0].code == "out_of_range_control_position"
+    assert result.diagnostics[0].severity is DiagnosticSeverity.WARNING
+
+
+def test_emit_point_control_events_drops_non_positive_fermata_length_scale():
+    score = _minimal_canonical_score()
+    score["pointControls"] = [
+        {
+            "kind": "Fermata",
+            "scope": "Score",
+            "trackId": None,
+            "staffIndex": None,
+            "voiceIndex": None,
+            "position": {
+                "barIndex": 0,
+                "offset": {"numerator": 0, "denominator": 1},
+            },
+            "value": "normal",
+            "numericValue": None,
+            "placement": "",
+            "length": 0,
+        }
+    ]
+
+    result = _emit_point_control_events_result(
+        score=score,
+        relative_path="zero-fermata-length.json",
+    )
+
+    assert result.passed is True
+    assert len(result.point_control_events) == 1
+    assert result.warning_count == 1
+    assert result.diagnostics[0].code == "non_positive_fermata_length_scale"
+    assert result.diagnostics[0].severity is DiagnosticSeverity.WARNING
+    assert result.point_control_events[0].value.length_scale is None
 
 
 def test_emit_point_control_events_resolves_staff_and_voice_targets():
@@ -952,6 +1140,34 @@ def test_emit_span_control_events_maps_supported_kinds_in_canonical_order():
     assert result.span_control_events[0].start_anchor_ref is None
     assert result.span_control_events[0].end_anchor_ref is None
     assert result.span_control_events[1].value.octave_shift == 1
+
+
+def test_emit_span_control_events_skips_open_ended_spans_with_warning():
+    score = _minimal_canonical_score()
+    score["spanControls"] = [
+        {
+            "kind": "Ottava",
+            "scope": "Track",
+            "trackId": 1,
+            "start": {
+                "barIndex": 0,
+                "offset": {"numerator": 0, "denominator": 1},
+            },
+            "end": None,
+            "value": "8va",
+        }
+    ]
+
+    result = _emit_span_control_events_result(
+        score=score,
+        relative_path="open-ended-span.json",
+    )
+
+    assert result.passed is True
+    assert len(result.span_control_events) == 0
+    assert result.warning_count == 1
+    assert result.diagnostics[0].code == "open_ended_span_control"
+    assert result.diagnostics[0].severity is DiagnosticSeverity.WARNING
 
 
 def test_emit_span_control_events_reports_unsupported_span_kinds():
