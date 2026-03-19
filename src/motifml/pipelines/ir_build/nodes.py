@@ -6,11 +6,15 @@ from collections.abc import Mapping
 from typing import Any
 
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
+from motifml.ir.ids import part_id as build_part_id
+from motifml.ir.ids import staff_id as build_staff_id
+from motifml.ir.models import Part, Staff, Transposition
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.ir_build.models import (
     CanonicalScoreValidationResult,
     DiagnosticSeverity,
     IrBuildDiagnostic,
+    PartStaffEmissionResult,
     WrittenTimeMapEntry,
     WrittenTimeMapResult,
 )
@@ -114,6 +118,63 @@ def build_written_time_map(
         )
 
     return written_time_maps
+
+
+def emit_parts_and_staves(
+    documents: list[MotifJsonDocument],
+    validation_results: list[CanonicalScoreValidationResult],
+) -> list[PartStaffEmissionResult]:
+    """Emit IR parts and staves from validated raw Motif track structures."""
+    validation_results_by_path = {
+        result.relative_path: result for result in validation_results
+    }
+    emissions: list[PartStaffEmissionResult] = []
+
+    for document in sorted(documents, key=lambda item: item.relative_path.casefold()):
+        validation_result = validation_results_by_path.get(document.relative_path)
+        diagnostics: list[IrBuildDiagnostic] = []
+        parts: tuple[Part, ...] = ()
+        staves: tuple[Staff, ...] = ()
+
+        if validation_result is None:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="missing_validation_result",
+                    message=(
+                        "canonical score surface validation must run before part "
+                        "and staff emission."
+                    ),
+                )
+            )
+        elif not validation_result.passed:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="canonical_surface_validation_failed",
+                    message=(
+                        "parts and staves cannot be emitted because the canonical "
+                        "score surface validation failed."
+                    ),
+                )
+            )
+        else:
+            parts, staves, emitted_diagnostics = _emit_part_staff_entities(
+                document.score
+            )
+            diagnostics.extend(emitted_diagnostics)
+
+        emissions.append(
+            PartStaffEmissionResult(
+                relative_path=document.relative_path,
+                source_hash=document.sha256,
+                parts=parts,
+                staves=staves,
+                diagnostics=tuple(diagnostics),
+            )
+        )
+
+    return emissions
 
 
 def _validate_document_surface(score: dict[str, Any]) -> list[IrBuildDiagnostic]:
@@ -283,6 +344,215 @@ def _build_written_time_map_entries(
 
     diagnostics.extend(_build_bar_geometry_warnings(score, raw_entries, tuple(bars)))
     return tuple(bars), diagnostics
+
+
+def _emit_part_staff_entities(
+    score: dict[str, Any],
+) -> tuple[tuple[Part, ...], tuple[Staff, ...], list[IrBuildDiagnostic]]:
+    diagnostics: list[IrBuildDiagnostic] = []
+    tracks = score.get("tracks")
+    if not isinstance(tracks, list):
+        diagnostics.append(
+            _error(
+                path="tracks",
+                code="missing_canonical_field",
+                message="canonical field 'tracks' is required.",
+            )
+        )
+        return (), (), diagnostics
+
+    parts: list[Part] = []
+    staves: list[Staff] = []
+    seen_part_ids: set[str] = set()
+
+    for track_index, track in enumerate(tracks):
+        track_path = f"tracks[{track_index}]"
+        if not isinstance(track, Mapping):
+            diagnostics.append(
+                _error(
+                    path=track_path,
+                    code="invalid_canonical_field",
+                    message="tracks entries must be objects.",
+                )
+            )
+            continue
+
+        track_identity = track.get("id")
+        if not isinstance(track_identity, int | str):
+            diagnostics.append(
+                _error(
+                    path=f"{track_path}.id",
+                    code="invalid_canonical_field",
+                    message="tracks entries must include an integer or string id.",
+                )
+            )
+            continue
+
+        part_identifier = build_part_id(track_identity)
+        if part_identifier in seen_part_ids:
+            diagnostics.append(
+                _error(
+                    path=f"{track_path}.id",
+                    code="duplicate_part_id",
+                    message=f"part id '{part_identifier}' appears more than once.",
+                )
+            )
+            continue
+
+        instrument = _coerce_required_mapping(
+            track.get("instrument"),
+            path=f"{track_path}.instrument",
+            diagnostics=diagnostics,
+        )
+        transposition = _coerce_transposition(
+            track.get("transposition"),
+            path=f"{track_path}.transposition",
+            diagnostics=diagnostics,
+        )
+        raw_staves = _require_list_field(
+            track,
+            field_name="staves",
+            path=f"{track_path}.staves",
+            diagnostics=diagnostics,
+        )
+        if instrument is None or transposition is None or raw_staves is None:
+            continue
+
+        instrument_family = _coerce_required_int(
+            instrument.get("family"),
+            path=f"{track_path}.instrument.family",
+            diagnostics=diagnostics,
+        )
+        instrument_kind = _coerce_required_int(
+            instrument.get("kind"),
+            path=f"{track_path}.instrument.kind",
+            diagnostics=diagnostics,
+        )
+        role = _coerce_required_int(
+            instrument.get("role"),
+            path=f"{track_path}.instrument.role",
+            diagnostics=diagnostics,
+        )
+        if instrument_family is None or instrument_kind is None or role is None:
+            continue
+
+        emitted_staves = _emit_staff_models(
+            part_identifier=part_identifier,
+            raw_staves=raw_staves,
+            track_path=track_path,
+            diagnostics=diagnostics,
+        )
+        if not emitted_staves:
+            diagnostics.append(
+                _error(
+                    path=f"{track_path}.staves",
+                    code="invalid_canonical_field",
+                    message="tracks must emit at least one valid staff.",
+                )
+            )
+            continue
+
+        try:
+            part = Part(
+                part_id=part_identifier,
+                instrument_family=instrument_family,
+                instrument_kind=instrument_kind,
+                role=role,
+                transposition=transposition,
+                staff_ids=tuple(staff.staff_id for staff in emitted_staves),
+            )
+        except ValueError as exc:
+            diagnostics.append(
+                _error(
+                    path=track_path,
+                    code="invalid_canonical_field",
+                    message=str(exc),
+                )
+            )
+            continue
+
+        seen_part_ids.add(part_identifier)
+        parts.append(part)
+        staves.extend(emitted_staves)
+
+    return tuple(parts), tuple(staves), diagnostics
+
+
+def _emit_staff_models(
+    part_identifier: str,
+    raw_staves: list[object],
+    track_path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> list[Staff]:
+    emitted_staves: list[Staff] = []
+    seen_staff_indexes: set[int] = set()
+    sortable_staffs: list[tuple[int, int, Staff]] = []
+
+    for ordinal, raw_staff in enumerate(raw_staves):
+        staff_path = f"{track_path}.staves[{ordinal}]"
+        if not isinstance(raw_staff, Mapping):
+            diagnostics.append(
+                _error(
+                    path=staff_path,
+                    code="invalid_canonical_field",
+                    message="staves entries must be objects.",
+                )
+            )
+            continue
+
+        staff_index = _coerce_required_int(
+            raw_staff.get("staffIndex"),
+            path=f"{staff_path}.staffIndex",
+            diagnostics=diagnostics,
+        )
+        if staff_index is None:
+            continue
+
+        if staff_index in seen_staff_indexes:
+            diagnostics.append(
+                _error(
+                    path=f"{staff_path}.staffIndex",
+                    code="duplicate_staff_index",
+                    message=f"staff index {staff_index} appears more than once.",
+                )
+            )
+            continue
+
+        tuning_pitches = _coerce_optional_tuning_pitches(
+            raw_staff.get("tuning"),
+            path=f"{staff_path}.tuning",
+            diagnostics=diagnostics,
+        )
+        capo_fret = _coerce_optional_int(
+            raw_staff.get("capoFret"),
+            path=f"{staff_path}.capoFret",
+            diagnostics=diagnostics,
+        )
+
+        try:
+            staff = Staff(
+                staff_id=build_staff_id(part_identifier, staff_index),
+                part_id=part_identifier,
+                staff_index=staff_index,
+                tuning_pitches=tuning_pitches,
+                capo_fret=capo_fret,
+            )
+        except ValueError as exc:
+            diagnostics.append(
+                _error(
+                    path=staff_path,
+                    code="invalid_canonical_field",
+                    message=str(exc),
+                )
+            )
+            continue
+
+        seen_staff_indexes.add(staff_index)
+        sortable_staffs.append((staff_index, ordinal, staff))
+
+    sortable_staffs.sort(key=lambda item: (item[0], item[1]))
+    emitted_staves.extend(staff for _, _, staff in sortable_staffs)
+    return emitted_staves
 
 
 def _validate_track_surfaces(
@@ -700,6 +970,120 @@ def _parse_nominal_bar_duration(timeline_bar: Any) -> ScoreTime | None:
         return ScoreTime(numerator=numerator, denominator=denominator)
     except ValueError:
         return None
+
+
+def _coerce_required_mapping(
+    value: Any,
+    path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> Mapping[str, Any] | None:
+    if not isinstance(value, Mapping):
+        diagnostics.append(
+            _error(
+                path=path,
+                code="invalid_canonical_field",
+                message="field must be an object.",
+            )
+        )
+        return None
+
+    return value
+
+
+def _coerce_required_int(
+    value: Any,
+    path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> int | None:
+    if not isinstance(value, int):
+        diagnostics.append(
+            _error(
+                path=path,
+                code="invalid_canonical_field",
+                message="field must be an integer.",
+            )
+        )
+        return None
+
+    return value
+
+
+def _coerce_optional_int(
+    value: Any,
+    path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> int | None:
+    if value is None:
+        return None
+
+    return _coerce_required_int(value, path, diagnostics)
+
+
+def _coerce_optional_tuning_pitches(
+    value: Any,
+    path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> tuple[int, ...] | None:
+    if value is None:
+        return None
+
+    if not isinstance(value, Mapping):
+        diagnostics.append(
+            _error(
+                path=path,
+                code="invalid_canonical_field",
+                message="tuning must be an object when present.",
+            )
+        )
+        return None
+
+    pitches = value.get("pitches")
+    if not isinstance(pitches, list):
+        diagnostics.append(
+            _error(
+                path=f"{path}.pitches",
+                code="invalid_canonical_field",
+                message="tuning.pitches must be an array when tuning is present.",
+            )
+        )
+        return None
+
+    if any(not isinstance(pitch, int) for pitch in pitches):
+        diagnostics.append(
+            _error(
+                path=f"{path}.pitches",
+                code="invalid_canonical_field",
+                message="tuning.pitches must contain only integers.",
+            )
+        )
+        return None
+
+    return tuple(pitches)
+
+
+def _coerce_transposition(
+    value: Any,
+    path: str,
+    diagnostics: list[IrBuildDiagnostic],
+) -> Transposition | None:
+    transposition = _coerce_required_mapping(value, path, diagnostics)
+    if transposition is None:
+        return None
+
+    chromatic = _coerce_required_int(
+        transposition.get("chromatic"),
+        path=f"{path}.chromatic",
+        diagnostics=diagnostics,
+    )
+    octave = _coerce_required_int(
+        transposition.get("octave"),
+        path=f"{path}.octave",
+        diagnostics=diagnostics,
+    )
+    if chromatic is None or octave is None:
+        return None
+
+    return Transposition(chromatic=chromatic, octave=octave)
 
 
 def _has_relation_hints(articulation: Mapping[str, Any]) -> bool:
