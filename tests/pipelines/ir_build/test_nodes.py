@@ -7,12 +7,13 @@ from copy import deepcopy
 from pathlib import Path
 
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
-from motifml.ir.models import TimeSignature
+from motifml.ir.models import RhythmBaseValue, TimeSignature
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.ir_build.models import DiagnosticSeverity
 from motifml.pipelines.ir_build.nodes import (
     build_written_time_map,
     emit_bars,
+    emit_onset_groups,
     emit_parts_and_staves,
     emit_point_control_events,
     emit_span_control_events,
@@ -32,6 +33,8 @@ EXPECTED_SECOND_FIXTURE_TEMPO = 132.0
 EXPECTED_FERMATA_LENGTH_SCALE = 1.5
 EXPECTED_SPAN_CONTROLS_IN_FIXTURE = 2
 EXPECTED_VOICE_LANES_WITH_REENTRY = 5
+EXPECTED_PRIMARY_TUPLET_NUMERATOR = 3
+EXPECTED_PRIMARY_TUPLET_DENOMINATOR = 2
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "motif_json"
 
 
@@ -458,6 +461,105 @@ def test_emit_voice_lanes_skips_empty_placeholder_voices():
     assert result.voice_lanes[0].voice_index == 0
 
 
+def test_emit_onset_groups_maps_standard_beats_to_absolute_onsets():
+    score = _minimal_canonical_score()
+
+    result = _emit_onset_groups_result(score=score, relative_path="single-onset.json")
+
+    assert result.passed is True
+    assert len(result.onset_groups) == 1
+    onset = result.onset_groups[0]
+    assert onset.onset_id == "onset:voice:staff:part:1:0:0:0:0"
+    assert onset.voice_lane_id == "voice:staff:part:1:0:0:0"
+    assert onset.bar_id == "bar:0"
+    assert onset.time == ScoreTime(0, 1)
+    assert onset.duration_notated == ScoreTime(1, 4)
+    assert onset.is_rest is False
+    assert onset.attack_order_in_voice == 0
+    assert onset.duration_sounding_max == ScoreTime(1, 4)
+    assert onset.grace_type is None
+    assert onset.rhythm_shape is None
+
+
+def test_emit_onset_groups_marks_rests_and_caches_sounding_max_duration():
+    score = _load_fixture("single_track_monophonic_pickup.json")
+
+    result = _emit_onset_groups_result(
+        score=score,
+        relative_path="single_track_monophonic_pickup.json",
+    )
+
+    assert result.passed is True
+    assert [onset.time for onset in result.onset_groups] == [
+        ScoreTime(0, 1),
+        ScoreTime(1, 4),
+        ScoreTime(1, 2),
+        ScoreTime(3, 4),
+    ]
+    assert result.onset_groups[0].duration_sounding_max == ScoreTime(1, 2)
+    assert result.onset_groups[1].is_rest is True
+    assert result.onset_groups[1].duration_sounding_max is None
+    assert [onset.attack_order_in_voice for onset in result.onset_groups] == [
+        0,
+        0,
+        1,
+        2,
+    ]
+
+
+def test_emit_onset_groups_preserves_grace_notes_tuplets_and_same_time_ordering():
+    score = _load_fixture("guitar_techniques_tuplets.json")
+
+    result = _emit_onset_groups_result(
+        score=score,
+        relative_path="guitar_techniques_tuplets.json",
+    )
+
+    assert result.passed is True
+    assert [onset.attack_order_in_voice for onset in result.onset_groups] == [
+        0,
+        1,
+        2,
+        3,
+    ]
+    assert [onset.time for onset in result.onset_groups] == [
+        ScoreTime(0, 1),
+        ScoreTime(0, 1),
+        ScoreTime(1, 12),
+        ScoreTime(1, 6),
+    ]
+    assert result.onset_groups[0].grace_type == "acciaccatura"
+    assert result.onset_groups[0].duration_sounding_max == ScoreTime(1, 16)
+    assert result.onset_groups[1].rhythm_shape is not None
+    assert result.onset_groups[1].rhythm_shape.base_value is RhythmBaseValue.EIGHTH
+    assert result.onset_groups[1].rhythm_shape.primary_tuplet is not None
+    assert (
+        result.onset_groups[1].rhythm_shape.primary_tuplet.numerator
+        == EXPECTED_PRIMARY_TUPLET_NUMERATOR
+    )
+    assert (
+        result.onset_groups[1].rhythm_shape.primary_tuplet.denominator
+        == EXPECTED_PRIMARY_TUPLET_DENOMINATOR
+    )
+
+
+def test_emit_onset_groups_do_not_create_implicit_onsets_when_voices_reenter():
+    score = _load_fixture("voice_reentry.json")
+
+    result = _emit_onset_groups_result(
+        score=score,
+        relative_path="voice_reentry.json",
+    )
+
+    assert result.passed is True
+    assert len(result.onset_groups) == EXPECTED_VOICE_LANES_WITH_REENTRY
+    voice_one_onsets = [
+        onset for onset in result.onset_groups if onset.voice_lane_id.endswith(":1")
+    ]
+    assert [onset.bar_id for onset in voice_one_onsets] == ["bar:0", "bar:2"]
+    assert all(onset.attack_order_in_voice == 0 for onset in voice_one_onsets)
+
+
 def test_emit_point_control_events_maps_supported_kinds_in_canonical_order():
     score = _load_fixture("ensemble_polyphony_controls.json")
 
@@ -690,6 +792,34 @@ def _emit_voice_lanes_result(
     written_time_maps = build_written_time_map(documents, validation_results)
     bar_emissions = emit_bars(documents, written_time_maps)
     return emit_voice_lanes(documents, part_staff_emissions, bar_emissions)[0]
+
+
+def _emit_onset_groups_result(
+    score: dict[str, object],
+    relative_path: str,
+):
+    documents = [
+        MotifJsonDocument(
+            relative_path=relative_path,
+            sha256=relative_path,
+            file_size_bytes=0,
+            score=score,
+        )
+    ]
+    validation_results = validate_canonical_score_surface(documents)
+    part_staff_emissions = emit_parts_and_staves(documents, validation_results)
+    written_time_maps = build_written_time_map(documents, validation_results)
+    bar_emissions = emit_bars(documents, written_time_maps)
+    voice_lane_emissions = emit_voice_lanes(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+    )
+    return emit_onset_groups(
+        documents,
+        written_time_maps,
+        voice_lane_emissions,
+    )[0]
 
 
 def _emit_point_control_events_result(

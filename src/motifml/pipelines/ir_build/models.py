@@ -7,6 +7,7 @@ from enum import StrEnum
 
 from motifml.ir.ids import (
     bar_sort_key,
+    onset_sort_key,
     part_sort_key,
     point_control_sort_key,
     span_control_sort_key,
@@ -15,6 +16,7 @@ from motifml.ir.ids import (
 )
 from motifml.ir.models import (
     Bar,
+    OnsetGroup,
     Part,
     PointControlEvent,
     SpanControlEvent,
@@ -346,6 +348,63 @@ class VoiceLaneEmissionResult:
 
 
 @dataclass(frozen=True)
+class OnsetGroupEmissionResult:
+    """Typed onset-group emission result for one validated raw score."""
+
+    relative_path: str
+    source_hash: str
+    onset_groups: tuple[OnsetGroup, ...] = ()
+    diagnostics: tuple[IrBuildDiagnostic, ...] = ()
+    passed: bool = field(init=False)
+    error_count: int = field(init=False)
+    warning_count: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "relative_path",
+            _normalize_text(self.relative_path, "relative_path"),
+        )
+        object.__setattr__(
+            self,
+            "source_hash",
+            _normalize_text(self.source_hash, "source_hash"),
+        )
+        object.__setattr__(
+            self,
+            "onset_groups",
+            tuple(
+                sorted(
+                    self.onset_groups,
+                    key=lambda item: onset_sort_key(
+                        item.voice_lane_id,
+                        item.time,
+                        item.attack_order_in_voice,
+                        item.onset_id,
+                    ),
+                )
+            ),
+        )
+
+        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        object.__setattr__(self, "diagnostics", diagnostics)
+
+        error_count = sum(
+            1
+            for diagnostic in diagnostics
+            if diagnostic.severity is DiagnosticSeverity.ERROR
+        )
+        warning_count = sum(
+            1
+            for diagnostic in diagnostics
+            if diagnostic.severity is DiagnosticSeverity.WARNING
+        )
+        object.__setattr__(self, "error_count", error_count)
+        object.__setattr__(self, "warning_count", warning_count)
+        object.__setattr__(self, "passed", error_count == 0)
+
+
+@dataclass(frozen=True)
 class PointControlEmissionResult:
     """Typed point-control emission result for one validated raw score."""
 
@@ -473,6 +532,7 @@ __all__ = [
     "DiagnosticSeverity",
     "IrBuildDiagnostic",
     "BarEmissionResult",
+    "OnsetGroupEmissionResult",
     "PartStaffEmissionResult",
     "PointControlEmissionResult",
     "SpanControlEmissionResult",

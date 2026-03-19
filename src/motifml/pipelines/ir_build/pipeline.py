@@ -7,6 +7,7 @@ from kedro.pipeline import Pipeline, node, pipeline
 from motifml.pipelines.ir_build.nodes import (
     build_written_time_map,
     emit_bars,
+    emit_onset_groups,
     emit_parts_and_staves,
     emit_point_control_events,
     emit_span_control_events,
@@ -54,6 +55,16 @@ def create_pipeline(**kwargs: object) -> Pipeline:
                 ],
                 outputs="voice_lane_emissions",
                 name="emit_voice_lanes",
+            ),
+            node(
+                func=emit_onset_groups,
+                inputs=[
+                    "raw_motif_json_corpus",
+                    "written_time_maps",
+                    "voice_lane_emissions",
+                ],
+                outputs="onset_group_emissions",
+                name="emit_onset_groups",
             ),
             node(
                 func=emit_point_control_events,
