@@ -13,6 +13,7 @@ from motifml.pipelines.ir_build.models import DiagnosticSeverity
 from motifml.pipelines.ir_build.nodes import (
     build_written_time_map,
     emit_bars,
+    emit_note_events,
     emit_onset_groups,
     emit_parts_and_staves,
     emit_point_control_events,
@@ -35,6 +36,9 @@ EXPECTED_SPAN_CONTROLS_IN_FIXTURE = 2
 EXPECTED_VOICE_LANES_WITH_REENTRY = 5
 EXPECTED_PRIMARY_TUPLET_NUMERATOR = 3
 EXPECTED_PRIMARY_TUPLET_DENOMINATOR = 2
+EXPECTED_SINGLE_NOTE_OCTAVE = 4
+EXPECTED_TECHNIQUE_STRING_NUMBER = 2
+EXPECTED_HARMONIC_FRET = 5.0
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "motif_json"
 
 
@@ -560,6 +564,131 @@ def test_emit_onset_groups_do_not_create_implicit_onsets_when_voices_reenter():
     assert all(onset.attack_order_in_voice == 0 for onset in voice_one_onsets)
 
 
+def test_emit_note_events_maps_single_notes_with_parent_onset_time():
+    score = _minimal_canonical_score()
+
+    result = _emit_note_events_result(score=score, relative_path="single-note.json")
+
+    assert result.passed is True
+    assert len(result.note_events) == 1
+    note = result.note_events[0]
+    assert note.note_id == "note:onset:voice:staff:part:1:0:0:0:0:0"
+    assert note.onset_id == "onset:voice:staff:part:1:0:0:0:0"
+    assert note.part_id == "part:1"
+    assert note.staff_id == "staff:part:1:0"
+    assert note.time == ScoreTime(0, 1)
+    assert note.attack_duration == ScoreTime(1, 4)
+    assert note.sounding_duration == ScoreTime(1, 4)
+    assert note.pitch is not None
+    assert note.pitch.step.value == "C"
+    assert note.pitch.octave == EXPECTED_SINGLE_NOTE_OCTAVE
+
+
+def test_emit_note_events_extracts_ties_and_string_display_metadata():
+    score = _load_fixture("single_track_monophonic_pickup.json")
+
+    result = _emit_note_events_result(
+        score=score,
+        relative_path="single_track_monophonic_pickup.json",
+    )
+
+    assert result.passed is True
+    assert [note.time for note in result.note_events] == [
+        ScoreTime(0, 1),
+        ScoreTime(1, 2),
+        ScoreTime(3, 4),
+    ]
+    assert result.note_events[0].sounding_duration == ScoreTime(1, 2)
+    assert result.note_events[0].string_number == 1
+    assert result.note_events[0].show_string_number is True
+    assert result.note_events[0].techniques is not None
+    assert result.note_events[0].techniques.generic.tie_origin is True
+    assert result.note_events[1].techniques is not None
+    assert result.note_events[1].techniques.generic.tie_destination is True
+
+
+def test_emit_note_events_extracts_fretted_string_technique_payloads():
+    score = _load_fixture("guitar_techniques_tuplets.json")
+
+    result = _emit_note_events_result(
+        score=score,
+        relative_path="guitar_techniques_tuplets.json",
+    )
+
+    assert result.passed is True
+    technique_note = next(
+        note
+        for note in result.note_events
+        if note.pitch is not None and note.pitch.step.value == "E"
+    )
+    assert technique_note.string_number == EXPECTED_TECHNIQUE_STRING_NUMBER
+    assert technique_note.show_string_number is True
+    assert technique_note.techniques is not None
+    assert technique_note.techniques.generic.legato_origin is True
+    assert technique_note.techniques.string_fretted is not None
+    assert technique_note.techniques.string_fretted.slide_types == (1,)
+    assert technique_note.techniques.string_fretted.hopo_type == 1
+    assert technique_note.techniques.string_fretted.harmonic_type == 1
+    assert technique_note.techniques.string_fretted.harmonic_kind == 1
+    assert (
+        technique_note.techniques.string_fretted.harmonic_fret == EXPECTED_HARMONIC_FRET
+    )
+    assert technique_note.techniques.string_fretted.bend_enabled is True
+
+
+def test_emit_note_events_sorts_notes_by_string_then_pitch_within_an_onset():
+    score = _minimal_canonical_score()
+    score["tracks"][0]["staves"][0]["measures"][0]["voices"][0]["beats"][0]["notes"] = [
+        {
+            "id": 1003,
+            "pitch": {"step": "E", "octave": 4},
+            "stringNumber": 2,
+            "showStringNumber": True,
+            "duration": {"numerator": 1, "denominator": 4},
+            "soundingDuration": {"numerator": 1, "denominator": 4},
+        },
+        {
+            "id": 1002,
+            "pitch": {"step": "G", "octave": 4},
+            "duration": {"numerator": 1, "denominator": 4},
+            "soundingDuration": {"numerator": 1, "denominator": 4},
+        },
+        {
+            "id": 1001,
+            "pitch": {"step": "D", "octave": 4},
+            "stringNumber": 1,
+            "showStringNumber": True,
+            "duration": {"numerator": 1, "denominator": 4},
+            "soundingDuration": {"numerator": 1, "denominator": 4},
+        },
+        {
+            "id": 1000,
+            "pitch": {"step": "C", "octave": 4},
+            "duration": {"numerator": 1, "denominator": 4},
+            "soundingDuration": {"numerator": 1, "denominator": 4},
+        },
+    ]
+
+    result = _emit_note_events_result(score=score, relative_path="sorted-chord.json")
+
+    assert result.passed is True
+    assert [note.string_number for note in result.note_events] == [1, 2, None, None]
+    assert [
+        note.pitch.step.value for note in result.note_events if note.pitch is not None
+    ] == [
+        "D",
+        "E",
+        "C",
+        "G",
+    ]
+    assert [note.note_id for note in result.note_events] == [
+        "note:onset:voice:staff:part:1:0:0:0:0:0",
+        "note:onset:voice:staff:part:1:0:0:0:0:1",
+        "note:onset:voice:staff:part:1:0:0:0:0:2",
+        "note:onset:voice:staff:part:1:0:0:0:0:3",
+    ]
+
+
 def test_emit_point_control_events_maps_supported_kinds_in_canonical_order():
     score = _load_fixture("ensemble_polyphony_controls.json")
 
@@ -819,6 +948,40 @@ def _emit_onset_groups_result(
         documents,
         written_time_maps,
         voice_lane_emissions,
+    )[0]
+
+
+def _emit_note_events_result(
+    score: dict[str, object],
+    relative_path: str,
+):
+    documents = [
+        MotifJsonDocument(
+            relative_path=relative_path,
+            sha256=relative_path,
+            file_size_bytes=0,
+            score=score,
+        )
+    ]
+    validation_results = validate_canonical_score_surface(documents)
+    part_staff_emissions = emit_parts_and_staves(documents, validation_results)
+    written_time_maps = build_written_time_map(documents, validation_results)
+    bar_emissions = emit_bars(documents, written_time_maps)
+    voice_lane_emissions = emit_voice_lanes(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+    )
+    onset_group_emissions = emit_onset_groups(
+        documents,
+        written_time_maps,
+        voice_lane_emissions,
+    )
+    return emit_note_events(
+        documents,
+        written_time_maps,
+        voice_lane_emissions,
+        onset_group_emissions,
     )[0]
 
 
