@@ -40,7 +40,7 @@
       ],
       "raw_motif_json_path": "motif_json/single_track_monophonic_pickup.json",
       "golden_ir_path": "ir/golden/single_track_monophonic_pickup.ir.json",
-      "golden_ir_review_status": "provisional_pending_human_review"
+      "golden_ir_review_status": "approved_by_human"
     },
     {
       "fixture_id": "ensemble_polyphony_controls",
@@ -57,7 +57,7 @@
       ],
       "raw_motif_json_path": "motif_json/ensemble_polyphony_controls.json",
       "golden_ir_path": "ir/golden/ensemble_polyphony_controls.ir.json",
-      "golden_ir_review_status": "provisional_pending_human_review"
+      "golden_ir_review_status": "approved_by_human"
     },
     {
       "fixture_id": "guitar_techniques_tuplets",
