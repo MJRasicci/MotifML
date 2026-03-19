@@ -365,7 +365,8 @@
       "pitch": {
         "step": "D",
         "octave": 5
-      }
+      },
+      "velocity": 76
     },
     {
       "note_id": "note:onset:voice:staff:part:clarinet:0:1:0:0:0",
@@ -387,7 +388,8 @@
       "pitch": {
         "step": "G",
         "octave": 5
-      }
+      },
+      "velocity": 82
     },
     {
       "note_id": "note:onset:voice:staff:part:piano:0:0:0:0:0",
@@ -409,7 +411,8 @@
       "pitch": {
         "step": "C",
         "octave": 5
-      }
+      },
+      "velocity": 72
     },
     {
       "note_id": "note:onset:voice:staff:part:piano:0:0:0:0:1",
@@ -431,7 +434,8 @@
       "pitch": {
         "step": "E",
         "octave": 5
-      }
+      },
+      "velocity": 72
     },
     {
       "note_id": "note:onset:voice:staff:part:piano:0:1:0:0:0",
@@ -453,7 +457,8 @@
       "pitch": {
         "step": "D",
         "octave": 6
-      }
+      },
+      "velocity": 78
     },
     {
       "note_id": "note:onset:voice:staff:part:piano:1:0:0:0:0",
@@ -475,7 +480,8 @@
       "pitch": {
         "step": "C",
         "octave": 3
-      }
+      },
+      "velocity": 68
     },
     {
       "note_id": "note:onset:voice:staff:part:piano:1:1:0:0:0",
@@ -497,7 +503,8 @@
       "pitch": {
         "step": "F",
         "octave": 2
-      }
+      },
+      "velocity": 68
     }
   ],
   "edges": [

@@ -214,8 +214,20 @@
         "step": "E",
         "octave": 4
       },
+      "velocity": 84,
       "string_number": 1,
-      "show_string_number": true
+      "show_string_number": true,
+      "techniques": {
+        "generic": {
+          "tie_origin": true,
+          "tie_destination": false,
+          "legato_origin": false,
+          "legato_destination": false,
+          "let_ring": false,
+          "muted": false,
+          "palm_muted": false
+        }
+      }
     },
     {
       "note_id": "note:onset:voice:staff:part:lead-guitar:0:1:0:1:0",
@@ -238,8 +250,20 @@
         "step": "E",
         "octave": 4
       },
+      "velocity": 80,
       "string_number": 1,
-      "show_string_number": true
+      "show_string_number": true,
+      "techniques": {
+        "generic": {
+          "tie_origin": false,
+          "tie_destination": true,
+          "legato_origin": false,
+          "legato_destination": false,
+          "let_ring": false,
+          "muted": false,
+          "palm_muted": false
+        }
+      }
     },
     {
       "note_id": "note:onset:voice:staff:part:lead-guitar:0:1:0:2:0",
@@ -262,6 +286,7 @@
         "step": "G",
         "octave": 4
       },
+      "velocity": 88,
       "string_number": 1,
       "show_string_number": true
     }

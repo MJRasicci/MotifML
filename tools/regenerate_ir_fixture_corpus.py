@@ -28,6 +28,7 @@ from motifml.ir.models import (
     Edge,
     EdgeType,
     FermataValue,
+    GenericTechniqueFlags,
     HairpinDirection,
     HairpinValue,
     IrDocumentMetadata,
@@ -43,6 +44,7 @@ from motifml.ir.models import (
     SpanControlEvent,
     SpanControlKind,
     Staff,
+    TechniquePayload,
     TempoChangeValue,
     TimeSignature,
     Transposition,
@@ -1245,8 +1247,12 @@ def _single_track_monophonic_pickup_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 4),
                 sounding_duration=ScoreTime(1, 2),
                 pitch=Pitch(step=PitchStep.E, octave=4),
+                velocity=84,
                 string_number=1,
                 show_string_number=True,
+                techniques=TechniquePayload(
+                    generic=GenericTechniqueFlags(tie_origin=True),
+                ),
             ),
             NoteEvent(
                 note_id=note_one,
@@ -1257,8 +1263,12 @@ def _single_track_monophonic_pickup_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 4),
                 sounding_duration=ScoreTime(1, 4),
                 pitch=Pitch(step=PitchStep.E, octave=4),
+                velocity=80,
                 string_number=1,
                 show_string_number=True,
+                techniques=TechniquePayload(
+                    generic=GenericTechniqueFlags(tie_destination=True),
+                ),
             ),
             NoteEvent(
                 note_id=note_two,
@@ -1269,6 +1279,7 @@ def _single_track_monophonic_pickup_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 2),
                 sounding_duration=ScoreTime(1, 2),
                 pitch=Pitch(step=PitchStep.G, octave=4),
+                velocity=88,
                 string_number=1,
                 show_string_number=True,
             ),
@@ -1575,6 +1586,7 @@ def _ensemble_polyphony_controls_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 2),
                 sounding_duration=ScoreTime(1, 2),
                 pitch=Pitch(step=PitchStep.D, octave=5),
+                velocity=76,
             ),
             NoteEvent(
                 note_id=clarinet_note_one,
@@ -1585,6 +1597,7 @@ def _ensemble_polyphony_controls_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 1),
                 sounding_duration=ScoreTime(1, 1),
                 pitch=Pitch(step=PitchStep.G, octave=5),
+                velocity=82,
             ),
             NoteEvent(
                 note_id=piano_rh_note_zero,
@@ -1595,6 +1608,7 @@ def _ensemble_polyphony_controls_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 2),
                 sounding_duration=ScoreTime(1, 2),
                 pitch=Pitch(step=PitchStep.C, octave=5),
+                velocity=72,
             ),
             NoteEvent(
                 note_id=piano_rh_note_one,
@@ -1605,6 +1619,7 @@ def _ensemble_polyphony_controls_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 2),
                 sounding_duration=ScoreTime(1, 2),
                 pitch=Pitch(step=PitchStep.E, octave=5),
+                velocity=72,
             ),
             NoteEvent(
                 note_id=piano_rh_note_two,
@@ -1615,6 +1630,7 @@ def _ensemble_polyphony_controls_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 1),
                 sounding_duration=ScoreTime(1, 1),
                 pitch=Pitch(step=PitchStep.D, octave=6),
+                velocity=78,
             ),
             NoteEvent(
                 note_id=piano_lh_note_zero,
@@ -1625,6 +1641,7 @@ def _ensemble_polyphony_controls_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 1),
                 sounding_duration=ScoreTime(1, 1),
                 pitch=Pitch(step=PitchStep.C, octave=3),
+                velocity=68,
             ),
             NoteEvent(
                 note_id=piano_lh_note_one,
@@ -1635,6 +1652,7 @@ def _ensemble_polyphony_controls_ir() -> MotifMlIrDocument:
                 attack_duration=ScoreTime(1, 1),
                 sounding_duration=ScoreTime(1, 1),
                 pitch=Pitch(step=PitchStep.F, octave=2),
+                velocity=68,
             ),
         ),
         edges=_contains_edges(
