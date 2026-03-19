@@ -3,13 +3,23 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
 from motifml.ir.ids import bar_id as build_bar_id
 from motifml.ir.ids import part_id as build_part_id
 from motifml.ir.ids import staff_id as build_staff_id
-from motifml.ir.models import Bar, Part, Staff, TimeSignature, Transposition
+from motifml.ir.ids import voice_lane_chain_id as build_voice_lane_chain_id
+from motifml.ir.ids import voice_lane_id as build_voice_lane_id
+from motifml.ir.models import (
+    Bar,
+    Part,
+    Staff,
+    TimeSignature,
+    Transposition,
+    VoiceLane,
+)
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.ir_build.models import (
     BarEmissionResult,
@@ -17,6 +27,7 @@ from motifml.pipelines.ir_build.models import (
     DiagnosticSeverity,
     IrBuildDiagnostic,
     PartStaffEmissionResult,
+    VoiceLaneEmissionResult,
     WrittenTimeMapEntry,
     WrittenTimeMapResult,
 )
@@ -35,6 +46,23 @@ RELATION_HINT_FIELDS = (
     "tieDestination",
     "tieOrigin",
 )
+
+
+@dataclass(frozen=True)
+class _VoiceLaneBuildContext:
+    part_identifier: str
+    staff_identifier: str
+    bar_index: int
+    bar_id: str
+    voice_path: str
+
+
+@dataclass(frozen=True)
+class _VoiceLaneStaffBuildContext:
+    part_identifier: str
+    staff_path: str
+    known_staff_ids: frozenset[str]
+    bar_ids_by_index: dict[int, str]
 
 
 def validate_canonical_score_surface(
@@ -225,6 +253,82 @@ def emit_bars(
                 relative_path=document.relative_path,
                 source_hash=document.sha256,
                 bars=bars,
+                diagnostics=tuple(diagnostics),
+            )
+        )
+
+    return emissions
+
+
+def emit_voice_lanes(
+    documents: list[MotifJsonDocument],
+    part_staff_emissions: list[PartStaffEmissionResult],
+    bar_emissions: list[BarEmissionResult],
+) -> list[VoiceLaneEmissionResult]:
+    """Emit bar-scoped voice lanes from validated raw voice structures."""
+    part_staff_by_path = {
+        result.relative_path: result for result in part_staff_emissions
+    }
+    bars_by_path = {result.relative_path: result for result in bar_emissions}
+    emissions: list[VoiceLaneEmissionResult] = []
+
+    for document in sorted(documents, key=lambda item: item.relative_path.casefold()):
+        part_staff_emission = part_staff_by_path.get(document.relative_path)
+        bar_emission = bars_by_path.get(document.relative_path)
+        diagnostics: list[IrBuildDiagnostic] = []
+        voice_lanes: tuple[VoiceLane, ...] = ()
+
+        if part_staff_emission is None:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="missing_part_staff_emission",
+                    message="part/staff emission must run before voice lane emission.",
+                )
+            )
+        elif bar_emission is None:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="missing_bar_emission",
+                    message="bar emission must run before voice lane emission.",
+                )
+            )
+        elif not part_staff_emission.passed:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="part_staff_emission_failed",
+                    message=(
+                        "voice lanes cannot be emitted because part/staff emission "
+                        "contains fatal diagnostics."
+                    ),
+                )
+            )
+        elif not bar_emission.passed:
+            diagnostics.append(
+                _error(
+                    path="$",
+                    code="bar_emission_failed",
+                    message=(
+                        "voice lanes cannot be emitted because bar emission "
+                        "contains fatal diagnostics."
+                    ),
+                )
+            )
+        else:
+            voice_lanes, emitted_diagnostics = _emit_voice_lane_models(
+                score=document.score,
+                part_staff_emission=part_staff_emission,
+                bar_emission=bar_emission,
+            )
+            diagnostics.extend(emitted_diagnostics)
+
+        emissions.append(
+            VoiceLaneEmissionResult(
+                relative_path=document.relative_path,
+                source_hash=document.sha256,
+                voice_lanes=voice_lanes,
                 diagnostics=tuple(diagnostics),
             )
         )
@@ -721,6 +825,284 @@ def _emit_bar_models(
 
     sortable_bars.sort(key=lambda item: (item[0], item[1]))
     return tuple(bar for _, _, bar in sortable_bars), diagnostics
+
+
+def _emit_voice_lane_models(
+    score: dict[str, Any],
+    part_staff_emission: PartStaffEmissionResult,
+    bar_emission: BarEmissionResult,
+) -> tuple[tuple[VoiceLane, ...], list[IrBuildDiagnostic]]:
+    diagnostics: list[IrBuildDiagnostic] = []
+    tracks = score.get("tracks")
+    if not isinstance(tracks, list):
+        diagnostics.append(
+            _error(
+                path="tracks",
+                code="missing_canonical_field",
+                message="canonical field 'tracks' is required.",
+            )
+        )
+        return (), diagnostics
+
+    known_staff_ids = {staff.staff_id for staff in part_staff_emission.staves}
+    bar_ids_by_index = {bar.bar_index: bar.bar_id for bar in bar_emission.bars}
+    sortable_voice_lanes: list[tuple[int, str, int, VoiceLane]] = []
+
+    for track_index, track in enumerate(tracks):
+        sortable_voice_lanes.extend(
+            _emit_voice_lanes_for_track(
+                track=track,
+                track_path=f"tracks[{track_index}]",
+                known_staff_ids=known_staff_ids,
+                bar_ids_by_index=bar_ids_by_index,
+                diagnostics=diagnostics,
+            )
+        )
+
+    sortable_voice_lanes.sort(
+        key=lambda item: (item[0], item[1], item[2], item[3].voice_lane_id)
+    )
+    return tuple(item[3] for item in sortable_voice_lanes), diagnostics
+
+
+def _emit_voice_lanes_for_track(
+    track: object,
+    track_path: str,
+    known_staff_ids: set[str],
+    bar_ids_by_index: dict[int, str],
+    diagnostics: list[IrBuildDiagnostic],
+) -> list[tuple[int, str, int, VoiceLane]]:
+    if not isinstance(track, Mapping):
+        diagnostics.append(
+            _error(
+                path=track_path,
+                code="invalid_canonical_field",
+                message="tracks entries must be objects.",
+            )
+        )
+        return []
+
+    track_identity = track.get("id")
+    if not isinstance(track_identity, int | str):
+        diagnostics.append(
+            _error(
+                path=f"{track_path}.id",
+                code="invalid_canonical_field",
+                message="tracks entries must include an integer or string id.",
+            )
+        )
+        return []
+
+    staves = _require_list_field(
+        track,
+        field_name="staves",
+        path=f"{track_path}.staves",
+        diagnostics=diagnostics,
+    )
+    if staves is None:
+        return []
+
+    part_identifier = build_part_id(track_identity)
+    sortable_voice_lanes: list[tuple[int, str, int, VoiceLane]] = []
+    for staff_ordinal, raw_staff in enumerate(staves):
+        sortable_voice_lanes.extend(
+            _emit_voice_lanes_for_staff(
+                context=_VoiceLaneStaffBuildContext(
+                    part_identifier=part_identifier,
+                    staff_path=f"{track_path}.staves[{staff_ordinal}]",
+                    known_staff_ids=frozenset(known_staff_ids),
+                    bar_ids_by_index=bar_ids_by_index,
+                ),
+                raw_staff=raw_staff,
+                diagnostics=diagnostics,
+            )
+        )
+
+    return sortable_voice_lanes
+
+
+def _emit_voice_lanes_for_staff(
+    context: _VoiceLaneStaffBuildContext,
+    raw_staff: object,
+    diagnostics: list[IrBuildDiagnostic],
+) -> list[tuple[int, str, int, VoiceLane]]:
+    if not isinstance(raw_staff, Mapping):
+        diagnostics.append(
+            _error(
+                path=context.staff_path,
+                code="invalid_canonical_field",
+                message="staves entries must be objects.",
+            )
+        )
+        return []
+
+    staff_index = _coerce_required_int(
+        raw_staff.get("staffIndex"),
+        path=f"{context.staff_path}.staffIndex",
+        diagnostics=diagnostics,
+    )
+    if staff_index is None:
+        return []
+
+    measures = _require_list_field(
+        raw_staff,
+        field_name="measures",
+        path=f"{context.staff_path}.measures",
+        diagnostics=diagnostics,
+    )
+    if measures is None:
+        return []
+
+    staff_identifier = build_staff_id(context.part_identifier, staff_index)
+    if staff_identifier not in context.known_staff_ids:
+        diagnostics.append(
+            _error(
+                path=context.staff_path,
+                code="missing_staff_reference",
+                message=f"no emitted staff exists for staff id '{staff_identifier}'.",
+            )
+        )
+        return []
+
+    sortable_voice_lanes: list[tuple[int, str, int, VoiceLane]] = []
+
+    for measure_ordinal, measure in enumerate(measures):
+        measure_path = f"{context.staff_path}.measures[{measure_ordinal}]"
+        if not isinstance(measure, Mapping):
+            diagnostics.append(
+                _error(
+                    path=measure_path,
+                    code="invalid_canonical_field",
+                    message="measures entries must be objects.",
+                )
+            )
+            continue
+
+        bar_index = _coerce_required_int(
+            measure.get("index"),
+            path=f"{measure_path}.index",
+            diagnostics=diagnostics,
+        )
+        if bar_index is None:
+            continue
+
+        bar_id = context.bar_ids_by_index.get(bar_index)
+        if bar_id is None:
+            diagnostics.append(
+                _error(
+                    path=measure_path,
+                    code="missing_bar_reference",
+                    message=f"no emitted bar exists for bar index {bar_index}.",
+                )
+            )
+            continue
+
+        voices = _require_list_field(
+            measure,
+            field_name="voices",
+            path=f"{measure_path}.voices",
+            diagnostics=diagnostics,
+        )
+        if voices is None:
+            continue
+
+        seen_voice_indexes: set[int] = set()
+        for voice_ordinal, voice in enumerate(voices):
+            emitted = _emit_voice_lane_for_voice(
+                context=_VoiceLaneBuildContext(
+                    part_identifier=context.part_identifier,
+                    staff_identifier=staff_identifier,
+                    bar_index=bar_index,
+                    bar_id=bar_id,
+                    voice_path=f"{measure_path}.voices[{voice_ordinal}]",
+                ),
+                voice=voice,
+                seen_voice_indexes=seen_voice_indexes,
+                diagnostics=diagnostics,
+            )
+            if emitted is not None:
+                sortable_voice_lanes.append(emitted)
+
+    return sortable_voice_lanes
+
+
+def _emit_voice_lane_for_voice(
+    context: _VoiceLaneBuildContext,
+    voice: object,
+    seen_voice_indexes: set[int],
+    diagnostics: list[IrBuildDiagnostic],
+) -> tuple[int, str, int, VoiceLane] | None:
+    emitted_voice_lane: tuple[int, str, int, VoiceLane] | None = None
+    if not isinstance(voice, Mapping):
+        diagnostics.append(
+            _error(
+                path=context.voice_path,
+                code="invalid_canonical_field",
+                message="voices entries must be objects.",
+            )
+        )
+    else:
+        voice_index = _coerce_required_int(
+            voice.get("voiceIndex"),
+            path=f"{context.voice_path}.voiceIndex",
+            diagnostics=diagnostics,
+        )
+        if voice_index is not None:
+            if voice_index in seen_voice_indexes:
+                diagnostics.append(
+                    _error(
+                        path=f"{context.voice_path}.voiceIndex",
+                        code="duplicate_voice_index",
+                        message=(
+                            f"voice index {voice_index} appears more than once "
+                            "within the same measure."
+                        ),
+                    )
+                )
+            else:
+                beats = _require_list_field(
+                    voice,
+                    field_name="beats",
+                    path=f"{context.voice_path}.beats",
+                    diagnostics=diagnostics,
+                )
+                if beats is not None:
+                    seen_voice_indexes.add(voice_index)
+                    if _voice_contains_authored_content(beats):
+                        try:
+                            voice_lane = VoiceLane(
+                                voice_lane_id=build_voice_lane_id(
+                                    context.staff_identifier,
+                                    context.bar_index,
+                                    voice_index,
+                                ),
+                                voice_lane_chain_id=build_voice_lane_chain_id(
+                                    context.part_identifier,
+                                    context.staff_identifier,
+                                    voice_index,
+                                ),
+                                part_id=context.part_identifier,
+                                staff_id=context.staff_identifier,
+                                bar_id=context.bar_id,
+                                voice_index=voice_index,
+                            )
+                        except ValueError as exc:
+                            diagnostics.append(
+                                _error(
+                                    path=context.voice_path,
+                                    code="invalid_canonical_field",
+                                    message=str(exc),
+                                )
+                            )
+                        else:
+                            emitted_voice_lane = (
+                                context.bar_index,
+                                context.staff_identifier,
+                                voice_index,
+                                voice_lane,
+                            )
+
+    return emitted_voice_lane
 
 
 def _validate_track_surfaces(
@@ -1325,6 +1707,10 @@ def _coerce_time_signature(
             )
         )
         return None
+
+
+def _voice_contains_authored_content(beats: list[object]) -> bool:
+    return any(isinstance(beat, Mapping) for beat in beats)
 
 
 def _has_relation_hints(articulation: Mapping[str, Any]) -> bool:

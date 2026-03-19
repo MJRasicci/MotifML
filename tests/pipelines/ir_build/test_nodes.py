@@ -14,6 +14,7 @@ from motifml.pipelines.ir_build.nodes import (
     build_written_time_map,
     emit_bars,
     emit_parts_and_staves,
+    emit_voice_lanes,
     validate_canonical_score_surface,
 )
 
@@ -23,6 +24,7 @@ EXPECTED_TIME_MAP_CONTIGUITY_ERRORS = 1
 EXPECTED_TRANSPOSED_CHROMATIC = 2
 EXPECTED_CAPO_FRET = 2
 EXPECTED_KEY_ACCIDENTALS = -2
+EXPECTED_VOICE_LANES_WITH_REENTRY = 5
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "motif_json"
 
 
@@ -367,6 +369,88 @@ def test_emit_bars_extracts_key_and_triplet_feel_metadata():
     assert result.bars[1].triplet_feel == "eighth"
 
 
+def test_emit_voice_lanes_maps_single_voice_lanes_deterministically():
+    score = _minimal_canonical_score()
+    score["timelineBars"].append(
+        {
+            "index": 1,
+            "timeSignature": "4/4",
+            "start": {"numerator": 1, "denominator": 1},
+            "duration": {"numerator": 1, "denominator": 1},
+        }
+    )
+    score["tracks"][0]["staves"][0]["measures"].append(
+        {
+            "index": 1,
+            "staffIndex": 0,
+            "voices": [
+                {
+                    "voiceIndex": 0,
+                    "beats": [
+                        {
+                            "id": 101,
+                            "offset": {"numerator": 0, "denominator": 1},
+                            "duration": {"numerator": 1, "denominator": 4},
+                            "notes": [],
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    result = _emit_voice_lanes_result(score=score, relative_path="single-voice.json")
+
+    assert result.passed is True
+    assert [voice_lane.voice_lane_id for voice_lane in result.voice_lanes] == [
+        "voice:staff:part:1:0:0:0",
+        "voice:staff:part:1:0:1:0",
+    ]
+    assert all(
+        voice_lane.voice_lane_chain_id == "voice-chain:part:1:staff:part:1:0:0"
+        for voice_lane in result.voice_lanes
+    )
+
+
+def test_emit_voice_lanes_keeps_chain_ids_stable_when_voices_reenter():
+    score = _load_fixture("voice_reentry.json")
+
+    result = _emit_voice_lanes_result(
+        score=score,
+        relative_path="voice_reentry.json",
+    )
+
+    assert result.passed is True
+    assert len(result.voice_lanes) == EXPECTED_VOICE_LANES_WITH_REENTRY
+
+    voice_one_lanes = [
+        voice_lane for voice_lane in result.voice_lanes if voice_lane.voice_index == 1
+    ]
+    assert [voice_lane.bar_id for voice_lane in voice_one_lanes] == ["bar:0", "bar:2"]
+    assert {voice_lane.voice_lane_chain_id for voice_lane in voice_one_lanes} == {
+        "voice-chain:part:4:staff:part:4:0:1"
+    }
+
+
+def test_emit_voice_lanes_skips_empty_placeholder_voices():
+    score = _minimal_canonical_score()
+    score["tracks"][0]["staves"][0]["measures"][0]["voices"].append(
+        {
+            "voiceIndex": 1,
+            "beats": [],
+        }
+    )
+
+    result = _emit_voice_lanes_result(
+        score=score,
+        relative_path="empty-placeholder-voice.json",
+    )
+
+    assert result.passed is True
+    assert len(result.voice_lanes) == 1
+    assert result.voice_lanes[0].voice_index == 0
+
+
 def _build_written_time_map_result(
     score: dict[str, object],
     relative_path: str,
@@ -414,6 +498,25 @@ def _emit_bars_result(
     validation_results = validate_canonical_score_surface(documents)
     written_time_maps = build_written_time_map(documents, validation_results)
     return emit_bars(documents, written_time_maps)[0]
+
+
+def _emit_voice_lanes_result(
+    score: dict[str, object],
+    relative_path: str,
+):
+    documents = [
+        MotifJsonDocument(
+            relative_path=relative_path,
+            sha256=relative_path,
+            file_size_bytes=0,
+            score=score,
+        )
+    ]
+    validation_results = validate_canonical_score_surface(documents)
+    part_staff_emissions = emit_parts_and_staves(documents, validation_results)
+    written_time_maps = build_written_time_map(documents, validation_results)
+    bar_emissions = emit_bars(documents, written_time_maps)
+    return emit_voice_lanes(documents, part_staff_emissions, bar_emissions)[0]
 
 
 def _minimal_canonical_score() -> dict[str, object]:

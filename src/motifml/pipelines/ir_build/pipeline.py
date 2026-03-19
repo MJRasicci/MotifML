@@ -8,6 +8,7 @@ from motifml.pipelines.ir_build.nodes import (
     build_written_time_map,
     emit_bars,
     emit_parts_and_staves,
+    emit_voice_lanes,
     validate_canonical_score_surface,
 )
 
@@ -41,6 +42,16 @@ def create_pipeline(**kwargs: object) -> Pipeline:
                 inputs=["raw_motif_json_corpus", "written_time_maps"],
                 outputs="bar_emissions",
                 name="emit_bars",
+            ),
+            node(
+                func=emit_voice_lanes,
+                inputs=[
+                    "raw_motif_json_corpus",
+                    "part_staff_emissions",
+                    "bar_emissions",
+                ],
+                outputs="voice_lane_emissions",
+                name="emit_voice_lanes",
             ),
         ],
         tags=["ir_build"],
