@@ -7,12 +7,14 @@ from copy import deepcopy
 from pathlib import Path
 
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
+from motifml.ir.ids import edge_sort_key
 from motifml.ir.models import RhythmBaseValue, TimeSignature
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.ir_build.models import DiagnosticSeverity
 from motifml.pipelines.ir_build.nodes import (
     build_written_time_map,
     emit_bars,
+    emit_intrinsic_edges,
     emit_note_events,
     emit_onset_groups,
     emit_parts_and_staves,
@@ -39,6 +41,7 @@ EXPECTED_PRIMARY_TUPLET_DENOMINATOR = 2
 EXPECTED_SINGLE_NOTE_OCTAVE = 4
 EXPECTED_TECHNIQUE_STRING_NUMBER = 2
 EXPECTED_HARMONIC_FRET = 5.0
+EXPECTED_NEXT_IN_VOICE_EDGES_WITH_REENTRY = 3
 FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "motif_json"
 
 
@@ -689,6 +692,128 @@ def test_emit_note_events_sorts_notes_by_string_then_pitch_within_an_onset():
     ]
 
 
+def test_emit_intrinsic_edges_emits_complete_containment_and_tie_edges():
+    score = _load_fixture("single_track_monophonic_pickup.json")
+
+    (
+        result,
+        part_staff_result,
+        voice_lane_result,
+        onset_group_result,
+        note_event_result,
+    ) = _emit_intrinsic_edges_bundle(
+        score=score,
+        relative_path="single_track_monophonic_pickup.json",
+    )
+
+    assert result.passed is True
+    contains_edges = [
+        edge for edge in result.edges if edge.edge_type.value == "contains"
+    ]
+    assert len(contains_edges) == (
+        len(part_staff_result.staves)
+        + len(voice_lane_result.voice_lanes)
+        + len(onset_group_result.onset_groups)
+        + len(note_event_result.note_events)
+    )
+    assert (
+        "note:onset:voice:staff:part:1:0:0:0:0:0",
+        "tie_to",
+        "note:onset:voice:staff:part:1:0:1:0:1:0",
+    ) in [
+        (edge.source_id, edge.edge_type.value, edge.target_id) for edge in result.edges
+    ]
+    edge_records = [
+        (edge.source_id, edge.edge_type.value, edge.target_id) for edge in result.edges
+    ]
+    assert edge_records == sorted(
+        edge_records,
+        key=lambda item: edge_sort_key(item[0], item[1], item[2]),
+    )
+
+
+def test_emit_intrinsic_edges_links_cross_bar_successors_within_voice_lane_chains():
+    score = _load_fixture("voice_reentry.json")
+
+    result = _emit_intrinsic_edges_result(
+        score=score,
+        relative_path="voice_reentry.json",
+    )
+
+    assert result.passed is True
+    next_edges = [
+        (edge.source_id, edge.target_id)
+        for edge in result.edges
+        if edge.edge_type.value == "next_in_voice"
+    ]
+    assert len(next_edges) == EXPECTED_NEXT_IN_VOICE_EDGES_WITH_REENTRY
+    assert (
+        "onset:voice:staff:part:4:0:0:1:0",
+        "onset:voice:staff:part:4:0:2:1:0",
+    ) in next_edges
+
+
+def test_emit_intrinsic_edges_maps_supported_note_relations_to_technique_edges():
+    score = _load_fixture("guitar_techniques_tuplets.json")
+
+    result = _emit_intrinsic_edges_result(
+        score=score,
+        relative_path="guitar_techniques_tuplets.json",
+    )
+
+    assert result.passed is True
+    technique_edges = [
+        (edge.source_id, edge.edge_type.value, edge.target_id)
+        for edge in result.edges
+        if edge.edge_type.value == "technique_to"
+    ]
+    assert technique_edges == [
+        (
+            "note:onset:voice:staff:part:3:0:0:0:1:0",
+            "technique_to",
+            "note:onset:voice:staff:part:3:0:0:0:2:0",
+        ),
+        (
+            "note:onset:voice:staff:part:3:0:0:0:1:0",
+            "technique_to",
+            "note:onset:voice:staff:part:3:0:0:0:3:0",
+        ),
+        (
+            "note:onset:voice:staff:part:3:0:0:0:2:0",
+            "technique_to",
+            "note:onset:voice:staff:part:3:0:0:0:3:0",
+        ),
+    ]
+
+
+def test_emit_intrinsic_edges_reports_dangling_note_relation_targets():
+    score = _minimal_canonical_score()
+    score["tracks"][0]["staves"][0]["measures"][0]["voices"][0]["beats"][0]["notes"][0][
+        "articulation"
+    ] = {
+        "tieOrigin": True,
+        "relations": [
+            {
+                "kind": "Tie",
+                "targetNoteId": 9999,
+            }
+        ],
+    }
+
+    result = _emit_intrinsic_edges_result(
+        score=score,
+        relative_path="dangling-note-relation.json",
+    )
+
+    assert result.passed is False
+    assert not any(edge.edge_type.value == "tie_to" for edge in result.edges)
+    assert any(
+        diagnostic.code == "missing_note_event_reference"
+        and diagnostic.path.endswith("targetNoteId")
+        for diagnostic in result.diagnostics
+    )
+
+
 def test_emit_point_control_events_maps_supported_kinds_in_canonical_order():
     score = _load_fixture("ensemble_polyphony_controls.json")
 
@@ -982,6 +1107,65 @@ def _emit_note_events_result(
         written_time_maps,
         voice_lane_emissions,
         onset_group_emissions,
+    )[0]
+
+
+def _emit_intrinsic_edges_bundle(
+    score: dict[str, object],
+    relative_path: str,
+):
+    documents = [
+        MotifJsonDocument(
+            relative_path=relative_path,
+            sha256=relative_path,
+            file_size_bytes=0,
+            score=score,
+        )
+    ]
+    validation_results = validate_canonical_score_surface(documents)
+    part_staff_emissions = emit_parts_and_staves(documents, validation_results)
+    written_time_maps = build_written_time_map(documents, validation_results)
+    bar_emissions = emit_bars(documents, written_time_maps)
+    voice_lane_emissions = emit_voice_lanes(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+    )
+    onset_group_emissions = emit_onset_groups(
+        documents,
+        written_time_maps,
+        voice_lane_emissions,
+    )
+    note_event_emissions = emit_note_events(
+        documents,
+        written_time_maps,
+        voice_lane_emissions,
+        onset_group_emissions,
+    )
+    intrinsic_edge_emissions = emit_intrinsic_edges(
+        documents,
+        part_staff_emissions,
+        bar_emissions,
+        voice_lane_emissions,
+        onset_group_emissions,
+        note_event_emissions,
+    )
+    return (
+        intrinsic_edge_emissions[0],
+        part_staff_emissions[0],
+        voice_lane_emissions[0],
+        onset_group_emissions[0],
+        note_event_emissions[0],
+    )
+
+
+def _emit_intrinsic_edges_result(
+    score: dict[str, object],
+    relative_path: str,
+):
+    return _emit_intrinsic_edges_bundle(
+        score=score,
+        relative_path=relative_path,
     )[0]
 
 

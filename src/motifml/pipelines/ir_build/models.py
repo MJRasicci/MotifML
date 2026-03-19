@@ -7,6 +7,7 @@ from enum import StrEnum
 
 from motifml.ir.ids import (
     bar_sort_key,
+    edge_sort_key,
     note_sort_key,
     onset_sort_key,
     part_sort_key,
@@ -18,6 +19,7 @@ from motifml.ir.ids import (
 )
 from motifml.ir.models import (
     Bar,
+    Edge,
     NoteEvent,
     OnsetGroup,
     Part,
@@ -467,6 +469,62 @@ class NoteEventEmissionResult:
 
 
 @dataclass(frozen=True)
+class IntrinsicEdgeEmissionResult:
+    """Typed intrinsic-edge emission result for one validated raw score."""
+
+    relative_path: str
+    source_hash: str
+    edges: tuple[Edge, ...] = ()
+    diagnostics: tuple[IrBuildDiagnostic, ...] = ()
+    passed: bool = field(init=False)
+    error_count: int = field(init=False)
+    warning_count: int = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "relative_path",
+            _normalize_text(self.relative_path, "relative_path"),
+        )
+        object.__setattr__(
+            self,
+            "source_hash",
+            _normalize_text(self.source_hash, "source_hash"),
+        )
+        object.__setattr__(
+            self,
+            "edges",
+            tuple(
+                sorted(
+                    self.edges,
+                    key=lambda item: edge_sort_key(
+                        item.source_id,
+                        item.edge_type.value,
+                        item.target_id,
+                    ),
+                )
+            ),
+        )
+
+        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        object.__setattr__(self, "diagnostics", diagnostics)
+
+        error_count = sum(
+            1
+            for diagnostic in diagnostics
+            if diagnostic.severity is DiagnosticSeverity.ERROR
+        )
+        warning_count = sum(
+            1
+            for diagnostic in diagnostics
+            if diagnostic.severity is DiagnosticSeverity.WARNING
+        )
+        object.__setattr__(self, "error_count", error_count)
+        object.__setattr__(self, "warning_count", warning_count)
+        object.__setattr__(self, "passed", error_count == 0)
+
+
+@dataclass(frozen=True)
 class PointControlEmissionResult:
     """Typed point-control emission result for one validated raw score."""
 
@@ -594,6 +652,7 @@ __all__ = [
     "DiagnosticSeverity",
     "IrBuildDiagnostic",
     "BarEmissionResult",
+    "IntrinsicEdgeEmissionResult",
     "NoteEventEmissionResult",
     "OnsetGroupEmissionResult",
     "PartStaffEmissionResult",

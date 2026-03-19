@@ -7,6 +7,7 @@ from kedro.pipeline import Pipeline, node, pipeline
 from motifml.pipelines.ir_build.nodes import (
     build_written_time_map,
     emit_bars,
+    emit_intrinsic_edges,
     emit_note_events,
     emit_onset_groups,
     emit_parts_and_staves,
@@ -77,6 +78,19 @@ def create_pipeline(**kwargs: object) -> Pipeline:
                 ],
                 outputs="note_event_emissions",
                 name="emit_note_events",
+            ),
+            node(
+                func=emit_intrinsic_edges,
+                inputs=[
+                    "raw_motif_json_corpus",
+                    "part_staff_emissions",
+                    "bar_emissions",
+                    "voice_lane_emissions",
+                    "onset_group_emissions",
+                    "note_event_emissions",
+                ],
+                outputs="intrinsic_edge_emissions",
+                name="emit_intrinsic_edges",
             ),
             node(
                 func=emit_point_control_events,

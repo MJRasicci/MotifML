@@ -39,6 +39,7 @@ __all__ = [
     "bar_id",
     "bar_sort_key",
     "canonical_sort_ids",
+    "edge_sort_key",
     "note_id",
     "note_sort_key",
     "onset_id",
@@ -233,6 +234,23 @@ def sort_key_for_identifier(
     """Return a stable fallback sort key for any IR identifier."""
     prefix, _, suffix = identifier.partition(":")
     return (prefix.casefold(), _identifier_suffix_sort_key(suffix))
+
+
+def edge_sort_key(
+    source_id: str,
+    edge_type: str,
+    target_id: str,
+) -> tuple[
+    tuple[str, tuple[tuple[int, int | str], ...]],
+    str,
+    tuple[str, tuple[tuple[int, int | str], ...]],
+]:
+    """Return the canonical sort key for an intrinsic edge."""
+    return (
+        sort_key_for_identifier(source_id),
+        edge_type.casefold(),
+        sort_key_for_identifier(target_id),
+    )
 
 
 def _prefixed_identifier(prefix: str, *components: object) -> str:

@@ -18,6 +18,7 @@ from motifml.ir.ids import (
     bar_id,
     bar_sort_key,
     canonical_sort_ids,
+    edge_sort_key,
     note_id,
     note_sort_key,
     onset_id,
@@ -252,6 +253,7 @@ def test_family_specific_sort_helpers_return_expected_canonical_keys():
     part_key = part_sort_key("Part B")
     staff_key = staff_sort_key("Part A", 2, "staff:Part A:2")
     bar_key = bar_sort_key(10, "bar:10")
+    edge_key = edge_sort_key("part:Part A", "contains", "staff:Part A:2")
     point_control_key = point_control_sort_key(
         "Score", "score", ScoreTime(1, 4), "ctrlp:score:0"
     )
@@ -263,6 +265,11 @@ def test_family_specific_sort_helpers_return_expected_canonical_keys():
     assert part_key == ("part b", "Part B")
     assert staff_key == ("part a", 2, "staff:Part A:2")
     assert bar_key == (10, "bar:10")
+    assert edge_key == (
+        ("part", ((1, "part a"),)),
+        "contains",
+        ("staff", ((1, "part a"), (0, 2))),
+    )
     assert point_control_key == ("score", "score", ScoreTime(1, 4), "ctrlp:score:0")
     assert span_control_key == (
         "voice",
