@@ -8,11 +8,16 @@ from pathlib import Path
 from jsonschema import Draft202012Validator
 
 from motifml.ir.models import (
+    DerivedEdge,
+    DerivedEdgeSet,
+    DerivedEdgeType,
     MotifMlIrDocument,
     OptionalOverlays,
+    OptionalViews,
     PhraseKind,
     PhraseSource,
     PhraseSpan,
+    PlaybackInstance,
 )
 from motifml.ir.serialization import deserialize_document, serialize_document
 
@@ -80,7 +85,30 @@ def test_phrase_overlay_documents_validate_against_the_checked_in_schema():
                 ),
             )
         ),
-        optional_views=base_document.optional_views,
+        optional_views=OptionalViews(
+            playback_instances=(
+                PlaybackInstance(
+                    instance_id="playback:part:track-a:0",
+                    source_ref="note:onset:voice:staff:part:track-a:0:0:0:0:0",
+                    start_time=base_document.note_events[0].time,
+                    end_time=base_document.note_events[0].time
+                    + base_document.note_events[0].attack_duration,
+                ),
+            ),
+            derived_edge_sets=(
+                DerivedEdgeSet(
+                    name="playback-links",
+                    kind="traversal",
+                    edges=(
+                        DerivedEdge(
+                            source_id="note:onset:voice:staff:part:track-a:0:0:0:0:0",
+                            target_id="note:onset:voice:staff:part:track-a:0:0:0:0:1",
+                            edge_type=DerivedEdgeType.PLAYBACK_NEXT,
+                        ),
+                    ),
+                ),
+            ),
+        ),
     )
 
     errors = list(validator.iter_errors(_load_payload(overlaid_document)))

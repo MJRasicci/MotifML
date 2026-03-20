@@ -1038,6 +1038,94 @@
         }
       }
     },
+    "PlaybackInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "instance_id",
+        "source_ref",
+        "start_time",
+        "end_time"
+      ],
+      "properties": {
+        "instance_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "start_time": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "end_time": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "voice_lane_chain_id": {
+          "type": "string",
+          "pattern": "^voice-chain:"
+        }
+      }
+    },
+    "DerivedEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "target_id",
+        "edge_type"
+      ],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+:"
+        },
+        "target_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+:"
+        },
+        "edge_type": {
+          "type": "string",
+          "enum": [
+            "vertical_overlap",
+            "melodic_interval_to",
+            "harmonic_interval_to",
+            "recurs_with",
+            "playback_next",
+            "next_phrase",
+            "repeats",
+            "varies",
+            "aligns_with"
+          ]
+        }
+      }
+    },
+    "DerivedEdgeSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "kind",
+        "edges"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DerivedEdge"
+          }
+        }
+      }
+    },
     "OptionalViews": {
       "type": "object",
       "additionalProperties": false,
@@ -1047,10 +1135,16 @@
       ],
       "properties": {
         "playback_instances": {
-          "type": "array"
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlaybackInstance"
+          }
         },
         "derived_edge_sets": {
-          "type": "array"
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DerivedEdgeSet"
+          }
         }
       }
     }

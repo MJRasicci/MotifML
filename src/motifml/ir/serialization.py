@@ -20,6 +20,8 @@ from motifml.ir.ids import (
 )
 from motifml.ir.models import (
     Bar,
+    DerivedEdge,
+    DerivedEdgeSet,
     DynamicChangeValue,
     Edge,
     FermataValue,
@@ -36,6 +38,7 @@ from motifml.ir.models import (
     Part,
     PhraseSpan,
     Pitch,
+    PlaybackInstance,
     PointControlEvent,
     PointControlKind,
     RhythmShape,
@@ -178,7 +181,10 @@ def _canonicalize_document(document: MotifMlIrDocument) -> MotifMlIrDocument:
         note_events=sorted_notes,
         edges=sorted_edges,
         optional_overlays=OptionalOverlays(phrase_spans=sorted_phrase_spans),
-        optional_views=document.optional_views,
+        optional_views=OptionalViews(
+            playback_instances=document.optional_views.playback_instances,
+            derived_edge_sets=document.optional_views.derived_edge_sets,
+        ),
     )
 
 
@@ -484,10 +490,48 @@ def _deserialize_optional_overlays(payload: Mapping[str, Any]) -> OptionalOverla
     )
 
 
+def _deserialize_playback_instance(payload: Mapping[str, Any]) -> PlaybackInstance:
+    return PlaybackInstance(
+        instance_id=str(payload["instance_id"]),
+        source_ref=str(payload["source_ref"]),
+        start_time=_deserialize_score_time(payload["start_time"]),
+        end_time=_deserialize_score_time(payload["end_time"]),
+        voice_lane_chain_id=(
+            str(payload["voice_lane_chain_id"])
+            if payload.get("voice_lane_chain_id") is not None
+            else None
+        ),
+    )
+
+
+def _deserialize_derived_edge(payload: Mapping[str, Any]) -> DerivedEdge:
+    return DerivedEdge(
+        source_id=str(payload["source_id"]),
+        target_id=str(payload["target_id"]),
+        edge_type=str(payload["edge_type"]),
+    )
+
+
+def _deserialize_derived_edge_set(payload: Mapping[str, Any]) -> DerivedEdgeSet:
+    return DerivedEdgeSet(
+        name=str(payload["name"]),
+        kind=str(payload["kind"]),
+        edges=tuple(
+            _deserialize_derived_edge(item) for item in payload.get("edges", [])
+        ),
+    )
+
+
 def _deserialize_optional_views(payload: Mapping[str, Any]) -> OptionalViews:
     return OptionalViews(
-        playback_instances=tuple(payload.get("playback_instances", [])),
-        derived_edge_sets=tuple(payload.get("derived_edge_sets", [])),
+        playback_instances=tuple(
+            _deserialize_playback_instance(item)
+            for item in payload.get("playback_instances", [])
+        ),
+        derived_edge_sets=tuple(
+            _deserialize_derived_edge_set(item)
+            for item in payload.get("derived_edge_sets", [])
+        ),
     )
 
 

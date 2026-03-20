@@ -18,6 +18,7 @@ from motifml.ir.ids import (
     STAFF_PREFIX,
     VOICE_LANE_CHAIN_PREFIX,
     VOICE_LANE_PREFIX,
+    edge_sort_key,
 )
 from motifml.ir.time import ScoreTime
 
@@ -89,6 +90,20 @@ class EdgeType(StrEnum):
     NEXT_IN_VOICE = "next_in_voice"
     TIE_TO = "tie_to"
     TECHNIQUE_TO = "technique_to"
+
+
+class DerivedEdgeType(StrEnum):
+    """Optional derived edge families that may be materialized in view layers."""
+
+    VERTICAL_OVERLAP = "vertical_overlap"
+    MELODIC_INTERVAL_TO = "melodic_interval_to"
+    HARMONIC_INTERVAL_TO = "harmonic_interval_to"
+    RECURS_WITH = "recurs_with"
+    PLAYBACK_NEXT = "playback_next"
+    NEXT_PHRASE = "next_phrase"
+    REPEATS = "repeats"
+    VARIES = "varies"
+    ALIGNS_WITH = "aligns_with"
 
 
 class TimeUnit(StrEnum):
@@ -972,6 +987,94 @@ class PhraseSpan:
 
 
 @dataclass(frozen=True)
+class PlaybackInstance:
+    """Placeholder playback-unrolled event span for future derived traversals."""
+
+    instance_id: str
+    source_ref: str
+    start_time: ScoreTime
+    end_time: ScoreTime
+    voice_lane_chain_id: str | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "instance_id",
+            _normalize_optional_text(self.instance_id, "instance_id"),
+        )
+        object.__setattr__(
+            self,
+            "source_ref",
+            _normalize_optional_text(self.source_ref, "source_ref"),
+        )
+        self.start_time.require_non_negative("PlaybackInstance start_time")
+        self.end_time.require_non_negative("PlaybackInstance end_time")
+        if self.end_time <= self.start_time:
+            raise ValueError("PlaybackInstance end_time must be after start_time.")
+
+        if self.voice_lane_chain_id is not None:
+            _require_identifier_prefix(
+                self.voice_lane_chain_id,
+                VOICE_LANE_CHAIN_PREFIX,
+                "voice_lane_chain_id",
+            )
+
+    def sort_key(self) -> tuple[ScoreTime, ScoreTime, str, str]:
+        """Return a stable ordering key for canonical serialization."""
+        return (self.start_time, self.end_time, self.instance_id, self.source_ref)
+
+
+@dataclass(frozen=True)
+class DerivedEdge:
+    """Optional derived relation between IR entities or overlays."""
+
+    source_id: str
+    target_id: str
+    edge_type: DerivedEdgeType
+
+    def __post_init__(self) -> None:
+        _identifier_prefix(self.source_id, "source_id")
+        _identifier_prefix(self.target_id, "target_id")
+        object.__setattr__(
+            self,
+            "edge_type",
+            _coerce_str_enum(self.edge_type, DerivedEdgeType, "edge_type"),
+        )
+
+    def sort_key(
+        self,
+    ) -> tuple[
+        tuple[str, tuple[tuple[int, int | str], ...]],
+        str,
+        tuple[str, tuple[tuple[int, int | str], ...]],
+    ]:
+        """Return a stable ordering key for canonical serialization."""
+        return edge_sort_key(self.source_id, self.edge_type.value, self.target_id)
+
+
+@dataclass(frozen=True)
+class DerivedEdgeSet:
+    """Named container for one optional derived-edge family or analytical slice."""
+
+    name: str
+    kind: str
+    edges: tuple[DerivedEdge, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "name", _normalize_optional_text(self.name, "name"))
+        object.__setattr__(self, "kind", _normalize_optional_text(self.kind, "kind"))
+        object.__setattr__(
+            self,
+            "edges",
+            tuple(sorted(tuple(self.edges), key=lambda edge: edge.sort_key())),
+        )
+
+    def sort_key(self) -> tuple[str, str]:
+        """Return a stable ordering key for canonical serialization."""
+        return (self.kind.casefold(), self.name.casefold())
+
+
+@dataclass(frozen=True)
 class OptionalOverlays:
     """Optional overlay containers kept separate from the canonical backbone."""
 
@@ -985,12 +1088,24 @@ class OptionalOverlays:
 class OptionalViews:
     """Optional derived-view containers kept separate from canonical entities."""
 
-    playback_instances: tuple[object, ...] = ()
-    derived_edge_sets: tuple[object, ...] = ()
+    playback_instances: tuple[PlaybackInstance, ...] = ()
+    derived_edge_sets: tuple[DerivedEdgeSet, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "playback_instances", tuple(self.playback_instances))
-        object.__setattr__(self, "derived_edge_sets", tuple(self.derived_edge_sets))
+        object.__setattr__(
+            self,
+            "playback_instances",
+            tuple(
+                sorted(tuple(self.playback_instances), key=lambda item: item.sort_key())
+            ),
+        )
+        object.__setattr__(
+            self,
+            "derived_edge_sets",
+            tuple(
+                sorted(tuple(self.derived_edge_sets), key=lambda item: item.sort_key())
+            ),
+        )
 
 
 @dataclass(frozen=True)
@@ -1035,6 +1150,9 @@ __all__ = [
     "ControlScope",
     "ControlValue",
     "CANONICAL_CONTAINMENT_PATHS",
+    "DerivedEdge",
+    "DerivedEdgeSet",
+    "DerivedEdgeType",
     "DynamicChangeValue",
     "Edge",
     "EdgeType",
@@ -1054,6 +1172,7 @@ __all__ = [
     "OptionalOverlays",
     "OptionalViews",
     "Part",
+    "PlaybackInstance",
     "Pitch",
     "PitchStep",
     "PhraseConfidence",

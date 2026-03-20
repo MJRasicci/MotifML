@@ -8,6 +8,9 @@ from motifml.ir.models import (
     CANONICAL_CONTAINMENT_PATHS,
     Bar,
     ControlScope,
+    DerivedEdge,
+    DerivedEdgeSet,
+    DerivedEdgeType,
     DynamicChangeValue,
     Edge,
     EdgeType,
@@ -29,6 +32,7 @@ from motifml.ir.models import (
     PhraseSpan,
     Pitch,
     PitchStep,
+    PlaybackInstance,
     PointControlEvent,
     PointControlKind,
     RhythmBaseValue,
@@ -463,6 +467,82 @@ def test_phrase_span_uses_typed_enums_and_validates_overlay_fields():
         )
 
 
+def test_optional_view_types_are_typed_and_sort_canonically():
+    optional_views = OptionalViews(
+        playback_instances=(
+            PlaybackInstance(
+                instance_id="playback:2",
+                source_ref="note:onset:voice:staff:part:track-7:0:0:0:1:0",
+                start_time=ScoreTime(1, 4),
+                end_time=ScoreTime(1, 2),
+            ),
+            PlaybackInstance(
+                instance_id="playback:1",
+                source_ref="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+                start_time=ScoreTime(0, 1),
+                end_time=ScoreTime(1, 4),
+                voice_lane_chain_id="voice-chain:part:track-7:staff:part:track-7:0:0",
+            ),
+        ),
+        derived_edge_sets=(
+            DerivedEdgeSet(
+                name="voice-overlap-b",
+                kind="analysis",
+                edges=(
+                    DerivedEdge(
+                        source_id="note:onset:voice:staff:part:track-7:0:0:0:1:0",
+                        target_id="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+                        edge_type=DerivedEdgeType.VERTICAL_OVERLAP,
+                    ),
+                ),
+            ),
+            DerivedEdgeSet(
+                name="voice-overlap-a",
+                kind="analysis",
+                edges=(
+                    DerivedEdge(
+                        source_id="note:onset:voice:staff:part:track-7:0:0:0:1:0",
+                        target_id="phrase:part:track-7:0",
+                        edge_type="aligns_with",
+                    ),
+                    DerivedEdge(
+                        source_id="phrase:part:track-7:0",
+                        target_id="note:onset:voice:staff:part:track-7:0:0:0:1:0",
+                        edge_type=DerivedEdgeType.NEXT_PHRASE,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    assert [item.instance_id for item in optional_views.playback_instances] == [
+        "playback:1",
+        "playback:2",
+    ]
+    assert [item.name for item in optional_views.derived_edge_sets] == [
+        "voice-overlap-a",
+        "voice-overlap-b",
+    ]
+    assert [edge.edge_type for edge in optional_views.derived_edge_sets[0].edges] == [
+        DerivedEdgeType.ALIGNS_WITH,
+        DerivedEdgeType.NEXT_PHRASE,
+    ]
+
+    with pytest.raises(ValueError, match="after start_time"):
+        PlaybackInstance(
+            instance_id="playback:bad",
+            source_ref="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+            start_time=ScoreTime(1, 4),
+            end_time=ScoreTime(1, 4),
+        )
+
+    with pytest.raises(ValueError, match="name"):
+        DerivedEdgeSet(
+            name=" ",
+            kind="analysis",
+        )
+
+
 def test_document_metadata_and_envelope_use_stable_typed_containers():
     metadata = IrDocumentMetadata(
         ir_schema_version="1.0.0",
@@ -496,7 +576,27 @@ def test_document_metadata_and_envelope_use_stable_typed_containers():
             )
         ),
         optional_views=OptionalViews(
-            playback_instances=["playback"], derived_edge_sets=["derived"]
+            playback_instances=(
+                PlaybackInstance(
+                    instance_id="playback:part:track-7:0",
+                    source_ref="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+                    start_time=ScoreTime(0, 1),
+                    end_time=ScoreTime(1, 4),
+                ),
+            ),
+            derived_edge_sets=(
+                DerivedEdgeSet(
+                    name="playback-links",
+                    kind="traversal",
+                    edges=(
+                        DerivedEdge(
+                            source_id="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+                            target_id="note:onset:voice:staff:part:track-7:0:0:0:1:0",
+                            edge_type=DerivedEdgeType.PLAYBACK_NEXT,
+                        ),
+                    ),
+                ),
+            ),
         ),
     )
 
@@ -513,8 +613,27 @@ def test_document_metadata_and_envelope_use_stable_typed_containers():
             confidence="approved",
         ),
     )
-    assert document.optional_views.playback_instances == ("playback",)
-    assert document.optional_views.derived_edge_sets == ("derived",)
+    assert document.optional_views.playback_instances == (
+        PlaybackInstance(
+            instance_id="playback:part:track-7:0",
+            source_ref="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+            start_time=ScoreTime(0, 1),
+            end_time=ScoreTime(1, 4),
+        ),
+    )
+    assert document.optional_views.derived_edge_sets == (
+        DerivedEdgeSet(
+            name="playback-links",
+            kind="traversal",
+            edges=(
+                DerivedEdge(
+                    source_id="note:onset:voice:staff:part:track-7:0:0:0:0:0",
+                    target_id="note:onset:voice:staff:part:track-7:0:0:0:1:0",
+                    edge_type=DerivedEdgeType.PLAYBACK_NEXT,
+                ),
+            ),
+        ),
+    )
 
 
 def test_document_metadata_rejects_invalid_required_fields():

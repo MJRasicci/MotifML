@@ -8,6 +8,9 @@ from pathlib import Path
 from motifml.ir.models import (
     Bar,
     ControlScope,
+    DerivedEdge,
+    DerivedEdgeSet,
+    DerivedEdgeType,
     DynamicChangeValue,
     Edge,
     EdgeType,
@@ -24,6 +27,7 @@ from motifml.ir.models import (
     PhraseSource,
     PhraseSpan,
     Pitch,
+    PlaybackInstance,
     PointControlEvent,
     PointControlKind,
     SpanControlEvent,
@@ -129,6 +133,93 @@ def test_serialize_document_round_trips_phrase_spans_canonically():
         round_tripped.optional_overlays.phrase_spans[0].phrase_kind
         is PhraseKind.MELODIC
     )
+
+
+def test_serialize_document_round_trips_typed_derived_views_canonically():
+    base_document = _build_unsorted_document()
+    document = MotifMlIrDocument(
+        metadata=base_document.metadata,
+        parts=base_document.parts,
+        staves=base_document.staves,
+        bars=base_document.bars,
+        voice_lanes=base_document.voice_lanes,
+        point_control_events=base_document.point_control_events,
+        span_control_events=base_document.span_control_events,
+        onset_groups=base_document.onset_groups,
+        note_events=base_document.note_events,
+        edges=base_document.edges,
+        optional_overlays=base_document.optional_overlays,
+        optional_views=OptionalViews(
+            playback_instances=(
+                PlaybackInstance(
+                    instance_id="playback:1",
+                    source_ref="note:onset:voice:staff:part:track-a:0:0:0:0:0",
+                    start_time=ScoreTime(0, 1),
+                    end_time=ScoreTime(1, 4),
+                ),
+                PlaybackInstance(
+                    instance_id="playback:0",
+                    source_ref="onset:voice:staff:part:track-a:0:0:0:0",
+                    start_time=ScoreTime(0, 1),
+                    end_time=ScoreTime(1, 8),
+                    voice_lane_chain_id="voice-chain:part:track-a:staff:part:track-a:0:0",
+                ),
+            ),
+            derived_edge_sets=(
+                DerivedEdgeSet(
+                    name="interval-b",
+                    kind="analysis",
+                    edges=(
+                        DerivedEdge(
+                            source_id="note:onset:voice:staff:part:track-a:0:0:0:0:1",
+                            target_id="note:onset:voice:staff:part:track-a:0:0:0:0:0",
+                            edge_type=DerivedEdgeType.MELODIC_INTERVAL_TO,
+                        ),
+                    ),
+                ),
+                DerivedEdgeSet(
+                    name="interval-a",
+                    kind="analysis",
+                    edges=(
+                        DerivedEdge(
+                            source_id="note:onset:voice:staff:part:track-a:0:0:0:0:0",
+                            target_id="note:onset:voice:staff:part:track-a:0:0:0:0:1",
+                            edge_type=DerivedEdgeType.HARMONIC_INTERVAL_TO,
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    serialized = serialize_document(document)
+    payload = json.loads(serialized)
+    round_tripped = deserialize_document(serialized)
+
+    assert [
+        item["instance_id"] for item in payload["optional_views"]["playback_instances"]
+    ] == ["playback:0", "playback:1"]
+    assert [
+        item["name"] for item in payload["optional_views"]["derived_edge_sets"]
+    ] == [
+        "interval-a",
+        "interval-b",
+    ]
+    assert serialize_document(round_tripped) == serialized
+    assert round_tripped.optional_views.derived_edge_sets[0].edges[0].edge_type is (
+        DerivedEdgeType.HARMONIC_INTERVAL_TO
+    )
+
+
+def test_deserialize_document_normalizes_missing_optional_views_to_empty_containers():
+    explicit_payload = json.loads(serialize_document(_build_unsorted_document()))
+    omitted_payload = dict(explicit_payload)
+    omitted_payload.pop("optional_views")
+
+    explicit_serialized = serialize_document(deserialize_document(explicit_payload))
+    omitted_serialized = serialize_document(deserialize_document(omitted_payload))
+
+    assert omitted_serialized == explicit_serialized
 
 
 def _build_unsorted_document() -> MotifMlIrDocument:
