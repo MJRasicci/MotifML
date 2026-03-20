@@ -139,8 +139,10 @@ This writes a deterministic file-level manifest to
 ### 4. Run the pipeline
 
 ```bash
-uv run kedro run
+uv run kedro run --async
 ```
+
+> Note: `--async` is optional but highly recommended for performance.
 
 ---
 
