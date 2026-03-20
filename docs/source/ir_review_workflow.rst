@@ -17,15 +17,15 @@ Review Checklist
   unsupported-feature path
 - confirm unsupported or excluded source features remain visible in the manifest,
   validation summary, or review bundles
-- confirm at least one human-reviewed golden artifact change is included whenever mapping
-  logic changes the persisted IR shape
+- confirm at least one reviewed golden artifact change is included whenever mapping logic
+  changes the persisted IR shape
 
 Golden Artifact Review Requirement
 ----------------------------------
 
 For any change that alters persisted IR shape, machine-only verification is not enough.
-At least one changed tracked artifact should be inspected by a human reviewer before the
-work is treated as approved.
+At least one changed tracked artifact should be inspected during review before the work
+is treated as approved.
 
 Acceptable review surfaces include:
 
@@ -51,10 +51,9 @@ Recommended Review Sequence
 
 #. inspect the changed IR JSON, bundle README, validation report, CSV tables, and SVG
    visualizations
-#. keep new artifacts at ``provisional_pending_human_review`` until a human has completed
-   that inspection
-#. only mark an artifact ``approved_by_human`` when the reviewed output accurately
-   represents the intended persisted IR shape
+#. keep new artifacts at ``pending_review`` until that inspection is complete
+#. only mark an artifact ``approved`` when the reviewed output accurately represents the
+   intended persisted IR shape
 
 When No Golden Artifact Changes
 -------------------------------

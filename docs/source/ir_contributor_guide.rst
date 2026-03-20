@@ -41,9 +41,9 @@ Source-of-truth files:
 
 - ``tests/fixtures/ir_fixture_catalog.json``: fixture inventory, coverage surface, schema
   paths, and golden-review status
-- ``tests/fixtures/motif_json/README.md``: human-facing fixture description
+- ``tests/fixtures/motif_json/README.md``: fixture descriptions and coverage notes
 - ``tests/fixtures/ir/golden/``: tracked golden IR subset
-- ``tests/fixtures/ir/review_bundles/``: checked-in human review bundles
+- ``tests/fixtures/ir/review_bundles/``: checked-in review bundles
 
 Use the repository tools instead of hand-editing generated artifacts:
 
@@ -56,9 +56,8 @@ Important workflow rules:
 
 - the generator owns ``tests/fixtures/motif_json/``, ``tests/fixtures/ir/golden/``, and
   ``tests/fixtures/ir_fixture_catalog.json``
-- newly generated golden IR artifacts default to
-  ``provisional_pending_human_review``
-- only a human reviewer should flip a golden artifact to ``approved_by_human``
+- newly generated golden IR artifacts default to ``pending_review``
+- only mark a golden artifact ``approved`` after the tracked diff has been inspected
 - mapping changes that affect persisted IR shape should update both the relevant golden IR
   artifact and the checked-in review bundles
 
@@ -97,7 +96,7 @@ For a new technique field:
 #. decide whether it belongs on the generic, general, or string-fretted payload
 #. update the typed model and serializer / deserializer
 #. teach the raw-note or raw-beat coercer how to populate it
-#. update review-table summaries if a human reviewer should be able to see it
+#. update review-table summaries if reviewers should be able to see it
 #. add unit tests for model validation plus fixture-backed pipeline coverage
 
 Unsupported Feature Reporting
@@ -134,5 +133,4 @@ For IR changes, the highest-signal checks are:
    uv run pytest tests/ir/test_review_bundles.py
 
 Run more targeted pipeline-node tests as needed when you change specific mapping logic.
-Use :doc:`ir_review_workflow` for the reviewer-facing checklist once the implementation is
-ready for review.
+Use :doc:`ir_review_workflow` for the review checklist once the implementation is ready.

@@ -13,6 +13,8 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from kedro.runner import SequentialRunner
 
+from motifml.ir.fixture_catalog import APPROVED_GOLDEN_REVIEW_STATUS
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures"
 MOTIF_JSON_FIXTURE_ROOT = FIXTURE_ROOT / "motif_json"
@@ -38,11 +40,11 @@ def fixture_entries() -> list[dict[str, Any]]:
 
 
 def approved_fixture_entries() -> list[dict[str, Any]]:
-    """Return the fixtures whose golden IR artifacts are human-approved."""
+    """Return the fixtures whose golden IR artifacts are approved."""
     return [
         entry
         for entry in fixture_entries()
-        if entry["golden_ir_review_status"] == "approved_by_human"
+        if entry["golden_ir_review_status"] == APPROVED_GOLDEN_REVIEW_STATUS
     ]
 
 

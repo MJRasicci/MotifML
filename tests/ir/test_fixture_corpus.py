@@ -9,6 +9,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from motifml.ir.fixture_catalog import PENDING_GOLDEN_REVIEW_STATUS
 from motifml.ir.serialization import deserialize_document, serialize_document
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -16,7 +17,6 @@ FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures"
 CATALOG_PATH = FIXTURE_ROOT / "ir_fixture_catalog.json"
 README_PATH = FIXTURE_ROOT / "motif_json" / "README.md"
 REGENERATOR_PATH = REPO_ROOT / "tools" / "regenerate_ir_fixture_corpus.py"
-PENDING_REVIEW_STATUS = "provisional_pending_human_review"
 
 
 def test_fixture_catalog_covers_the_full_section_4_surface():
@@ -119,7 +119,7 @@ def test_regenerator_reproduces_the_tracked_fixture_corpus(tmp_path: Path):
         ).read_text(encoding="utf-8")
 
 
-def test_new_golden_artifacts_default_to_pending_human_review(tmp_path: Path):
+def test_new_golden_artifacts_default_to_pending_review(tmp_path: Path):
     fixture_root = tmp_path / "fixtures"
     generate_fixture_corpus = runpy.run_path(str(REGENERATOR_PATH))[
         "generate_fixture_corpus"
@@ -133,7 +133,7 @@ def test_new_golden_artifacts_default_to_pending_human_review(tmp_path: Path):
 
     assert golden_entries
     assert all(
-        entry["golden_ir_review_status"] == PENDING_REVIEW_STATUS
+        entry["golden_ir_review_status"] == PENDING_GOLDEN_REVIEW_STATUS
         for entry in golden_entries
     )
 

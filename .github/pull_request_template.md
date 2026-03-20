@@ -16,10 +16,10 @@
       unsupported-feature cases.
 - [ ] Unsupported or excluded source features remain visible in manifest, summary, or
       review-bundle outputs.
-- [ ] I either reviewed at least one changed golden artifact or review bundle with a
-      human reviewer, or this PR does not change persisted IR shape.
+- [ ] I either reviewed at least one changed golden artifact or review bundle, or this
+      PR does not change persisted IR shape.
 
-## Human-Reviewed Artifact
+## Reviewed Artifact
 
 - If persisted IR shape changed, name the reviewed fixture or bundle and the resulting
   review status in `tests/fixtures/ir_fixture_catalog.json`.

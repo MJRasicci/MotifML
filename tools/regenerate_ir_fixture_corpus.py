@@ -10,6 +10,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from motifml.ir.fixture_catalog import (
+    PENDING_GOLDEN_REVIEW_STATUS,
+    VALID_GOLDEN_REVIEW_STATUSES,
+    normalize_golden_review_status,
+)
 from motifml.ir.ids import (
     bar_id,
     note_id,
@@ -58,13 +63,6 @@ DEFAULT_FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures"
 RAW_FIXTURE_SUBDIR = Path("motif_json")
 GOLDEN_FIXTURE_SUBDIR = Path("ir") / "golden"
 CATALOG_FILENAME = "ir_fixture_catalog.json"
-
-PENDING_REVIEW_STATUS = "provisional_pending_human_review"
-APPROVED_REVIEW_STATUS = "approved_by_human"
-VALID_GOLDEN_REVIEW_STATUSES = (
-    PENDING_REVIEW_STATUS,
-    APPROVED_REVIEW_STATUS,
-)
 CATALOG_VERSION = "1.0.0"
 REGENERATION_COMMAND = "uv run python tools/regenerate_ir_fixture_corpus.py"
 RAW_SCHEMA_PATH = "ir/motif-score.schema.json"
@@ -146,7 +144,7 @@ def generate_fixture_corpus(output_root: Path = DEFAULT_FIXTURE_ROOT) -> None:
             golden_relative_path = golden_path.relative_to(fixture_root).as_posix()
             golden_review_status = existing_review_statuses.get(
                 spec.fixture_id,
-                PENDING_REVIEW_STATUS,
+                PENDING_GOLDEN_REVIEW_STATUS,
             )
 
         catalog_entries.append(
@@ -1717,17 +1715,23 @@ def _load_existing_review_statuses(catalog_path: Path) -> dict[str, str]:
         review_status = entry.get("golden_ir_review_status")
         if review_status is None:
             continue
-        if review_status not in VALID_GOLDEN_REVIEW_STATUSES:
-            raise ValueError(
-                f"Fixture '{fixture_id}' has unsupported golden review status "
-                f"'{review_status}'. Expected one of {VALID_GOLDEN_REVIEW_STATUSES}."
-            )
         if not isinstance(fixture_id, str):
             raise ValueError(
                 "Fixture catalog entries with golden review state must define a string "
                 "'fixture_id'."
             )
-        statuses[fixture_id] = review_status
+        if not isinstance(review_status, str):
+            raise ValueError(
+                f"Fixture '{fixture_id}' has non-string golden review status "
+                f"{review_status!r}."
+            )
+        try:
+            statuses[fixture_id] = normalize_golden_review_status(review_status)
+        except ValueError as error:
+            raise ValueError(
+                f"Fixture '{fixture_id}' has unsupported golden review status "
+                f"'{review_status}'. Expected one of {VALID_GOLDEN_REVIEW_STATUSES}."
+            ) from error
 
     return statuses
 
