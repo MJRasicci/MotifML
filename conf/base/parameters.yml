@@ -24,3 +24,9 @@ feature_extraction:
   event_types_included:
     - notes
   derived_edge_families_included: []
+
+tokenization:
+  vocabulary_strategy: projection_native
+  max_sequence_length: 8
+  padding_strategy: right
+  time_resolution: 96

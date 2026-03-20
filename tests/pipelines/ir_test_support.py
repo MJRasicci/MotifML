@@ -116,6 +116,10 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "type": "motifml.datasets.json_dataset.JsonDataset",
             "filepath": str(output_root / "ir_features.json"),
         },
+        "model_input": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "model_input.json"),
+        },
     }
 
     (conf_base / "catalog.yml").write_text(

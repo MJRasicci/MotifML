@@ -36,6 +36,7 @@ EXPECTED_DEFAULT_STAGE_ORDER = [
     "publish_ir_validation_report",
     "summarize_ir_corpus",
     "report_ir_scale_metrics",
+    "tokenize_features",
 ]
 
 
@@ -70,6 +71,7 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
     assert load_json(output_root / "motif_ir_validation_report.json")
     assert load_json(output_root / "motif_ir_summary.json")
     assert load_json(output_root / "ir_features.json")
+    assert load_json(output_root / "model_input.json")
     assert sorted((output_root / "normalized_documents").rglob("*.ir.json"))
     assert _default_stage_order() == EXPECTED_DEFAULT_STAGE_ORDER
 

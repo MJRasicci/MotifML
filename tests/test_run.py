@@ -11,6 +11,7 @@ EXPECTED_IR_BUILD_NODE_COUNT = 12
 EXPECTED_IR_VALIDATION_NODE_COUNT = 4
 EXPECTED_NORMALIZATION_NODE_COUNT = 1
 EXPECTED_FEATURE_EXTRACTION_NODE_COUNT = 1
+EXPECTED_TOKENIZATION_NODE_COUNT = 1
 EXPECTED_DEFAULT_NODE_ORDER = [
     "build_raw_corpus_manifest",
     "summarize_raw_corpus",
@@ -33,6 +34,7 @@ EXPECTED_DEFAULT_NODE_ORDER = [
     "publish_ir_validation_report",
     "summarize_ir_corpus",
     "report_ir_scale_metrics",
+    "tokenize_features",
 ]
 
 
@@ -45,6 +47,7 @@ def test_register_pipelines_exposes_project_pipelines():
     assert "ir_validation" in pipelines
     assert "normalization" in pipelines
     assert "feature_extraction" in pipelines
+    assert "tokenization" in pipelines
     assert "__default__" in pipelines
     assert len(pipelines["ingestion"].nodes) == EXPECTED_INGESTION_NODE_COUNT
     assert len(pipelines["ir_build"].nodes) == EXPECTED_IR_BUILD_NODE_COUNT
@@ -54,6 +57,7 @@ def test_register_pipelines_exposes_project_pipelines():
         len(pipelines["feature_extraction"].nodes)
         == EXPECTED_FEATURE_EXTRACTION_NODE_COUNT
     )
+    assert len(pipelines["tokenization"].nodes) == EXPECTED_TOKENIZATION_NODE_COUNT
 
 
 def test_register_pipelines_builds_the_default_pipeline_in_stage_order():
@@ -96,3 +100,9 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "params:feature_extraction",
     }
     assert pipelines["feature_extraction"].outputs() == {"ir_features"}
+
+    assert pipelines["tokenization"].inputs() == {
+        "ir_features",
+        "params:tokenization",
+    }
+    assert pipelines["tokenization"].outputs() == {"model_input"}

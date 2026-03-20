@@ -45,3 +45,7 @@ normalized_ir_corpus:
 ir_features:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/04_feature/ir/ir_features.json
+
+model_input:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/05_model_input/ir/model_input.json
