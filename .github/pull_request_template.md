@@ -1,26 +1,27 @@
 ## Summary
 
-- Describe the IR or docs change.
+- Describe the change.
+
+## Motivation
+
+- Why is this change needed?
 
 ## Verification
 
 - List the commands you ran.
 
-## IR Review Checklist
+## Impact
 
-- [ ] Determinism remains intact for the affected IR output surfaces.
-- [ ] Forbidden metadata is still excluded from persisted IR documents.
-- [ ] Fixture, golden, and review-bundle artifacts were regenerated with the tracked
-      tools when needed.
-- [ ] Validation coverage was added or updated for new mapping paths, payloads, or
-      unsupported-feature cases.
-- [ ] Unsupported or excluded source features remain visible in manifest, summary, or
-      review-bundle outputs.
-- [ ] I either reviewed at least one changed golden artifact or review bundle, or this
-      PR does not change persisted IR shape.
+- Note any changes to pipelines, configs, datasets, schemas, interfaces, or generated
+  artifacts.
+- If there is no material interface or artifact impact, say `none`.
 
-## Reviewed Artifact
+## Checklist
 
-- If persisted IR shape changed, name the reviewed fixture or bundle and the resulting
-  review status in `tests/fixtures/ir_fixture_catalog.json`.
-- If persisted IR shape did not change, say `no persisted IR shape change`.
+- [ ] Tests or other validation were added or updated when behavior changed.
+- [ ] Documentation was updated when repository behavior, interfaces, or assumptions
+      changed.
+- [ ] Configuration, schema, or dataset contract changes are called out above when
+      relevant.
+- [ ] Checked-in generated artifacts were regenerated intentionally.
+- [ ] No large runtime data or unintended build artifacts were committed.

@@ -4,8 +4,7 @@ This directory contains the tracked raw Motif JSON fixtures used to exercise
 MotifML's canonical IR surface.
 
 The authoritative fixture catalog lives at `tests/fixtures/ir_fixture_catalog.json`.
-Golden IR artifacts are tracked for a small subset and remain in `pending_review`
-until the catalog marks them `approved`.
+It records fixture metadata, coverage mapping, and paths to generated artifacts.
 
 Regenerate these fixtures intentionally with:
 
@@ -14,9 +13,9 @@ uv run python tools/regenerate_ir_fixture_corpus.py
 ```
 
 The generator owns the JSON fixture set under `tests/fixtures/motif_json/`,
-`tests/fixtures/ir/golden/`, and `tests/fixtures/ir_fixture_catalog.json`. It
-preserves any existing golden-review statuses while rewriting the generated
-artifacts, so regeneration stays safe after review approval.
+`tests/fixtures/ir/golden/`, and `tests/fixtures/ir_fixture_catalog.json`.
+Regeneration rewrites those managed artifacts deterministically from the source
+definitions in `tools/regenerate_ir_fixture_corpus.py`.
 
 Fixtures:
 

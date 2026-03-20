@@ -1,10 +1,10 @@
 # MotifML
 
-MotifML is a Kedro-based symbolic music pipeline for turning Motif exports into
-deterministic, reviewable IR artifacts and downstream ML datasets.
+MotifML is a Kedro-based symbolic-music research pipeline for turning Motif exports into
+deterministic IR corpora and downstream ML-ready datasets.
 
 The repository currently covers raw-corpus ingestion, canonical IR build and validation,
-fixture-backed review tooling, and baseline normalization, feature-extraction, and
+fixture-backed regression artifacts, and baseline normalization, feature-extraction, and
 tokenization stages for downstream experiments.
 
 ## Current Scope
@@ -13,8 +13,8 @@ tokenization stages for downstream experiments.
   summaries
 - build canonical IR documents plus corpus manifests, validation reports, and scale
   summaries
-- track regression surfaces through fixtures, golden IR artifacts, review bundles, and
-  the IR inspection notebook
+- track regression surfaces through fixtures, golden IR artifacts, inspection bundles,
+  and the IR inspection notebook
 - project IR documents into sequence, graph, and hierarchical feature views
 - package baseline model-input artifacts under Kedro
 
@@ -25,10 +25,10 @@ Training, generation, and evaluation pipelines are not implemented yet.
 ```text
 src/motifml/           Core library and Kedro pipeline code
 conf/                  Shared Kedro catalog, parameters, and logging config
-docs/source/           Versioned architecture, IR, and workflow documentation
+docs/source/           Versioned overview, guides, and technical reference docs
 notebooks/             Inspection and exploration notebooks
 tests/                 Unit, integration, and fixture-backed regression tests
-tools/                 Fixture and review-bundle regeneration scripts
+tools/                 Fixture and inspection-bundle regeneration scripts
 ```
 
 The data directory follows Kedro's staged layout:
@@ -80,7 +80,7 @@ uv run kedro viz
 uv run jupyter lab
 ```
 
-## Fixture and Review Tooling
+## Fixtures and Inspection Artifacts
 
 Regenerate the tracked raw fixtures and golden IR subset:
 
@@ -88,18 +88,24 @@ Regenerate the tracked raw fixtures and golden IR subset:
 uv run python tools/regenerate_ir_fixture_corpus.py
 ```
 
-Regenerate review bundles for the tracked review fixtures:
+Regenerate the tracked inspection bundles:
 
 ```bash
 uv run python tools/generate_ir_review_bundles.py
 ```
 
-The checked-in contributor workflow is documented in:
+The core project documentation is organized as:
 
-- `docs/source/architecture.rst`
-- `docs/source/ir_design.rst`
-- `docs/source/ir_contributor_guide.rst`
-- `docs/source/ir_review_workflow.rst`
+- `docs/source/overview/`
+- `docs/source/guides/`
+- `docs/source/reference/`
+
+Useful entry points include:
+
+- `docs/source/index.rst`
+- `docs/source/guides/contributing.rst`
+- `docs/source/guides/ir_engineering.rst`
+- `docs/source/reference/ir_contract.rst`
 
 ## Development
 
