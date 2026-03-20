@@ -1,0 +1,20 @@
+{
+  "fixture_id": "ensemble_polyphony_controls",
+  "description": "Clarinet-plus-piano excerpt with transposition, multi-staff writing, polyphony, and authored point/span controls.",
+  "covers": [
+    "multi-track polyphonic",
+    "tempo changes",
+    "dynamics",
+    "fermatas",
+    "hairpins",
+    "ottava",
+    "transposed instruments",
+    "multi-staff parts"
+  ],
+  "source_path": "motif_json/ensemble_polyphony_controls.json",
+  "source_hash": "f213ff4622535dff829fc6746816a6c99b162c2c8b89bf30e159355886a4bd4d",
+  "source_file_size_bytes": 11427,
+  "pipeline_ir_artifact_path": "data/02_intermediate/ir/documents/ensemble_polyphony_controls.json.ir.json",
+  "golden_ir_path": "ir/golden/ensemble_polyphony_controls.ir.json",
+  "golden_ir_review_status": "approved_by_human"
+}

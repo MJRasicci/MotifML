@@ -1,0 +1,131 @@
+{
+  "part_count": 2,
+  "staff_count": 3,
+  "bar_count": 2,
+  "voice_lane_count": 6,
+  "onset_count": 6,
+  "note_count": 7,
+  "point_control_count": 4,
+  "span_control_count": 2,
+  "edge_count": 25,
+  "edge_counts_by_type": [
+    {
+      "name": "contains",
+      "count": 22
+    },
+    {
+      "name": "next_in_voice",
+      "count": 3
+    }
+  ],
+  "bar_rollups": [
+    {
+      "bar_id": "bar:0",
+      "bar_index": 0,
+      "start": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "voice_lane_count": 3,
+      "onset_count": 3,
+      "note_count": 4,
+      "point_control_count": 2,
+      "span_control_count": 1
+    },
+    {
+      "bar_id": "bar:1",
+      "bar_index": 1,
+      "start": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "voice_lane_count": 3,
+      "onset_count": 3,
+      "note_count": 3,
+      "point_control_count": 1,
+      "span_control_count": 1
+    }
+  ],
+  "voice_lane_rollups": [
+    {
+      "part_id": "part:1",
+      "staff_id": "staff:part:1:0",
+      "bar_id": "bar:0",
+      "bar_index": 0,
+      "voice_lane_id": "voice:staff:part:1:0:0:0",
+      "voice_lane_chain_id": "voice-chain:part:1:staff:part:1:0:0",
+      "voice_index": 0,
+      "onset_count": 1,
+      "note_count": 1,
+      "rest_onset_count": 0
+    },
+    {
+      "part_id": "part:2",
+      "staff_id": "staff:part:2:0",
+      "bar_id": "bar:0",
+      "bar_index": 0,
+      "voice_lane_id": "voice:staff:part:2:0:0:0",
+      "voice_lane_chain_id": "voice-chain:part:2:staff:part:2:0:0",
+      "voice_index": 0,
+      "onset_count": 1,
+      "note_count": 2,
+      "rest_onset_count": 0
+    },
+    {
+      "part_id": "part:2",
+      "staff_id": "staff:part:2:1",
+      "bar_id": "bar:0",
+      "bar_index": 0,
+      "voice_lane_id": "voice:staff:part:2:1:0:0",
+      "voice_lane_chain_id": "voice-chain:part:2:staff:part:2:1:0",
+      "voice_index": 0,
+      "onset_count": 1,
+      "note_count": 1,
+      "rest_onset_count": 0
+    },
+    {
+      "part_id": "part:1",
+      "staff_id": "staff:part:1:0",
+      "bar_id": "bar:1",
+      "bar_index": 1,
+      "voice_lane_id": "voice:staff:part:1:0:1:0",
+      "voice_lane_chain_id": "voice-chain:part:1:staff:part:1:0:0",
+      "voice_index": 0,
+      "onset_count": 1,
+      "note_count": 1,
+      "rest_onset_count": 0
+    },
+    {
+      "part_id": "part:2",
+      "staff_id": "staff:part:2:0",
+      "bar_id": "bar:1",
+      "bar_index": 1,
+      "voice_lane_id": "voice:staff:part:2:0:1:0",
+      "voice_lane_chain_id": "voice-chain:part:2:staff:part:2:0:0",
+      "voice_index": 0,
+      "onset_count": 1,
+      "note_count": 1,
+      "rest_onset_count": 0
+    },
+    {
+      "part_id": "part:2",
+      "staff_id": "staff:part:2:1",
+      "bar_id": "bar:1",
+      "bar_index": 1,
+      "voice_lane_id": "voice:staff:part:2:1:1:0",
+      "voice_lane_chain_id": "voice-chain:part:2:staff:part:2:1:0",
+      "voice_index": 0,
+      "onset_count": 1,
+      "note_count": 1,
+      "rest_onset_count": 0
+    }
+  ]
+}

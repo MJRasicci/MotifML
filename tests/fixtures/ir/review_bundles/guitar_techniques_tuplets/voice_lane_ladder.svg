@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="110" viewBox="0 0 960 110" role="img" aria-label="MotifML IR review visualization"><style>text { font-family: monospace; dominant-baseline: middle; } line, rect, circle, polygon { vector-effect: non-scaling-stroke; }</style><text x="12" y="20" fill="#0f172a" font-size="16" font-weight="600">Voice-Lane Onset Ladder</text>
+<text x="12" y="38" fill="#475569" font-size="11">Rows follow voice-lane chains so dropouts and reentries stay visible.</text>
+<line x1="12" y1="44" x2="936" y2="44" stroke="#e2e8f0" stroke-width="1" />
+<rect x="240" y="44" width="696" height="38" fill="#f8fafc" stroke="none" />
+<line x1="240" y1="44" x2="240" y2="82" stroke="#cbd5e1" stroke-width="1" />
+<text x="246" y="34" fill="#334155" font-size="10">bar 0 (0/1 + 1/1)</text>
+<line x1="936" y1="44" x2="936" y2="82" stroke="#cbd5e1" stroke-width="1" />
+<text x="12" y="56" fill="#0f172a" font-size="11">v0 | staff:part:3:0</text>
+<line x1="240" y1="52" x2="936" y2="52" stroke="#cbd5e1" stroke-width="1" />
+<line x1="240" y1="52" x2="284" y2="52" stroke="#2563eb" stroke-width="3" />
+<circle cx="240" cy="52" r="4" fill="#2563eb" stroke="#2563eb" stroke-width="2" />
+<line x1="240" y1="52" x2="298" y2="52" stroke="#2563eb" stroke-width="3" />
+<circle cx="240" cy="52" r="4" fill="#2563eb" stroke="#2563eb" stroke-width="2" />
+<line x1="298" y1="52" x2="356" y2="52" stroke="#2563eb" stroke-width="3" />
+<circle cx="298" cy="52" r="4" fill="#2563eb" stroke="#2563eb" stroke-width="2" />
+<line x1="356" y1="52" x2="414" y2="52" stroke="#2563eb" stroke-width="3" />
+<circle cx="356" cy="52" r="4" fill="#2563eb" stroke="#2563eb" stroke-width="2" /></svg>

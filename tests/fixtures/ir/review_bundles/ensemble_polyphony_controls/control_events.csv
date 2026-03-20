@@ -1,0 +1,7 @@
+control_id,family,kind,scope,target_ref,start_time,end_time,start_bar_index,end_bar_index,value_summary,start_anchor_ref,end_anchor_ref
+ctrlp:part:0,point,dynamic_change,part,part:1,0/1,-,0,,marking=mp,,
+ctrlp:score:0,point,tempo_change,score,score,0/1,-,0,,beats_per_minute=120,,
+ctrls:part:0,span,hairpin,part,part:1,1/4,1/1,0,1,direction=crescendo,,
+ctrlp:score:1,point,tempo_change,score,score,1/1,-,1,,beats_per_minute=132,,
+ctrls:staff:0,span,ottava,staff,staff:part:2:0,1/1,2/1,1,1,octave_shift=1,,
+ctrlp:score:2,point,fermata,score,score,2/1,-,1,,"type=normal, length_scale=1.5",,

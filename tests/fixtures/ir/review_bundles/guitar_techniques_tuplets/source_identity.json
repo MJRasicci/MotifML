@@ -1,0 +1,18 @@
+{
+  "fixture_id": "guitar_techniques_tuplets",
+  "description": "Single-staff guitar line with grace notes, triplets, linked-note techniques, bends, and harmonics.",
+  "covers": [
+    "tuplets",
+    "hammer-on/pull-off",
+    "slide links",
+    "bends",
+    "harmonics",
+    "grace notes"
+  ],
+  "source_path": "motif_json/guitar_techniques_tuplets.json",
+  "source_hash": "31005afbd168dda65471ada432edaa467007498cf714a3a3f990de7a8a2b77e5",
+  "source_file_size_bytes": 8563,
+  "pipeline_ir_artifact_path": "data/02_intermediate/ir/documents/guitar_techniques_tuplets.json.ir.json",
+  "golden_ir_path": null,
+  "golden_ir_review_status": null
+}

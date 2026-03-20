@@ -1,0 +1,21 @@
+{
+  "relative_path": "guitar_techniques_tuplets.json",
+  "source_hash": "31005afbd168dda65471ada432edaa467007498cf714a3a3f990de7a8a2b77e5",
+  "rule_reports": [
+    {
+      "rule": "voice_lane_onset_timing",
+      "severity": "error",
+      "issues": [
+        {
+          "path": "onset_groups[1].time",
+          "message": "voice lane 'voice:staff:part:3:0:0:0' onset times must be unique and strictly increasing by attack order.",
+          "entity_id": "onset:voice:staff:part:3:0:0:0:1"
+        }
+      ],
+      "issue_count": 1
+    }
+  ],
+  "passed": false,
+  "error_count": 1,
+  "warning_count": 0
+}

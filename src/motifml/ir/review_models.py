@@ -415,6 +415,47 @@ class ControlEventRow:
             )
 
 
+@dataclass(frozen=True)
+class IrReviewBundleManifest:
+    """Deterministic metadata describing one generated review bundle."""
+
+    bundle_version: str
+    fixture_id: str
+    description: str
+    source_path: str
+    source_hash: str
+    ir_document_path: str
+    schema_validation_passed: bool
+    validation_error_count: int
+    validation_warning_count: int
+    artifacts: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        for field_name in (
+            "bundle_version",
+            "fixture_id",
+            "description",
+            "source_path",
+            "source_hash",
+            "ir_document_path",
+        ):
+            object.__setattr__(
+                self,
+                field_name,
+                _normalize_text(getattr(self, field_name), field_name),
+            )
+
+        _require_non_negative(self.validation_error_count, "validation_error_count")
+        _require_non_negative(self.validation_warning_count, "validation_warning_count")
+        object.__setattr__(
+            self,
+            "artifacts",
+            tuple(
+                sorted(_normalize_text(item, "artifacts") for item in self.artifacts)
+            ),
+        )
+
+
 def _normalize_text(value: str, field_name: str) -> str:
     normalized = str(value).strip()
     if not normalized:
@@ -431,6 +472,7 @@ def _require_non_negative(value: int, field_name: str) -> None:
 __all__ = [
     "BarReviewRollup",
     "ControlEventRow",
+    "IrReviewBundleManifest",
     "IrStructureSummary",
     "OnsetNoteRow",
     "OnsetNoteTable",

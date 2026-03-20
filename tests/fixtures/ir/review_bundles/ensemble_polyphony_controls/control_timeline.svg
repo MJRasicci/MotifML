@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="260" viewBox="0 0 960 260" role="img" aria-label="MotifML IR review visualization"><style>text { font-family: monospace; dominant-baseline: middle; } line, rect, circle, polygon { vector-effect: non-scaling-stroke; }</style><text x="12" y="20" fill="#0f172a" font-size="16" font-weight="600">Control Timeline</text>
+<text x="12" y="38" fill="#475569" font-size="11">Point controls use diamond markers; span controls use horizontal bars.</text>
+<line x1="12" y1="44" x2="936" y2="44" stroke="#e2e8f0" stroke-width="1" />
+<rect x="240" y="44" width="348" height="188" fill="#f8fafc" stroke="none" />
+<line x1="240" y1="44" x2="240" y2="232" stroke="#cbd5e1" stroke-width="1" />
+<text x="246" y="34" fill="#334155" font-size="10">bar 0 (0/1 + 1/1)</text>
+<rect x="588" y="44" width="348" height="188" fill="#ffffff" stroke="none" />
+<line x1="588" y1="44" x2="588" y2="232" stroke="#cbd5e1" stroke-width="1" />
+<text x="594" y="34" fill="#334155" font-size="10">bar 1 (1/1 + 1/1)</text>
+<line x1="936" y1="44" x2="936" y2="232" stroke="#cbd5e1" stroke-width="1" />
+<text x="12" y="56" fill="#0f172a" font-size="11">dynamic_change | part | part:1</text>
+<line x1="240" y1="52" x2="936" y2="52" stroke="#e2e8f0" stroke-width="1" />
+<polygon points="240,47 245,52 240,57 235,52" fill="#7c3aed" stroke="#7c3aed" />
+<text x="248" y="46" fill="#581c87" font-size="10">marking=mp</text>
+<text x="12" y="86" fill="#0f172a" font-size="11">tempo_change | score | score</text>
+<line x1="240" y1="82" x2="936" y2="82" stroke="#e2e8f0" stroke-width="1" />
+<polygon points="240,77 245,82 240,87 235,82" fill="#7c3aed" stroke="#7c3aed" />
+<text x="248" y="76" fill="#581c87" font-size="10">beats_per_minute=120</text>
+<text x="12" y="116" fill="#0f172a" font-size="11">hairpin | part | part:1</text>
+<line x1="240" y1="112" x2="936" y2="112" stroke="#e2e8f0" stroke-width="1" />
+<line x1="327" y1="112" x2="588" y2="112" stroke="#dc2626" stroke-width="5" />
+<text x="335" y="106" fill="#991b1b" font-size="10">direction=crescendo</text>
+<text x="12" y="146" fill="#0f172a" font-size="11">tempo_change | score | score</text>
+<line x1="240" y1="142" x2="936" y2="142" stroke="#e2e8f0" stroke-width="1" />
+<polygon points="588,137 593,142 588,147 583,142" fill="#7c3aed" stroke="#7c3aed" />
+<text x="596" y="136" fill="#581c87" font-size="10">beats_per_minute=132</text>
+<text x="12" y="176" fill="#0f172a" font-size="11">ottava | staff | staff:part:2:0</text>
+<line x1="240" y1="172" x2="936" y2="172" stroke="#e2e8f0" stroke-width="1" />
+<line x1="588" y1="172" x2="936" y2="172" stroke="#dc2626" stroke-width="5" />
+<text x="596" y="166" fill="#991b1b" font-size="10">octave_shift=1</text>
+<text x="12" y="206" fill="#0f172a" font-size="11">fermata | score | score</text>
+<line x1="240" y1="202" x2="936" y2="202" stroke="#e2e8f0" stroke-width="1" />
+<polygon points="936,197 941,202 936,207 931,202" fill="#7c3aed" stroke="#7c3aed" />
+<text x="944" y="196" fill="#581c87" font-size="10">type=normal, length_scale=1.5</text></svg>

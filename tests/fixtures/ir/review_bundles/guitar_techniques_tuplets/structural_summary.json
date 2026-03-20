@@ -1,0 +1,58 @@
+{
+  "part_count": 1,
+  "staff_count": 1,
+  "bar_count": 1,
+  "voice_lane_count": 1,
+  "onset_count": 4,
+  "note_count": 4,
+  "point_control_count": 0,
+  "span_control_count": 0,
+  "edge_count": 16,
+  "edge_counts_by_type": [
+    {
+      "name": "contains",
+      "count": 10
+    },
+    {
+      "name": "next_in_voice",
+      "count": 3
+    },
+    {
+      "name": "technique_to",
+      "count": 3
+    }
+  ],
+  "bar_rollups": [
+    {
+      "bar_id": "bar:0",
+      "bar_index": 0,
+      "start": {
+        "numerator": 0,
+        "denominator": 1
+      },
+      "duration": {
+        "numerator": 1,
+        "denominator": 1
+      },
+      "voice_lane_count": 1,
+      "onset_count": 4,
+      "note_count": 4,
+      "point_control_count": 0,
+      "span_control_count": 0
+    }
+  ],
+  "voice_lane_rollups": [
+    {
+      "part_id": "part:3",
+      "staff_id": "staff:part:3:0",
+      "bar_id": "bar:0",
+      "bar_index": 0,
+      "voice_lane_id": "voice:staff:part:3:0:0:0",
+      "voice_lane_chain_id": "voice-chain:part:3:staff:part:3:0:0",
+      "voice_index": 0,
+      "onset_count": 4,
+      "note_count": 4,
+      "rest_onset_count": 0
+    }
+  ]
+}

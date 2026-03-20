@@ -1,0 +1,5 @@
+part_id,staff_id,bar_index,bar_id,voice_lane_chain_id,voice_lane_id,voice_index,onset_id,time,bar_offset,duration_notated,duration_sounding_max,is_rest,attack_order_in_voice,note_count,grace_type,dynamic_local,technique_summary
+part:3,staff:part:3:0,0,bar:0,voice-chain:part:3:staff:part:3:0:0,voice:staff:part:3:0:0:0,0,onset:voice:staff:part:3:0:0:0:0,0/1,0/1,1/16,1/16,false,0,1,acciaccatura,,
+part:3,staff:part:3:0,0,bar:0,voice-chain:part:3:staff:part:3:0:0,voice:staff:part:3:0:0:0,0,onset:voice:staff:part:3:0:0:0:1,0/1,0/1,1/12,1/12,false,1,1,,,
+part:3,staff:part:3:0,0,bar:0,voice-chain:part:3:staff:part:3:0:0,voice:staff:part:3:0:0:0,0,onset:voice:staff:part:3:0:0:0:2,1/12,1/12,1/12,1/12,false,2,1,,,
+part:3,staff:part:3:0,0,bar:0,voice-chain:part:3:staff:part:3:0:0,voice:staff:part:3:0:0:0,0,onset:voice:staff:part:3:0:0:0:3,1/6,1/6,1/12,1/12,false,3,1,,,

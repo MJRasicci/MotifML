@@ -1,0 +1,8 @@
+part_id,staff_id,bar_index,bar_id,voice_lane_chain_id,voice_lane_id,voice_index,onset_id,note_id,time,bar_offset,pitch_text,attack_duration,sounding_duration,string_number,velocity,technique_summary
+part:1,staff:part:1:0,0,bar:0,voice-chain:part:1:staff:part:1:0:0,voice:staff:part:1:0:0:0,0,onset:voice:staff:part:1:0:0:0:0,note:onset:voice:staff:part:1:0:0:0:0:0,0/1,0/1,D5,1/2,1/2,,76,
+part:1,staff:part:1:0,1,bar:1,voice-chain:part:1:staff:part:1:0:0,voice:staff:part:1:0:1:0,0,onset:voice:staff:part:1:0:1:0:0,note:onset:voice:staff:part:1:0:1:0:0:0,1/1,0/1,G5,1/1,1/1,,82,
+part:2,staff:part:2:0,0,bar:0,voice-chain:part:2:staff:part:2:0:0,voice:staff:part:2:0:0:0,0,onset:voice:staff:part:2:0:0:0:0,note:onset:voice:staff:part:2:0:0:0:0:0,0/1,0/1,C5,1/2,1/2,,72,
+part:2,staff:part:2:0,0,bar:0,voice-chain:part:2:staff:part:2:0:0,voice:staff:part:2:0:0:0,0,onset:voice:staff:part:2:0:0:0:0,note:onset:voice:staff:part:2:0:0:0:0:1,0/1,0/1,E5,1/2,1/2,,72,
+part:2,staff:part:2:0,1,bar:1,voice-chain:part:2:staff:part:2:0:0,voice:staff:part:2:0:1:0,0,onset:voice:staff:part:2:0:1:0:0,note:onset:voice:staff:part:2:0:1:0:0:0,1/1,0/1,D6,1/1,1/1,,78,
+part:2,staff:part:2:1,0,bar:0,voice-chain:part:2:staff:part:2:1:0,voice:staff:part:2:1:0:0,0,onset:voice:staff:part:2:1:0:0:0,note:onset:voice:staff:part:2:1:0:0:0:0,0/1,0/1,C3,1/1,1/1,,68,
+part:2,staff:part:2:1,1,bar:1,voice-chain:part:2:staff:part:2:1:0,voice:staff:part:2:1:1:0,0,onset:voice:staff:part:2:1:1:0:0,note:onset:voice:staff:part:2:1:1:0:0:0,1/1,0/1,F2,1/1,1/1,,68,

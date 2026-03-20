@@ -1,0 +1,7 @@
+part_id,staff_id,bar_index,bar_id,voice_lane_chain_id,voice_lane_id,voice_index,onset_id,time,bar_offset,duration_notated,duration_sounding_max,is_rest,attack_order_in_voice,note_count,grace_type,dynamic_local,technique_summary
+part:1,staff:part:1:0,0,bar:0,voice-chain:part:1:staff:part:1:0:0,voice:staff:part:1:0:0:0,0,onset:voice:staff:part:1:0:0:0:0,0/1,0/1,1/2,1/2,false,0,1,,,
+part:2,staff:part:2:0,0,bar:0,voice-chain:part:2:staff:part:2:0:0,voice:staff:part:2:0:0:0,0,onset:voice:staff:part:2:0:0:0:0,0/1,0/1,1/2,1/2,false,0,2,,,
+part:2,staff:part:2:1,0,bar:0,voice-chain:part:2:staff:part:2:1:0,voice:staff:part:2:1:0:0,0,onset:voice:staff:part:2:1:0:0:0,0/1,0/1,1/1,1/1,false,0,1,,,
+part:1,staff:part:1:0,1,bar:1,voice-chain:part:1:staff:part:1:0:0,voice:staff:part:1:0:1:0,0,onset:voice:staff:part:1:0:1:0:0,1/1,0/1,1/1,1/1,false,0,1,,,
+part:2,staff:part:2:0,1,bar:1,voice-chain:part:2:staff:part:2:0:0,voice:staff:part:2:0:1:0,0,onset:voice:staff:part:2:0:1:0:0,1/1,0/1,1/1,1/1,false,0,1,,,
+part:2,staff:part:2:1,1,bar:1,voice-chain:part:2:staff:part:2:1:0,voice:staff:part:2:1:1:0,0,onset:voice:staff:part:2:1:1:0:0,1/1,0/1,1/1,1/1,false,0,1,,,

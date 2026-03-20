@@ -1,0 +1,6 @@
+{
+  "schema_path": "src/motifml/ir/schema/motifml-ir-document.schema.json",
+  "passed": true,
+  "error_count": 0,
+  "errors": []
+}
