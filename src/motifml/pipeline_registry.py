@@ -5,6 +5,9 @@ from __future__ import annotations
 from kedro.pipeline import Pipeline, node, pipeline
 
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
+from motifml.pipelines.feature_extraction.pipeline import (
+    create_pipeline as create_feature_extraction,
+)
 from motifml.pipelines.ingestion.pipeline import create_pipeline as create_ingestion
 from motifml.pipelines.ir_build.pipeline import create_pipeline as create_ir_build
 from motifml.pipelines.ir_validation.pipeline import (
@@ -34,6 +37,7 @@ def register_pipelines() -> dict[str, Pipeline]:
     ir_build = create_ir_build()
     ir_validation = create_ir_validation()
     normalization = create_normalization()
+    feature_extraction = create_feature_extraction()
     staged_ir_build = pipeline(
         [
             node(
@@ -53,5 +57,12 @@ def register_pipelines() -> dict[str, Pipeline]:
         "ir_build": ir_build,
         "ir_validation": ir_validation,
         "normalization": normalization,
-        "__default__": ingestion + staged_ir_build + ir_validation + normalization,
+        "feature_extraction": feature_extraction,
+        "__default__": (
+            ingestion
+            + staged_ir_build
+            + ir_validation
+            + normalization
+            + feature_extraction
+        ),
     }

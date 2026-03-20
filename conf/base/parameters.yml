@@ -18,3 +18,9 @@ ir_validation:
     forbidden_metadata_absent: error
     phrase_span_validity: error
     fretted_string_collision: error
+
+feature_extraction:
+  projection_type: sequence
+  event_types_included:
+    - notes
+  derived_edge_families_included: []
