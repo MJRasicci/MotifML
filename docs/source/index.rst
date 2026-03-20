@@ -3,8 +3,8 @@ MotifML Documentation
 
 MotifML builds deterministic machine-learning artifacts from symbolic scores exported by
 the Motif toolchain. The current repository implements ingestion, canonical IR build and
-validation, review tooling, and downstream normalization, feature, and tokenization
-scaffolding.
+validation, review tooling, and baseline normalization, feature-extraction, and
+tokenization stages.
 
 .. toctree::
    :maxdepth: 2

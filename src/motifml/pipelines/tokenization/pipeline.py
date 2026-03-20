@@ -1,4 +1,4 @@
-"""Pipeline definition for placeholder IR tokenization."""
+"""Pipeline definition for IR tokenization."""
 
 from __future__ import annotations
 

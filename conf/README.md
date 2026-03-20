@@ -1,26 +1,34 @@
-# What is this for?
+# Configuration
 
-This folder should be used to store configuration files used by Kedro or by separate tools.
+This directory holds Kedro configuration for MotifML.
 
-This file can be used to provide users with instructions for how to reproduce local configuration with their own credentials. You can edit the file however you like, but you may wish to retain the information below and add your own section in the [Instructions](#Instructions) section.
+## Base Configuration
 
-## Local configuration
+Shared project configuration lives in `conf/base/`.
 
-The `local` folder should be used for configuration that is either user-specific (e.g. IDE configuration) or protected (e.g. security keys).
+- `catalog.yml` wires the staged corpus, IR, reporting, feature, and model-input
+  datasets.
+- `parameters.yml` defines deterministic IR build metadata, validation severities,
+  projection settings, and tokenization parameters.
+- `logging.yml` contains the shared Kedro logging setup.
 
-> *Note:* Please do not check in any local configuration to version control.
+Keep variable behavior here instead of hardcoding it in pipeline code.
 
-## Base configuration
+## Local Configuration
 
-The `base` folder is for shared configuration, such as non-sensitive and project-related configuration that may be shared across team members.
+Use `conf/local/` for machine-specific or sensitive overrides such as credentials,
+private paths, or developer-only settings.
 
-WARNING: Please do not put access credentials in the base configuration folder.
+Do not commit local configuration.
 
-## Instructions
+## Overrides
 
+For one-off experiments, prefer Kedro parameter overrides instead of editing the shared
+base files:
 
+```bash
+uv run kedro run --params feature_extraction.projection_type=graph
+```
 
-
-## Need help?
-
-[Find out more about configuration from the Kedro documentation](https://docs.kedro.org/en/stable/configure/configuration_basics/#configuration).
+See the Kedro configuration docs for loader and merge behavior:
+https://docs.kedro.org/en/stable/configure/configuration_basics/

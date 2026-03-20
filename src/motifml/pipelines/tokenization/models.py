@@ -1,4 +1,4 @@
-"""Typed configuration and outputs for the tokenization skeleton."""
+"""Typed configuration and outputs for IR tokenization."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from motifml.pipelines.feature_extraction.models import ProjectionType
 
 
 class PaddingStrategy(StrEnum):
-    """Placeholder padding strategies for model-input preparation."""
+    """Supported padding strategies for model-input preparation."""
 
     NONE = "none"
     LEFT = "left"
@@ -20,7 +20,7 @@ class PaddingStrategy(StrEnum):
 
 @dataclass(frozen=True)
 class TokenizationParameters:
-    """Configuration surface for the tokenization pipeline skeleton."""
+    """Configuration surface for the tokenization pipeline."""
 
     vocabulary_strategy: str = "projection_native"
     max_sequence_length: int = 8
@@ -46,7 +46,7 @@ class TokenizationParameters:
 
 @dataclass(frozen=True)
 class ModelInputRecord:
-    """One placeholder tokenized example derived from a projected feature record."""
+    """One tokenized example derived from a projected feature record."""
 
     relative_path: str
     projection_type: ProjectionType
@@ -82,7 +82,7 @@ class ModelInputRecord:
 
 @dataclass(frozen=True)
 class ModelInputSet:
-    """Collection of placeholder model-input records emitted by tokenization."""
+    """Collection of model-input records emitted by tokenization."""
 
     parameters: TokenizationParameters
     records: tuple[ModelInputRecord, ...] = ()

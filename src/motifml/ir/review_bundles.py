@@ -1,4 +1,4 @@
-"""Review-bundle generation for human IR approval workflows."""
+"""Review-bundle generation for IR inspection workflows."""
 
 from __future__ import annotations
 

@@ -75,7 +75,7 @@ def summarize_ir_corpus(
 
 
 def report_ir_scale_metrics(summary: IrCorpusSummary) -> IrCorpusSummary:
-    """Attach a human-readable scale report to the machine-readable summary."""
+    """Attach a readable scale report to the machine-readable summary."""
     return replace(summary, scale_report=_render_scale_report(summary))
 
 

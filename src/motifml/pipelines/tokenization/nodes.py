@@ -1,4 +1,4 @@
-"""Nodes for the tokenization pipeline skeleton."""
+"""Nodes for the tokenization pipeline."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ def tokenize_features(
     ir_features: IrFeatureSet | Mapping[str, Any],
     parameters: TokenizationParameters | Mapping[str, Any],
 ) -> ModelInputSet:
-    """Convert projected features into placeholder model-input records."""
+    """Convert projected features into deterministic model-input records."""
     typed_parameters = coerce_tokenization_parameters(parameters)
     records = tuple(
         _tokenize_record(record, typed_parameters)

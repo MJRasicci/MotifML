@@ -1,4 +1,4 @@
-"""Nodes for the IR normalization pipeline skeleton."""
+"""Nodes for the IR normalization pipeline."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ def normalize_ir_corpus(
 ) -> list[MotifIrDocumentRecord]:
     """Return the canonical IR corpus unchanged.
 
-    The first normalization milestone is a typed passthrough so downstream pipelines can
-    be registered and exercised without changing the canonical IR surface.
+    The current normalization baseline is a typed passthrough so downstream pipelines can
+    operate without changing the canonical IR surface.
     """
     return documents

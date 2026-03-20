@@ -1,4 +1,4 @@
-"""Typed review-only models for human inspection of MotifML IR documents."""
+"""Typed review-only models for inspecting MotifML IR documents."""
 
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ class ReviewNamedCount:
 
 @dataclass(frozen=True)
 class BarReviewRollup:
-    """Human-review counts for one bar."""
+    """Review counts for one bar."""
 
     bar_id: str
     bar_index: int
@@ -45,7 +45,7 @@ class BarReviewRollup:
 
 @dataclass(frozen=True)
 class VoiceLaneReviewRollup:
-    """Human-review counts for one authored voice lane."""
+    """Review counts for one authored voice lane."""
 
     part_id: str
     staff_id: str
@@ -257,7 +257,7 @@ class VoiceLaneOnsetTable:
 
 @dataclass(frozen=True)
 class OnsetNoteRow:
-    """One note row grouped under an onset for human review."""
+    """One note row grouped under an onset for inspection."""
 
     part_id: str
     staff_id: str
@@ -364,7 +364,7 @@ class OnsetNoteTable:
 
 @dataclass(frozen=True)
 class ControlEventRow:
-    """A normalized point- or span-control row for human review."""
+    """A normalized point- or span-control row for inspection."""
 
     control_id: str
     family: str

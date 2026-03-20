@@ -1,4 +1,4 @@
-"""Nodes for the feature extraction pipeline skeleton."""
+"""Nodes for the feature extraction pipeline."""
 
 from __future__ import annotations
 

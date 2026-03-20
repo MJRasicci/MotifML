@@ -1,9 +1,8 @@
 MotifML IR Design
 =================
 
-This is the maintained ``.rst`` version of the approved IR design. It supersedes the
-scratch copy in ``temp/ir_design.md`` and is written to match the repository's current
-implementation status.
+This document records the current IR contract and matches the repository's implemented
+behavior.
 
 Purpose
 -------
@@ -31,8 +30,8 @@ The repository currently implements:
 - optional phrase overlays and typed derived-view containers
 - sequence, graph, and hierarchical projection modules
 
-The repository also includes normalization, feature-extraction, and tokenization
-scaffolding built on top of the IR.
+The repository also includes baseline normalization, feature-extraction, and tokenization
+stages built on top of the IR.
 
 Not Yet Implemented
 -------------------
@@ -137,7 +136,7 @@ explicit diagnostics instead of silently dropping them.
 - validation applies configuration-driven severities
 - corpus reporting aggregates validation issues and unsupported-feature counts
 - review bundles surface schema validation, IR validation, tables, and visualizations for
-  human inspection
+  inspection
 
 Optional Layers
 ---------------
@@ -145,7 +144,7 @@ Optional Layers
 Optional overlay and view support is present but not required for validity:
 
 - phrase overlays are fully typed and serializable
-- playback instances and derived edge sets are placeholder containers
+- playback instances and derived edge sets are reserved containers for optional views
 - derived-view omission and explicit empties serialize canonically
 
 Downstream Projections
@@ -157,5 +156,5 @@ The repository includes three projection modules under ``src/motifml/ir/projecti
 - ``graph``: typed nodes and adjacency for graph-style consumers
 - ``hierarchical``: reconstructed containment trees with control attachment
 
-The current feature-extraction scaffold selects among those projections through Kedro
+The current feature-extraction stage selects among those projections through Kedro
 parameters.

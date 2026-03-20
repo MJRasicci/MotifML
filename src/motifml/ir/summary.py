@@ -101,7 +101,7 @@ class IrOptionalFamilyPresence:
 
 @dataclass(frozen=True)
 class IrCorpusSummary:
-    """Machine-readable corpus summary plus a human-readable scale report."""
+    """Machine-readable corpus summary plus a readable scale report."""
 
     document_count: int
     per_document: tuple[IrCorpusDocumentSummary, ...] = ()

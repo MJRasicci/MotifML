@@ -1,4 +1,4 @@
-"""Pipeline definition for skeleton IR feature extraction."""
+"""Pipeline definition for IR feature extraction."""
 
 from __future__ import annotations
 

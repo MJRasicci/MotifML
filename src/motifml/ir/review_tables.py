@@ -1,4 +1,4 @@
-"""Deterministic review-table helpers for human IR inspection."""
+"""Deterministic review-table helpers for IR inspection."""
 
 from __future__ import annotations
 
@@ -85,7 +85,7 @@ def load_ir_document_record(
 
 
 def build_structure_summary(document: MotifMlIrDocument) -> IrStructureSummary:
-    """Build deterministic document-level counts and rollups for human review."""
+    """Build deterministic document-level counts and rollups for inspection."""
     bars_by_id = _bars_by_id(document)
     voice_lanes_by_bar_id = _voice_lanes_by_bar_id(document)
     onsets_by_voice_lane_id = _onsets_by_voice_lane_id(document)
@@ -585,7 +585,7 @@ def format_score_time(value: ScoreTime | None) -> str:
 
 
 def format_pitch(pitch: Pitch | None) -> str:
-    """Render a pitch as a compact human-readable label."""
+    """Render a pitch as a compact readable label."""
     if pitch is None:
         return "unpitched"
     accidental = "" if pitch.accidental is None else pitch.accidental

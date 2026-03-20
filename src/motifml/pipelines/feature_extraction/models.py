@@ -1,4 +1,4 @@
-"""Typed configuration and outputs for the feature extraction skeleton."""
+"""Typed configuration and outputs for IR feature extraction."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from motifml.ir.projections.sequence import SequenceProjection
 
 
 class ProjectionType(StrEnum):
-    """Supported projection families for skeleton feature extraction."""
+    """Supported projection families for feature extraction."""
 
     SEQUENCE = "sequence"
     GRAPH = "graph"
@@ -27,7 +27,7 @@ ProjectionPayload: TypeAlias = (
 
 @dataclass(frozen=True)
 class FeatureExtractionParameters:
-    """Configuration surface for the feature extraction pipeline skeleton."""
+    """Configuration surface for the feature extraction pipeline."""
 
     projection_type: ProjectionType = ProjectionType.SEQUENCE
     event_types_included: tuple[str, ...] = ()
@@ -77,7 +77,7 @@ class IrFeatureRecord:
 
 @dataclass(frozen=True)
 class IrFeatureSet:
-    """Collection of projected features emitted by the skeleton extractor."""
+    """Collection of projected features emitted by feature extraction."""
 
     parameters: FeatureExtractionParameters
     records: tuple[IrFeatureRecord, ...] = ()

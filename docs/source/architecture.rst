@@ -1,9 +1,7 @@
 MotifML Architecture
 ====================
 
-This document describes the architecture that exists in the repository today. It replaces
-the earlier Markdown overview and keeps the implementation-facing docs in
-``docs/source``.
+This document describes the architecture that exists in the repository today.
 
 System Overview
 ---------------
@@ -12,8 +10,9 @@ MotifML currently implements the symbolic-data side of the project:
 
 - ingestion of source corpora into canonical Motif JSON
 - deterministic IR build and validation
-- human review artifacts for fixture approval
-- normalization, feature-extraction, and tokenization scaffolding for downstream ML work
+- tracked review artifacts for fixture approval
+- baseline normalization, feature extraction, and tokenization stages for downstream ML
+  work
 
 The repository does not yet contain training, generation, or evaluation pipelines. Those
 remain future work and are intentionally not described here as implemented behavior.
@@ -50,10 +49,11 @@ Kedro Pipelines
 - ``ir_build``: validates the Motif JSON canonical surface and emits IR documents plus a
   manifest
 - ``ir_validation``: runs structural validation and produces corpus-level reporting
-- ``normalization``: passthrough scaffold from IR to normalized IR
-- ``feature_extraction``: projection-driven scaffold for sequence, graph, or hierarchical
-  views
-- ``tokenization``: placeholder conversion from extracted features to model input
+- ``normalization``: deterministic passthrough baseline from IR to normalized IR
+- ``feature_extraction``: projection-driven baseline for sequence, graph, or
+  hierarchical views
+- ``tokenization``: deterministic baseline packaging from extracted features to model
+  input
 
 The default pipeline runs those stages in order. A small staging node gates IR build on a
 completed ingestion summary without mutating the raw corpus.
@@ -97,7 +97,8 @@ Determinism is a core architectural constraint:
 - the IR corpus dataset avoids rewriting byte-identical documents
 - fixture-backed tests assert byte stability across repeated builds and reordered inputs
 
-Human review is part of the architecture, not an afterthought. The repository tracks:
+Tracked review artifacts are part of the architecture, not an afterthought. The
+repository tracks:
 
 - curated raw fixtures and a golden IR subset in ``tests/fixtures/``
 - review-bundle artifacts in ``tests/fixtures/ir/review_bundles/``

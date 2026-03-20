@@ -1,4 +1,4 @@
-"""Tokenization pipeline for placeholder model-ready inputs."""
+"""Tokenization pipeline for model-ready IR inputs."""
 
 from motifml.pipelines.tokenization.pipeline import create_pipeline
 

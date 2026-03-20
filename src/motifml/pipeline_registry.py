@@ -1,4 +1,4 @@
-"""Project pipelines."""
+"""Kedro pipeline registry for MotifML."""
 
 from __future__ import annotations
 
