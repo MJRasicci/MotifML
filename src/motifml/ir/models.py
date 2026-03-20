@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import TypeAlias, TypeVar
@@ -11,6 +12,7 @@ from motifml.ir.ids import (
     NOTE_PREFIX,
     ONSET_PREFIX,
     PART_PREFIX,
+    PHRASE_PREFIX,
     POINT_CONTROL_PREFIX,
     SPAN_CONTROL_PREFIX,
     STAFF_PREFIX,
@@ -93,6 +95,27 @@ class TimeUnit(StrEnum):
     """Supported canonical score-time units for persisted IR documents."""
 
     WHOLE_NOTE_FRACTION = "whole_note_fraction"
+
+
+class PhraseKind(StrEnum):
+    """Supported coarse phrase-overlay categories."""
+
+    MELODIC = "melodic"
+    ACCOMPANIMENT = "accompaniment"
+    RIFF = "riff"
+    CADENTIAL = "cadential"
+    GESTURE = "gesture"
+    PATTERN = "pattern"
+    UNKNOWN = "unknown"
+
+
+class PhraseSource(StrEnum):
+    """Supported provenance labels for phrase overlays."""
+
+    AUTHORED = "authored"
+    MANUAL_ANNOTATION = "manual_annotation"
+    DERIVED_RULE_BASED = "derived_rule_based"
+    DERIVED_MODEL_BASED = "derived_model_based"
 
 
 class IrManifestDiagnosticCategory(StrEnum):
@@ -888,11 +911,71 @@ class IrManifestEntry:
         )
 
 
+PhraseConfidence: TypeAlias = str | float
+
+
+@dataclass(frozen=True)
+class PhraseSpan:
+    """Optional overlay describing one phrase span over a score scope."""
+
+    phrase_id: str
+    scope_ref: str
+    start_time: ScoreTime
+    end_time: ScoreTime
+    phrase_kind: PhraseKind
+    source: PhraseSource
+    confidence: PhraseConfidence
+    voice_lane_chain_id: str | None = None
+    anchor_bar_start: str | None = None
+    anchor_bar_end: str | None = None
+
+    def __post_init__(self) -> None:
+        _require_identifier_prefix(self.phrase_id, PHRASE_PREFIX, "phrase_id")
+        _validate_phrase_scope_ref(self.scope_ref, "scope_ref")
+        self.start_time.require_non_negative("PhraseSpan start_time")
+        self.end_time.require_non_negative("PhraseSpan end_time")
+        if self.end_time <= self.start_time:
+            raise ValueError("PhraseSpan end_time must be after start_time.")
+
+        object.__setattr__(
+            self,
+            "phrase_kind",
+            _coerce_str_enum(self.phrase_kind, PhraseKind, "phrase_kind"),
+        )
+        object.__setattr__(
+            self,
+            "source",
+            _coerce_str_enum(self.source, PhraseSource, "source"),
+        )
+        object.__setattr__(
+            self,
+            "confidence",
+            _normalize_phrase_confidence(self.confidence),
+        )
+
+        if self.voice_lane_chain_id is not None:
+            _require_identifier_prefix(
+                self.voice_lane_chain_id,
+                VOICE_LANE_CHAIN_PREFIX,
+                "voice_lane_chain_id",
+            )
+
+        if self.anchor_bar_start is not None:
+            _require_identifier_prefix(
+                self.anchor_bar_start, BAR_PREFIX, "anchor_bar_start"
+            )
+
+        if self.anchor_bar_end is not None:
+            _require_identifier_prefix(
+                self.anchor_bar_end, BAR_PREFIX, "anchor_bar_end"
+            )
+
+
 @dataclass(frozen=True)
 class OptionalOverlays:
     """Optional overlay containers kept separate from the canonical backbone."""
 
-    phrase_spans: tuple[object, ...] = ()
+    phrase_spans: tuple[PhraseSpan, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "phrase_spans", tuple(self.phrase_spans))
@@ -973,6 +1056,10 @@ __all__ = [
     "Part",
     "Pitch",
     "PitchStep",
+    "PhraseConfidence",
+    "PhraseKind",
+    "PhraseSource",
+    "PhraseSpan",
     "PointControlEvent",
     "PointControlKind",
     "PointControlValue",
@@ -1121,3 +1208,30 @@ def _validate_anchor_ref(value: str, field_name: str) -> None:
         return
 
     raise ValueError(f"{field_name} must reference an onset or note identifier.")
+
+
+def _validate_phrase_scope_ref(value: str, field_name: str) -> None:
+    if value.startswith(f"{PART_PREFIX}:"):
+        return
+    if value.startswith(f"{STAFF_PREFIX}:"):
+        return
+    if value.startswith(f"{VOICE_LANE_CHAIN_PREFIX}:"):
+        return
+
+    raise ValueError(
+        f"{field_name} must reference a part, staff, or voice-lane chain identifier."
+    )
+
+
+def _normalize_phrase_confidence(value: PhraseConfidence) -> PhraseConfidence:
+    if isinstance(value, str):
+        return _normalize_optional_text(value, "confidence")
+
+    if isinstance(value, bool) or not isinstance(value, int | float):
+        raise TypeError("confidence must be a non-empty string or numeric score.")
+
+    normalized = float(value)
+    if not math.isfinite(normalized):
+        raise ValueError("confidence must be finite when provided as a numeric score.")
+
+    return normalized

@@ -34,6 +34,7 @@ from motifml.ir.models import (
     OptionalViews,
     OttavaValue,
     Part,
+    PhraseSpan,
     Pitch,
     PointControlEvent,
     PointControlKind,
@@ -157,14 +158,12 @@ def _canonicalize_document(document: MotifMlIrDocument) -> MotifMlIrDocument:
         sorted(
             document.optional_overlays.phrase_spans,
             key=lambda phrase_span: phrase_sort_key(
-                str(phrase_span["scope_ref"]),
-                _deserialize_score_time(phrase_span["start_time"]),
-                _deserialize_score_time(phrase_span["end_time"]),
-                str(phrase_span["phrase_id"]),
+                phrase_span.scope_ref,
+                phrase_span.start_time,
+                phrase_span.end_time,
+                phrase_span.phrase_id,
             ),
         )
-        if _are_serialized_phrase_spans(document.optional_overlays.phrase_spans)
-        else document.optional_overlays.phrase_spans
     )
 
     return MotifMlIrDocument(
@@ -444,8 +443,45 @@ def _deserialize_edge(payload: Mapping[str, Any]) -> Edge:
     )
 
 
+def _deserialize_phrase_span(payload: Mapping[str, Any]) -> PhraseSpan:
+    confidence = payload["confidence"]
+    if not isinstance(confidence, str | int | float) or isinstance(confidence, bool):
+        raise TypeError(
+            "PhraseSpan confidence must be a non-empty string or numeric score."
+        )
+
+    return PhraseSpan(
+        phrase_id=str(payload["phrase_id"]),
+        scope_ref=str(payload["scope_ref"]),
+        start_time=_deserialize_score_time(payload["start_time"]),
+        end_time=_deserialize_score_time(payload["end_time"]),
+        phrase_kind=str(payload["phrase_kind"]),
+        source=str(payload["source"]),
+        confidence=confidence,
+        voice_lane_chain_id=(
+            str(payload["voice_lane_chain_id"])
+            if payload.get("voice_lane_chain_id") is not None
+            else None
+        ),
+        anchor_bar_start=(
+            str(payload["anchor_bar_start"])
+            if payload.get("anchor_bar_start") is not None
+            else None
+        ),
+        anchor_bar_end=(
+            str(payload["anchor_bar_end"])
+            if payload.get("anchor_bar_end") is not None
+            else None
+        ),
+    )
+
+
 def _deserialize_optional_overlays(payload: Mapping[str, Any]) -> OptionalOverlays:
-    return OptionalOverlays(phrase_spans=tuple(payload.get("phrase_spans", [])))
+    return OptionalOverlays(
+        phrase_spans=tuple(
+            _deserialize_phrase_span(item) for item in payload.get("phrase_spans", [])
+        )
+    )
 
 
 def _deserialize_optional_views(payload: Mapping[str, Any]) -> OptionalViews:
@@ -620,12 +656,4 @@ def _deserialize_score_time(payload: Mapping[str, Any]) -> ScoreTime:
     return ScoreTime(
         numerator=int(payload["numerator"]),
         denominator=int(payload["denominator"]),
-    )
-
-
-def _are_serialized_phrase_spans(phrase_spans: tuple[object, ...]) -> bool:
-    return all(
-        isinstance(item, Mapping)
-        and {"scope_ref", "start_time", "end_time", "phrase_id"} <= set(item.keys())
-        for item in phrase_spans
     )

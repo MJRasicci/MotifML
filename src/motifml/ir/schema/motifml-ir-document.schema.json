@@ -950,6 +950,79 @@
         }
       }
     },
+    "PhraseSpan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "phrase_id",
+        "scope_ref",
+        "start_time",
+        "end_time",
+        "phrase_kind",
+        "source",
+        "confidence"
+      ],
+      "properties": {
+        "phrase_id": {
+          "type": "string",
+          "pattern": "^phrase:"
+        },
+        "scope_ref": {
+          "type": "string",
+          "pattern": "^(part|staff|voice-chain):"
+        },
+        "start_time": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "end_time": {
+          "$ref": "#/$defs/ScoreTime"
+        },
+        "phrase_kind": {
+          "type": "string",
+          "enum": [
+            "melodic",
+            "accompaniment",
+            "riff",
+            "cadential",
+            "gesture",
+            "pattern",
+            "unknown"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "authored",
+            "manual_annotation",
+            "derived_rule_based",
+            "derived_model_based"
+          ]
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "voice_lane_chain_id": {
+          "type": "string",
+          "pattern": "^voice-chain:"
+        },
+        "anchor_bar_start": {
+          "type": "string",
+          "pattern": "^bar:"
+        },
+        "anchor_bar_end": {
+          "type": "string",
+          "pattern": "^bar:"
+        }
+      }
+    },
     "OptionalOverlays": {
       "type": "object",
       "additionalProperties": false,
@@ -958,7 +1031,10 @@
       ],
       "properties": {
         "phrase_spans": {
-          "type": "array"
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PhraseSpan"
+          }
         }
       }
     },

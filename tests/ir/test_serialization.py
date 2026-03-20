@@ -20,6 +20,9 @@ from motifml.ir.models import (
     OptionalOverlays,
     OptionalViews,
     Part,
+    PhraseKind,
+    PhraseSource,
+    PhraseSpan,
     Pitch,
     PointControlEvent,
     PointControlKind,
@@ -70,6 +73,61 @@ def test_serialize_document_matches_the_checked_in_golden_fixture():
 
     assert serialize_document(document) == SERIALIZED_DOCUMENT_FIXTURE.read_text(
         encoding="utf-8"
+    )
+
+
+def test_serialize_document_round_trips_phrase_spans_canonically():
+    document = _build_unsorted_document()
+    document = MotifMlIrDocument(
+        metadata=document.metadata,
+        parts=document.parts,
+        staves=document.staves,
+        bars=document.bars,
+        voice_lanes=document.voice_lanes,
+        point_control_events=document.point_control_events,
+        span_control_events=document.span_control_events,
+        onset_groups=document.onset_groups,
+        note_events=document.note_events,
+        edges=document.edges,
+        optional_overlays=OptionalOverlays(
+            phrase_spans=(
+                PhraseSpan(
+                    phrase_id="phrase:part:track-a:1",
+                    scope_ref="part:track-a",
+                    start_time=ScoreTime(1, 4),
+                    end_time=ScoreTime(1, 1),
+                    phrase_kind=PhraseKind.GESTURE,
+                    source=PhraseSource.DERIVED_RULE_BASED,
+                    confidence=0.75,
+                ),
+                PhraseSpan(
+                    phrase_id="phrase:part:track-a:0",
+                    scope_ref="part:track-a",
+                    start_time=ScoreTime(0, 1),
+                    end_time=ScoreTime(1, 2),
+                    phrase_kind=PhraseKind.MELODIC,
+                    source=PhraseSource.MANUAL_ANNOTATION,
+                    confidence="high",
+                ),
+            )
+        ),
+        optional_views=document.optional_views,
+    )
+
+    serialized = serialize_document(document)
+    payload = json.loads(serialized)
+    round_tripped = deserialize_document(serialized)
+
+    assert [
+        span["phrase_id"] for span in payload["optional_overlays"]["phrase_spans"]
+    ] == [
+        "phrase:part:track-a:0",
+        "phrase:part:track-a:1",
+    ]
+    assert serialize_document(round_tripped) == serialized
+    assert (
+        round_tripped.optional_overlays.phrase_spans[0].phrase_kind
+        is PhraseKind.MELODIC
     )
 
 

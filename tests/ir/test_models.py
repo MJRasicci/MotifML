@@ -24,6 +24,9 @@ from motifml.ir.models import (
     OptionalViews,
     OttavaValue,
     Part,
+    PhraseKind,
+    PhraseSource,
+    PhraseSpan,
     Pitch,
     PitchStep,
     PointControlEvent,
@@ -50,6 +53,7 @@ EXPECTED_BEATS_PER_MINUTE = 120.0
 EXPECTED_GENERIC_ACCENT = 2
 EXPECTED_CAPO_FRET = 2
 EXPECTED_STRING_NUMBER = 1
+EXPECTED_PHRASE_CONFIDENCE = 0.95
 EXPECTED_STAFF_IDS = ("staff:part:track-7:0", "staff:part:track-7:1")
 
 
@@ -407,6 +411,58 @@ def test_edge_model_rejects_invalid_endpoint_families():
         )
 
 
+def test_phrase_span_uses_typed_enums_and_validates_overlay_fields():
+    phrase_span = PhraseSpan(
+        phrase_id="phrase:part:track-7:0",
+        scope_ref="voice-chain:part:track-7:staff:part:track-7:0:0",
+        start_time=ScoreTime(0, 1),
+        end_time=ScoreTime(3, 4),
+        phrase_kind="melodic",
+        source="manual_annotation",
+        confidence=0.95,
+        voice_lane_chain_id="voice-chain:part:track-7:staff:part:track-7:0:0",
+        anchor_bar_start="bar:0",
+        anchor_bar_end="bar:1",
+    )
+
+    assert phrase_span.phrase_kind is PhraseKind.MELODIC
+    assert phrase_span.source is PhraseSource.MANUAL_ANNOTATION
+    assert phrase_span.confidence == EXPECTED_PHRASE_CONFIDENCE
+
+    with pytest.raises(ValueError, match="scope_ref"):
+        PhraseSpan(
+            phrase_id="phrase:part:track-7:1",
+            scope_ref="bar:0",
+            start_time=ScoreTime(0, 1),
+            end_time=ScoreTime(1, 2),
+            phrase_kind=PhraseKind.UNKNOWN,
+            source=PhraseSource.AUTHORED,
+            confidence="medium",
+        )
+
+    with pytest.raises(ValueError, match="after start_time"):
+        PhraseSpan(
+            phrase_id="phrase:part:track-7:2",
+            scope_ref="part:track-7",
+            start_time=ScoreTime(1, 2),
+            end_time=ScoreTime(1, 2),
+            phrase_kind=PhraseKind.UNKNOWN,
+            source=PhraseSource.AUTHORED,
+            confidence="medium",
+        )
+
+    with pytest.raises(TypeError, match="confidence"):
+        PhraseSpan(
+            phrase_id="phrase:part:track-7:3",
+            scope_ref="part:track-7",
+            start_time=ScoreTime(0, 1),
+            end_time=ScoreTime(1, 2),
+            phrase_kind=PhraseKind.UNKNOWN,
+            source=PhraseSource.AUTHORED,
+            confidence=True,
+        )
+
+
 def test_document_metadata_and_envelope_use_stable_typed_containers():
     metadata = IrDocumentMetadata(
         ir_schema_version="1.0.0",
@@ -426,7 +482,19 @@ def test_document_metadata_and_envelope_use_stable_typed_containers():
                 staff_ids=EXPECTED_STAFF_IDS,
             )
         ],
-        optional_overlays=OptionalOverlays(phrase_spans=["placeholder"]),
+        optional_overlays=OptionalOverlays(
+            phrase_spans=(
+                PhraseSpan(
+                    phrase_id="phrase:part:track-7:0",
+                    scope_ref="part:track-7",
+                    start_time=ScoreTime(0, 1),
+                    end_time=ScoreTime(1, 1),
+                    phrase_kind=PhraseKind.MELODIC,
+                    source=PhraseSource.MANUAL_ANNOTATION,
+                    confidence="approved",
+                ),
+            )
+        ),
         optional_views=OptionalViews(
             playback_instances=["playback"], derived_edge_sets=["derived"]
         ),
@@ -434,7 +502,17 @@ def test_document_metadata_and_envelope_use_stable_typed_containers():
 
     assert metadata.time_unit is TimeUnit.WHOLE_NOTE_FRACTION
     assert document.parts[0].part_id == "part:track-7"
-    assert document.optional_overlays.phrase_spans == ("placeholder",)
+    assert document.optional_overlays.phrase_spans == (
+        PhraseSpan(
+            phrase_id="phrase:part:track-7:0",
+            scope_ref="part:track-7",
+            start_time=ScoreTime(0, 1),
+            end_time=ScoreTime(1, 1),
+            phrase_kind=PhraseKind.MELODIC,
+            source=PhraseSource.MANUAL_ANNOTATION,
+            confidence="approved",
+        ),
+    )
     assert document.optional_views.playback_instances == ("playback",)
     assert document.optional_views.derived_edge_sets == ("derived",)
 

@@ -5,7 +5,14 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 
-from motifml.ir.models import Edge, EdgeType, OptionalOverlays
+from motifml.ir.models import (
+    Edge,
+    EdgeType,
+    OptionalOverlays,
+    PhraseKind,
+    PhraseSource,
+    PhraseSpan,
+)
 from motifml.ir.serialization import deserialize_document
 from motifml.ir.time import ScoreTime
 from motifml.ir.validation import (
@@ -150,20 +157,30 @@ def test_validate_document_reports_tie_chain_and_edge_endpoint_failures():
 
 def test_validate_document_reports_phrase_span_and_forbidden_metadata_failures():
     document = deepcopy(_load_golden_document("single_track_monophonic_pickup.ir.json"))
+    invalid_phrase_span = PhraseSpan(
+        phrase_id="phrase:part:track-1:0",
+        scope_ref=document.voice_lanes[0].voice_lane_chain_id,
+        start_time=ScoreTime(1, 4),
+        end_time=ScoreTime(1, 2),
+        phrase_kind=PhraseKind.MELODIC,
+        source=PhraseSource.MANUAL_ANNOTATION,
+        confidence="reviewed",
+    )
+    object.__setattr__(invalid_phrase_span, "scope_ref", "voice-chain:missing")
+    object.__setattr__(invalid_phrase_span, "end_time", ScoreTime(1, 8))
     object.__setattr__(
         document,
         "optional_overlays",
-        OptionalOverlays(
-            phrase_spans=(
-                {
-                    "phrase_id": "phrase:demo:0",
-                    "scope_ref": "voice-chain:missing",
-                    "start_time": {"numerator": 1, "denominator": 2},
-                    "end_time": {"numerator": 1, "denominator": 4},
-                    "title": "Forbidden",
-                },
-            )
-        ),
+        OptionalOverlays(phrase_spans=(invalid_phrase_span,)),
+    )
+    object.__setattr__(
+        document,
+        "optional_views",
+        {
+            "title": "Forbidden",
+            "playback_instances": (),
+            "derived_edge_sets": (),
+        },
     )
 
     issues_by_rule = validate_document(document)

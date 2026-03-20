@@ -10,7 +10,7 @@ from typing import Any
 
 from motifml.ir.ids import note_sort_key
 from motifml.ir.ids import voice_lane_chain_id as build_voice_lane_chain_id
-from motifml.ir.models import EdgeType, MotifMlIrDocument
+from motifml.ir.models import EdgeType, MotifMlIrDocument, PhraseSpan
 from motifml.ir.time import ScoreTime
 
 FORBIDDEN_METADATA_FIELDS = frozenset(
@@ -715,37 +715,45 @@ def _validate_phrase_spans(
 ) -> None:
     for phrase_index, phrase_span in enumerate(document.optional_overlays.phrase_spans):
         path_prefix = f"optional_overlays.phrase_spans[{phrase_index}]"
-        if not isinstance(phrase_span, Mapping):
+        if isinstance(phrase_span, PhraseSpan):
+            phrase_id = phrase_span.phrase_id
+            scope_ref = phrase_span.scope_ref
+            start_time = phrase_span.start_time
+            end_time = phrase_span.end_time
+            voice_lane_chain_id = phrase_span.voice_lane_chain_id
+        elif isinstance(phrase_span, Mapping):
+            phrase_id = _required_phrase_text(
+                phrase_span,
+                "phrase_id",
+                path_prefix,
+                issues_by_rule,
+            )
+            scope_ref = _required_phrase_text(
+                phrase_span,
+                "scope_ref",
+                path_prefix,
+                issues_by_rule,
+            )
+            start_time = _coerce_phrase_score_time(
+                phrase_span.get("start_time"),
+                path=f"{path_prefix}.start_time",
+                issues_by_rule=issues_by_rule,
+            )
+            end_time = _coerce_phrase_score_time(
+                phrase_span.get("end_time"),
+                path=f"{path_prefix}.end_time",
+                issues_by_rule=issues_by_rule,
+            )
+            voice_lane_chain_id = phrase_span.get("voice_lane_chain_id")
+        else:
             _append_issue(
                 issues_by_rule,
                 IrValidationRule.PHRASE_SPAN_VALIDITY,
                 path=path_prefix,
-                message="phrase spans must be serialized mapping objects when present.",
+                message="phrase spans must be PhraseSpan objects when present.",
             )
             continue
 
-        phrase_id = _required_phrase_text(
-            phrase_span,
-            "phrase_id",
-            path_prefix,
-            issues_by_rule,
-        )
-        scope_ref = _required_phrase_text(
-            phrase_span,
-            "scope_ref",
-            path_prefix,
-            issues_by_rule,
-        )
-        start_time = _coerce_phrase_score_time(
-            phrase_span.get("start_time"),
-            path=f"{path_prefix}.start_time",
-            issues_by_rule=issues_by_rule,
-        )
-        end_time = _coerce_phrase_score_time(
-            phrase_span.get("end_time"),
-            path=f"{path_prefix}.end_time",
-            issues_by_rule=issues_by_rule,
-        )
         if start_time is not None and end_time is not None and end_time <= start_time:
             _append_issue(
                 issues_by_rule,
@@ -764,7 +772,6 @@ def _validate_phrase_spans(
                 entity_id=phrase_id,
             )
 
-        voice_lane_chain_id = phrase_span.get("voice_lane_chain_id")
         if voice_lane_chain_id is not None and (
             not isinstance(voice_lane_chain_id, str)
             or voice_lane_chain_id not in context.voice_lane_chain_ids
