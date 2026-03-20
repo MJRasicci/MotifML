@@ -6,16 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any, TypeAlias
 
-from motifml.ir.ids import (
-    bar_sort_key,
-    note_sort_key,
-    onset_sort_key,
-    part_sort_key,
-    point_control_sort_key,
-    span_control_sort_key,
-    staff_sort_key,
-    voice_lane_sort_key,
-)
+from motifml.ir.ids import note_sort_key
 from motifml.ir.models import (
     Bar,
     ControlScope,
@@ -206,53 +197,15 @@ def project_sequence(
 ) -> SequenceProjection:
     """Project a canonical IR document into a typed time-ordered sequence."""
     effective_config = config or SequenceProjectionConfig()
-    parts = tuple(sorted(document.parts, key=lambda part: part_sort_key(part.part_id)))
-    staves = tuple(
-        sorted(
-            document.staves,
-            key=lambda staff: staff_sort_key(
-                staff.part_id,
-                staff.staff_index,
-                staff.staff_id,
-            ),
-        )
-    )
-    bars = tuple(
-        sorted(document.bars, key=lambda bar: bar_sort_key(bar.bar_index, bar.bar_id))
-    )
+    # Canonical IR documents already preserve deterministic family ordering.
+    parts = document.parts
+    staves = document.staves
+    bars = document.bars
     bars_by_id = {bar.bar_id: bar for bar in bars}
-    voice_lanes = tuple(
-        sorted(
-            document.voice_lanes,
-            key=lambda voice_lane: voice_lane_sort_key(
-                bars_by_id[voice_lane.bar_id].bar_index,
-                voice_lane.staff_id,
-                voice_lane.voice_index,
-                voice_lane.voice_lane_id,
-            ),
-        )
-    )
-    onsets = tuple(
-        sorted(
-            document.onset_groups,
-            key=lambda onset: onset_sort_key(
-                onset.voice_lane_id,
-                onset.time,
-                onset.attack_order_in_voice,
-                onset.onset_id,
-            ),
-        )
-    )
-    onset_order_by_id = {onset.onset_id: index for index, onset in enumerate(onsets)}
-    notes = tuple(
-        sorted(
-            document.note_events,
-            key=lambda note: (
-                onset_order_by_id[note.onset_id],
-                note_sort_key(note.string_number, note.pitch, note.note_id),
-            ),
-        )
-    )
+    del bars_by_id
+    voice_lanes = document.voice_lanes
+    onsets = document.onset_groups
+    notes = document.note_events
 
     events: list[SequenceEvent] = []
     if effective_config.include_structure_markers:
@@ -359,15 +312,7 @@ def _build_control_events(
     staff_by_id = {staff.staff_id: staff for staff in document.staves}
 
     events: list[PointControlSequenceEvent | SpanControlSequenceEvent] = []
-    for control in sorted(
-        document.point_control_events,
-        key=lambda item: point_control_sort_key(
-            item.scope.value,
-            item.target_ref,
-            item.time,
-            item.control_id,
-        ),
-    ):
+    for control in document.point_control_events:
         part_id, staff_id, voice_lane_id = _control_attribution(
             control.scope,
             control.target_ref,
@@ -384,16 +329,7 @@ def _build_control_events(
             )
         )
 
-    for control in sorted(
-        document.span_control_events,
-        key=lambda item: span_control_sort_key(
-            item.scope.value,
-            item.target_ref,
-            item.start_time,
-            item.end_time,
-            item.control_id,
-        ),
-    ):
+    for control in document.span_control_events:
         part_id, staff_id, voice_lane_id = _control_attribution(
             control.scope,
             control.target_ref,

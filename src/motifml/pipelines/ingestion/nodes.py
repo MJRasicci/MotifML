@@ -16,6 +16,14 @@ from motifml.pipelines.ingestion.models import (
     RawCorpusManifestEntry,
     RawCorpusSummary,
 )
+from motifml.sharding import (
+    PartitioningParameters,
+    RawPartitionIndexEntry,
+    RawShardManifest,
+    build_partition_index,
+    build_shard_manifests,
+    coerce_partitioning_parameters,
+)
 
 UNKNOWN_VALUE = "<unknown>"
 
@@ -95,6 +103,25 @@ def summarize_raw_corpus(
         artist_counts=_to_named_counts(artist_counter.items()),
         album_counts=_to_named_counts(album_counter.items()),
     )
+
+
+def build_raw_partition_index(
+    manifest: list[RawCorpusManifestEntry] | list[dict[str, Any]],
+    partitioning: PartitioningParameters | dict[str, Any] | None = None,
+) -> tuple[RawPartitionIndexEntry, ...]:
+    """Build a deterministic shard assignment for the raw corpus manifest."""
+    manifest_entries = _coerce_manifest_entries(manifest)
+    return build_partition_index(
+        manifest_entries=manifest_entries,
+        parameters=coerce_partitioning_parameters(partitioning),
+    )
+
+
+def build_raw_shard_manifests(
+    partition_index: list[RawPartitionIndexEntry] | list[dict[str, Any]],
+) -> tuple[RawShardManifest, ...]:
+    """Group the raw partition index into per-shard manifests."""
+    return build_shard_manifests(partition_index)
 
 
 def _normalize_optional_text(value: str | None) -> str | None:

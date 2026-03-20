@@ -12,7 +12,7 @@ from motifml.ir.models import MotifMlIrDocument
 from motifml.ir.serialization import deserialize_document, serialize_document
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MotifIrDocumentRecord:
     """One IR document paired with its stable source-relative identity."""
 
@@ -47,7 +47,7 @@ class MotifIrCorpusDataset(
                     relative_path=source_relative_path_from_ir_path(
                         relative_artifact_path
                     ),
-                    document=deserialize_document(path.read_text(encoding="utf-8")),
+                    document=deserialize_document(path.read_bytes()),
                 )
             )
 
@@ -61,15 +61,15 @@ class MotifIrCorpusDataset(
             target_path = self._filepath / ir_artifact_path_for_source(
                 record.relative_path
             )
-            serialized = serialize_document(record.document)
-            if (
-                target_path.exists()
-                and target_path.read_text(encoding="utf-8") == serialized
-            ):
-                continue
+            serialized_bytes = serialize_document(record.document).encode("utf-8")
+            if target_path.exists():
+                if target_path.stat().st_size == len(serialized_bytes) and (
+                    target_path.read_bytes() == serialized_bytes
+                ):
+                    continue
 
             target_path.parent.mkdir(parents=True, exist_ok=True)
-            target_path.write_text(serialized, encoding="utf-8")
+            target_path.write_bytes(serialized_bytes)
 
     def _exists(self) -> bool:
         return self._filepath.exists()

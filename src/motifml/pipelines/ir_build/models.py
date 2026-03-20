@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
+from functools import cached_property
+from typing import Any
 
 from motifml.ir.ids import (
     bar_sort_key,
@@ -38,7 +41,29 @@ class DiagnosticSeverity(StrEnum):
     WARNING = "warning"
 
 
-@dataclass(frozen=True)
+_MIN_SORT_ITEMS = 2
+
+
+def _ensure_sorted_tuple(
+    values: tuple[Any, ...] | list[Any],
+    *,
+    key: Callable[[Any], Any],
+) -> tuple[Any, ...]:
+    items = tuple(values)
+    if len(items) < _MIN_SORT_ITEMS:
+        return items
+
+    previous_key = key(items[0])
+    for item in items[1:]:
+        current_key = key(item)
+        if previous_key > current_key:
+            return tuple(sorted(items, key=key))
+        previous_key = current_key
+
+    return items
+
+
+@dataclass(frozen=True, slots=True)
 class IrBuildDiagnostic:
     """One deterministic diagnostic emitted during IR build validation."""
 
@@ -63,7 +88,7 @@ class IrBuildDiagnostic:
         return (severity_rank, self.path, self.code, self.message)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CanonicalScoreValidationResult:
     """Typed validation result for one raw Motif JSON score surface."""
 
@@ -86,7 +111,10 @@ class CanonicalScoreValidationResult:
             _normalize_text(self.source_hash, "source_hash"),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(
@@ -104,7 +132,7 @@ class CanonicalScoreValidationResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class WrittenTimeMapEntry:
     """One bar-level written-time anchor emitted from `timelineBars`."""
 
@@ -152,10 +180,13 @@ class WrittenTimeMapResult:
         object.__setattr__(
             self,
             "bars",
-            tuple(sorted(self.bars, key=lambda item: item.sort_key())),
+            _ensure_sorted_tuple(self.bars, key=lambda item: item.sort_key()),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(
@@ -172,16 +203,13 @@ class WrittenTimeMapResult:
         object.__setattr__(self, "warning_count", warning_count)
         object.__setattr__(self, "passed", error_count == 0)
 
-    @property
+    @cached_property
     def bar_times(self) -> dict[int, tuple[ScoreTime, ScoreTime]]:
         """Return the result as a deterministic bar-indexed time map."""
-        return {
-            bar.bar_index: (bar.start, bar.duration)
-            for bar in sorted(self.bars, key=lambda item: item.sort_key())
-        }
+        return {bar.bar_index: (bar.start, bar.duration) for bar in self.bars}
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PartStaffEmissionResult:
     """Typed part/staff emission result for one validated raw score."""
 
@@ -208,24 +236,28 @@ class PartStaffEmissionResult:
         object.__setattr__(
             self,
             "parts",
-            tuple(sorted(self.parts, key=lambda item: part_sort_key(item.part_id))),
+            _ensure_sorted_tuple(
+                self.parts,
+                key=lambda item: part_sort_key(item.part_id),
+            ),
         )
         object.__setattr__(
             self,
             "staves",
-            tuple(
-                sorted(
-                    self.staves,
-                    key=lambda item: staff_sort_key(
-                        item.part_id,
-                        item.staff_index,
-                        item.staff_id,
-                    ),
-                )
+            _ensure_sorted_tuple(
+                self.staves,
+                key=lambda item: staff_sort_key(
+                    item.part_id,
+                    item.staff_index,
+                    item.staff_id,
+                ),
             ),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(
@@ -243,7 +275,7 @@ class PartStaffEmissionResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class BarEmissionResult:
     """Typed bar emission result for one validated raw score."""
 
@@ -269,15 +301,16 @@ class BarEmissionResult:
         object.__setattr__(
             self,
             "bars",
-            tuple(
-                sorted(
-                    self.bars,
-                    key=lambda item: bar_sort_key(item.bar_index, item.bar_id),
-                )
+            _ensure_sorted_tuple(
+                self.bars,
+                key=lambda item: bar_sort_key(item.bar_index, item.bar_id),
             ),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(
@@ -295,7 +328,7 @@ class BarEmissionResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class VoiceLaneEmissionResult:
     """Typed voice-lane emission result for one validated raw score."""
 
@@ -321,20 +354,21 @@ class VoiceLaneEmissionResult:
         object.__setattr__(
             self,
             "voice_lanes",
-            tuple(
-                sorted(
-                    self.voice_lanes,
-                    key=lambda item: voice_lane_sort_key(
-                        int(item.bar_id.split(":")[-1]),
-                        item.staff_id,
-                        item.voice_index,
-                        item.voice_lane_id,
-                    ),
-                )
+            _ensure_sorted_tuple(
+                self.voice_lanes,
+                key=lambda item: voice_lane_sort_key(
+                    int(item.bar_id.split(":")[-1]),
+                    item.staff_id,
+                    item.voice_index,
+                    item.voice_lane_id,
+                ),
             ),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(
@@ -352,7 +386,7 @@ class VoiceLaneEmissionResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OnsetGroupEmissionResult:
     """Typed onset-group emission result for one validated raw score."""
 
@@ -378,20 +412,21 @@ class OnsetGroupEmissionResult:
         object.__setattr__(
             self,
             "onset_groups",
-            tuple(
-                sorted(
-                    self.onset_groups,
-                    key=lambda item: onset_sort_key(
-                        item.voice_lane_id,
-                        item.time,
-                        item.attack_order_in_voice,
-                        item.onset_id,
-                    ),
-                )
+            _ensure_sorted_tuple(
+                self.onset_groups,
+                key=lambda item: onset_sort_key(
+                    item.voice_lane_id,
+                    item.time,
+                    item.attack_order_in_voice,
+                    item.onset_id,
+                ),
             ),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(
@@ -409,7 +444,7 @@ class OnsetGroupEmissionResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class NoteEventEmissionResult:
     """Typed note-event emission result for one validated raw score."""
 
@@ -435,22 +470,23 @@ class NoteEventEmissionResult:
         object.__setattr__(
             self,
             "note_events",
-            tuple(
-                sorted(
-                    self.note_events,
-                    key=lambda item: (
-                        sort_key_for_identifier(item.onset_id),
-                        *note_sort_key(
-                            item.string_number,
-                            item.pitch,
-                            item.note_id,
-                        ),
+            _ensure_sorted_tuple(
+                self.note_events,
+                key=lambda item: (
+                    sort_key_for_identifier(item.onset_id),
+                    *note_sort_key(
+                        item.string_number,
+                        item.pitch,
+                        item.note_id,
                     ),
-                )
+                ),
             ),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(
@@ -468,7 +504,7 @@ class NoteEventEmissionResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class IntrinsicEdgeEmissionResult:
     """Typed intrinsic-edge emission result for one validated raw score."""
 
@@ -494,19 +530,20 @@ class IntrinsicEdgeEmissionResult:
         object.__setattr__(
             self,
             "edges",
-            tuple(
-                sorted(
-                    self.edges,
-                    key=lambda item: edge_sort_key(
-                        item.source_id,
-                        item.edge_type.value,
-                        item.target_id,
-                    ),
-                )
+            _ensure_sorted_tuple(
+                self.edges,
+                key=lambda item: edge_sort_key(
+                    item.source_id,
+                    item.edge_type.value,
+                    item.target_id,
+                ),
             ),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(
@@ -524,7 +561,7 @@ class IntrinsicEdgeEmissionResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PointControlEmissionResult:
     """Typed point-control emission result for one validated raw score."""
 
@@ -550,20 +587,21 @@ class PointControlEmissionResult:
         object.__setattr__(
             self,
             "point_control_events",
-            tuple(
-                sorted(
-                    self.point_control_events,
-                    key=lambda item: point_control_sort_key(
-                        item.scope,
-                        item.target_ref,
-                        item.time,
-                        item.control_id,
-                    ),
-                )
+            _ensure_sorted_tuple(
+                self.point_control_events,
+                key=lambda item: point_control_sort_key(
+                    item.scope,
+                    item.target_ref,
+                    item.time,
+                    item.control_id,
+                ),
             ),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(
@@ -581,7 +619,7 @@ class PointControlEmissionResult:
         object.__setattr__(self, "passed", error_count == 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SpanControlEmissionResult:
     """Typed span-control emission result for one validated raw score."""
 
@@ -607,21 +645,22 @@ class SpanControlEmissionResult:
         object.__setattr__(
             self,
             "span_control_events",
-            tuple(
-                sorted(
-                    self.span_control_events,
-                    key=lambda item: span_control_sort_key(
-                        item.scope,
-                        item.target_ref,
-                        item.start_time,
-                        item.end_time,
-                        item.control_id,
-                    ),
-                )
+            _ensure_sorted_tuple(
+                self.span_control_events,
+                key=lambda item: span_control_sort_key(
+                    item.scope,
+                    item.target_ref,
+                    item.start_time,
+                    item.end_time,
+                    item.control_id,
+                ),
             ),
         )
 
-        diagnostics = tuple(sorted(self.diagnostics, key=lambda item: item.sort_key()))
+        diagnostics = _ensure_sorted_tuple(
+            self.diagnostics,
+            key=lambda item: item.sort_key(),
+        )
         object.__setattr__(self, "diagnostics", diagnostics)
 
         error_count = sum(

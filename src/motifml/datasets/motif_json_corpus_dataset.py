@@ -32,7 +32,7 @@ class RawMotifScore(TypedDict, total=False):
     PlaybackMasterBarSequence: list[object]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MotifJsonDocument:
     """A single raw Motif JSON document loaded from the corpus."""
 
@@ -42,16 +42,17 @@ class MotifJsonDocument:
     score: RawMotifScore
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SourceCorpusFile:
     """A deterministic fingerprint entry for one source file in `data/00_corpus`."""
 
     relative_path: str
     file_size_bytes: int
     sha256: str
+    mtime_ns: int | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RawCorpusBuildState:
     """Stable metadata used to decide whether the raw corpus needs rebuilding."""
 
@@ -117,7 +118,7 @@ class MotifJsonCorpusDataset(AbstractDataset[None, list[MotifJsonDocument]]):
                 continue
 
             payload = path.read_bytes()
-            loaded = json.loads(payload.decode("utf-8"))
+            loaded = json.loads(payload)
             if not isinstance(loaded, dict):
                 raise DatasetError(
                     "Motif JSON documents must deserialize to objects, "
@@ -170,8 +171,8 @@ class MotifJsonCorpusDataset(AbstractDataset[None, list[MotifJsonDocument]]):
         }
 
     def _ensure_raw_corpus_built(self) -> None:
-        current_state = self._build_current_state()
         previous_state = self._load_build_state()
+        current_state = self._build_current_state(previous_state)
 
         if (
             previous_state is not None
@@ -203,10 +204,14 @@ class MotifJsonCorpusDataset(AbstractDataset[None, list[MotifJsonDocument]]):
 
         return (
             previous_state.cli_sha256 == current_state.cli_sha256
-            and previous_state.source_files == current_state.source_files
+            and _stable_source_file_fingerprints(previous_state.source_files)
+            == _stable_source_file_fingerprints(current_state.source_files)
         )
 
-    def _build_current_state(self) -> RawCorpusBuildState:
+    def _build_current_state(
+        self,
+        previous_state: RawCorpusBuildState | None,
+    ) -> RawCorpusBuildState:
         if self._source_filepath is None or self._cli_filepath is None:
             raise DatasetError("Auto-build paths must be configured before loading.")
 
@@ -223,11 +228,18 @@ class MotifJsonCorpusDataset(AbstractDataset[None, list[MotifJsonDocument]]):
                 f"or update the catalog config. Tried: {cli_path.as_posix()}"
             )
 
+        previous_source_files_by_path = (
+            {entry.relative_path: entry for entry in previous_state.source_files}
+            if previous_state is not None
+            else {}
+        )
         source_files = tuple(
-            SourceCorpusFile(
-                relative_path=path.relative_to(source_root).as_posix(),
-                file_size_bytes=path.stat().st_size,
-                sha256=_hash_file(path),
+            _build_source_corpus_file(
+                path=path,
+                source_root=source_root,
+                previous_entry=previous_source_files_by_path.get(
+                    path.relative_to(source_root).as_posix()
+                ),
             )
             for path in sorted(source_root.glob(self._source_glob_pattern))
             if path.is_file()
@@ -273,6 +285,11 @@ class MotifJsonCorpusDataset(AbstractDataset[None, list[MotifJsonDocument]]):
                     relative_path=str(entry["relative_path"]),
                     file_size_bytes=int(entry["file_size_bytes"]),
                     sha256=str(entry["sha256"]),
+                    mtime_ns=(
+                        int(entry["mtime_ns"])
+                        if entry.get("mtime_ns") is not None
+                        else None
+                    ),
                 )
                 for entry in loaded["source_files"]
             )
@@ -307,6 +324,7 @@ class MotifJsonCorpusDataset(AbstractDataset[None, list[MotifJsonDocument]]):
                     "relative_path": entry.relative_path,
                     "file_size_bytes": entry.file_size_bytes,
                     "sha256": entry.sha256,
+                    "mtime_ns": entry.mtime_ns,
                 }
                 for entry in state.source_files
             ],
@@ -368,3 +386,39 @@ def _hash_file(path: Path) -> str:
             digest.update(chunk)
 
     return digest.hexdigest()
+
+
+def _build_source_corpus_file(
+    *,
+    path: Path,
+    source_root: Path,
+    previous_entry: SourceCorpusFile | None,
+) -> SourceCorpusFile:
+    relative_path = path.relative_to(source_root).as_posix()
+    stat_result = path.stat()
+    file_size_bytes = stat_result.st_size
+    mtime_ns = stat_result.st_mtime_ns
+    if (
+        previous_entry is not None
+        and previous_entry.file_size_bytes == file_size_bytes
+        and previous_entry.mtime_ns == mtime_ns
+    ):
+        sha256 = previous_entry.sha256
+    else:
+        sha256 = _hash_file(path)
+
+    return SourceCorpusFile(
+        relative_path=relative_path,
+        file_size_bytes=file_size_bytes,
+        sha256=sha256,
+        mtime_ns=mtime_ns,
+    )
+
+
+def _stable_source_file_fingerprints(
+    source_files: tuple[SourceCorpusFile, ...],
+) -> tuple[tuple[str, int, str], ...]:
+    return tuple(
+        (entry.relative_path, entry.file_size_bytes, entry.sha256)
+        for entry in source_files
+    )

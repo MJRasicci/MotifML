@@ -16,6 +16,7 @@ from motifml.pipelines.ir_validation.pipeline import (
 from motifml.pipelines.normalization.pipeline import (
     create_pipeline as create_normalization,
 )
+from motifml.pipelines.partitioned.pipeline import create_reduce_pipeline
 from motifml.pipelines.tokenization.pipeline import (
     create_pipeline as create_tokenization,
 )
@@ -31,17 +32,15 @@ def _stage_raw_corpus_for_ir_build(
 
 
 def register_pipelines() -> dict[str, Pipeline]:
-    """Register the project's pipelines.
-
-    Returns:
-        A mapping from pipeline names to ``Pipeline`` objects.
-    """
+    """Register the project's pipelines."""
     ingestion = create_ingestion()
     ir_build = create_ir_build()
     ir_validation = create_ir_validation()
     normalization = create_normalization()
     feature_extraction = create_feature_extraction()
     tokenization = create_tokenization()
+    partitioned_reduce = create_reduce_pipeline()
+
     staged_ir_build = pipeline(
         [
             node(
@@ -56,13 +55,65 @@ def register_pipelines() -> dict[str, Pipeline]:
         inputs={"raw_motif_json_corpus": "ingested_raw_motif_json_corpus"},
     )
 
+    ir_build_shard = pipeline(
+        ir_build,
+        inputs={"raw_motif_json_corpus": "raw_motif_json_corpus_shard"},
+        outputs={
+            "motif_ir_corpus": "motif_ir_corpus_shard",
+            "motif_ir_manifest": "motif_ir_manifest_shard",
+        },
+    )
+    normalization_shard = pipeline(
+        normalization,
+        inputs={"motif_ir_corpus": "motif_ir_corpus_shard"},
+        outputs={"normalized_ir_corpus": "normalized_ir_corpus_shard"},
+    )
+    ir_validation_shard = pipeline(
+        ir_validation,
+        inputs={
+            "motif_ir_corpus": "motif_ir_corpus_shard",
+            "motif_ir_manifest": "motif_ir_manifest_shard",
+        },
+        outputs={
+            "motif_ir_validation_report": "motif_ir_validation_report_shard",
+            "motif_ir_summary": "motif_ir_summary_shard",
+        },
+    )
+    feature_extraction_shard = pipeline(
+        feature_extraction,
+        inputs={"normalized_ir_corpus": "normalized_ir_corpus_shard"},
+        outputs={"ir_features": "ir_features_shard"},
+    )
+    tokenization_shard = pipeline(
+        tokenization,
+        inputs={"ir_features": "ir_features_shard"},
+        outputs={"model_input": "model_input_shard"},
+    )
+    shard_processing = (
+        ir_build_shard
+        + normalization_shard
+        + ir_validation_shard
+        + feature_extraction_shard
+        + tokenization_shard
+    )
+
     return {
         "ingestion": ingestion,
+        "partition_ingestion": ingestion,
+        "partitioned_ingestion": ingestion,
         "ir_build": ir_build,
         "ir_validation": ir_validation,
         "normalization": normalization,
         "feature_extraction": feature_extraction,
         "tokenization": tokenization,
+        "ir_build_shard": ir_build_shard,
+        "ir_validation_shard": ir_validation_shard,
+        "normalization_shard": normalization_shard,
+        "feature_extraction_shard": feature_extraction_shard,
+        "tokenization_shard": tokenization_shard,
+        "partitioned_reduce": partitioned_reduce,
+        "shard_reduce": partitioned_reduce,
+        "shard_processing": shard_processing,
         "__default__": (
             ingestion
             + staged_ir_build

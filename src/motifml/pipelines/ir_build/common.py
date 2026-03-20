@@ -81,7 +81,7 @@ UNSUPPORTED_ONSET_TECHNIQUE_FIELDS = (
 IR_DOCUMENT_OUTPUT_ROOT = Path("data/02_intermediate/ir/documents")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _VoiceLaneBuildContext:
     part_identifier: str
     staff_identifier: str
@@ -90,7 +90,7 @@ class _VoiceLaneBuildContext:
     voice_path: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _VoiceLaneStaffBuildContext:
     part_identifier: str
     staff_path: str
@@ -98,7 +98,7 @@ class _VoiceLaneStaffBuildContext:
     bar_ids_by_index: dict[int, str]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _OnsetStaffBuildContext:
     part_identifier: str
     staff_path: str
@@ -106,7 +106,7 @@ class _OnsetStaffBuildContext:
     known_voice_lane_ids: frozenset[str]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _OnsetVoiceBuildContext:
     staff_identifier: str
     bar_index: int
@@ -117,7 +117,7 @@ class _OnsetVoiceBuildContext:
     known_voice_lane_ids: frozenset[str]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _OnsetBeatBuildContext:
     voice_lane_id: str
     bar_index: int
@@ -128,7 +128,7 @@ class _OnsetBeatBuildContext:
     attack_order_in_voice: int
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _NoteTrackBuildContext:
     track_path: str
     bar_times: dict[int, tuple[ScoreTime, ScoreTime]]
@@ -136,7 +136,7 @@ class _NoteTrackBuildContext:
     onset_groups_by_voice_lane: dict[str, dict[int, OnsetGroup]]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _NoteStaffBuildContext:
     part_identifier: str
     staff_path: str
@@ -145,7 +145,7 @@ class _NoteStaffBuildContext:
     onset_groups_by_voice_lane: dict[str, dict[int, OnsetGroup]]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _NoteVoiceTraversalContext:
     staff_identifier: str
     bar_index: int
@@ -155,12 +155,12 @@ class _NoteVoiceTraversalContext:
     onset_groups_by_voice_lane: dict[str, dict[int, OnsetGroup]]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _NoteBeatBuildContext:
     voice_lane: VoiceLane
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _NoteSeed:
     path: str
     onset_id: str
@@ -183,7 +183,7 @@ class _NoteSeed:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _PendingNoteRelation:
     path: str
     kind: str
@@ -199,7 +199,7 @@ class _PendingNoteRelation:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _NoteRelationSeed:
     path: str
     source_raw_note_id: int
@@ -210,7 +210,7 @@ class _NoteRelationSeed:
         return self.note_seed.sort_key()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _ControlResolutionContext:
     bar_times: dict[int, tuple[ScoreTime, ScoreTime]]
     known_part_ids: frozenset[str]
@@ -218,13 +218,13 @@ class _ControlResolutionContext:
     known_voice_lane_ids: frozenset[str]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _ResolvedControlPosition:
     bar_index: int
     time: ScoreTime
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _VoiceLaneTargetResolutionContext:
     control_path: str
     staff_identifier: str
@@ -232,7 +232,7 @@ class _VoiceLaneTargetResolutionContext:
     known_voice_lane_ids: frozenset[str]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _PointControlSeed:
     path: str
     scope: ControlScope
@@ -252,7 +252,7 @@ class _PointControlSeed:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _SpanControlSeed:
     path: str
     scope: ControlScope

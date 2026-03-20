@@ -279,6 +279,24 @@ def build_ir_manifest(  # noqa: PLR0913
     return manifest_entries
 
 
+def merge_ir_manifest_fragments(
+    shard_manifest_fragments: list[list[Mapping[str, Any]] | list[IrManifestEntry]],
+) -> list[Mapping[str, Any] | IrManifestEntry]:
+    """Merge shard-local IR manifest fragments into one global manifest."""
+    merged_entries: list[Mapping[str, Any] | IrManifestEntry] = []
+    for fragment in shard_manifest_fragments:
+        merged_entries.extend(fragment)
+
+    return sorted(
+        merged_entries,
+        key=lambda entry: (
+            entry.source_path.casefold()
+            if isinstance(entry, IrManifestEntry)
+            else str(entry["source_path"]).casefold()
+        ),
+    )
+
+
 def _require_assembly_input(
     emission: object,
     *,

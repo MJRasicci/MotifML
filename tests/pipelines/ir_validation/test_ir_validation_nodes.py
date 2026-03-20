@@ -6,9 +6,18 @@ from pathlib import Path
 
 from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
 from motifml.ir.serialization import deserialize_document
+from motifml.ir.summary import (
+    IrCorpusDocumentSummary,
+    IrCorpusSummary,
+    IrNamedCount,
+    IrOptionalFamilyPresence,
+    IrRuleIssueCount,
+)
 from motifml.ir.time import ScoreTime
 from motifml.ir.validation import build_document_validation_report
 from motifml.pipelines.ir_validation.nodes import (
+    merge_ir_shard_summaries,
+    merge_ir_validation_report_fragments,
     report_ir_scale_metrics,
     summarize_ir_corpus,
     validate_ir_documents,
@@ -16,6 +25,8 @@ from motifml.pipelines.ir_validation.nodes import (
 
 GOLDEN_FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures" / "ir" / "golden"
 EXPECTED_DOCUMENT_COUNT = 2
+EXPECTED_MERGED_DOCUMENT_COUNT = 2
+EXPECTED_TOTAL_DERIVED_VIEWS = 2
 
 
 def test_validate_ir_documents_returns_reports_in_relative_path_order():
@@ -166,3 +177,89 @@ def test_summarize_ir_corpus_rolls_up_scale_and_feature_metrics():
     assert reported_summary.scale_report is not None
     assert f"Documents: {EXPECTED_DOCUMENT_COUNT}" in reported_summary.scale_report
     assert "unsupported_onset_technique: 2" in reported_summary.scale_report
+
+
+def test_merge_ir_validation_report_fragments_orders_reports_by_relative_path():
+    merged = merge_ir_validation_report_fragments(
+        [
+            [{"relative_path": "zeta/document.json", "rule_reports": []}],
+            [{"relative_path": "alpha/document.json", "rule_reports": []}],
+        ]
+    )
+
+    assert [report["relative_path"] for report in merged] == [
+        "alpha/document.json",
+        "zeta/document.json",
+    ]
+
+
+def test_merge_ir_shard_summaries_combines_counts_without_reloading_documents():
+    merged = merge_ir_shard_summaries(
+        [
+            IrCorpusSummary(
+                document_count=1,
+                per_document=(
+                    IrCorpusDocumentSummary(
+                        relative_path="alpha/document.json",
+                        node_counts={"NoteEvent": 2},
+                        edge_counts={"contains": 1},
+                    ),
+                ),
+                validation_issue_counts_by_rule=(
+                    IrRuleIssueCount(
+                        rule="note_time_alignment",
+                        error_count=0,
+                        warning_count=1,
+                    ),
+                ),
+                optional_family_presence=IrOptionalFamilyPresence(
+                    total_phrase_spans=1,
+                    documents_with_phrase_spans=1,
+                ),
+                unsupported_feature_counts=(
+                    IrNamedCount(name="unsupported_a", count=2),
+                ),
+            ),
+            IrCorpusSummary(
+                document_count=1,
+                per_document=(
+                    IrCorpusDocumentSummary(
+                        relative_path="beta/document.json",
+                        node_counts={"NoteEvent": 4},
+                        edge_counts={"contains": 3},
+                    ),
+                ),
+                validation_issue_counts_by_rule=(
+                    IrRuleIssueCount(
+                        rule="note_time_alignment",
+                        error_count=1,
+                        warning_count=0,
+                    ),
+                ),
+                optional_family_presence=IrOptionalFamilyPresence(
+                    total_derived_views=2,
+                    documents_with_derived_views=1,
+                ),
+                unsupported_feature_counts=(
+                    IrNamedCount(name="unsupported_b", count=1),
+                ),
+            ),
+        ]
+    )
+
+    assert merged.document_count == EXPECTED_MERGED_DOCUMENT_COUNT
+    assert [item.relative_path for item in merged.per_document] == [
+        "alpha/document.json",
+        "beta/document.json",
+    ]
+    assert merged.validation_issue_counts_by_rule[0].error_count == 1
+    assert merged.validation_issue_counts_by_rule[0].warning_count == 1
+    assert merged.optional_family_presence.total_phrase_spans == 1
+    assert (
+        merged.optional_family_presence.total_derived_views
+        == EXPECTED_TOTAL_DERIVED_VIEWS
+    )
+    assert [item.name for item in merged.unsupported_feature_counts] == [
+        "unsupported_a",
+        "unsupported_b",
+    ]

@@ -79,6 +79,91 @@ def report_ir_scale_metrics(summary: IrCorpusSummary) -> IrCorpusSummary:
     return replace(summary, scale_report=_render_scale_report(summary))
 
 
+def merge_ir_validation_report_fragments(
+    shard_report_fragments: list[
+        list[IrDocumentValidationReport] | list[dict[str, Any]]
+    ],
+) -> list[IrDocumentValidationReport] | list[dict[str, Any]]:
+    """Merge shard-local validation reports into one global report surface."""
+    merged_reports: list[IrDocumentValidationReport] | list[dict[str, Any]] = []
+    for fragment in shard_report_fragments:
+        merged_reports.extend(fragment)
+
+    return sorted(
+        merged_reports,
+        key=lambda report: (
+            report.relative_path.casefold()
+            if isinstance(report, IrDocumentValidationReport)
+            else str(report["relative_path"]).casefold()
+        ),
+    )
+
+
+def merge_ir_shard_summaries(
+    shard_summaries: list[IrCorpusSummary] | list[dict[str, Any]],
+) -> IrCorpusSummary:
+    """Reduce shard-local IR summaries into one global corpus summary."""
+    typed_summaries = [
+        _coerce_ir_corpus_summary(summary) for summary in shard_summaries
+    ]
+    per_document = tuple(
+        document_summary
+        for summary in typed_summaries
+        for document_summary in summary.per_document
+    )
+
+    error_counts: Counter[str] = Counter()
+    warning_counts: Counter[str] = Counter()
+    unsupported_counts: Counter[str] = Counter()
+    optional_family_presence = IrOptionalFamilyPresence(
+        total_phrase_spans=sum(
+            summary.optional_family_presence.total_phrase_spans
+            for summary in typed_summaries
+        ),
+        documents_with_phrase_spans=sum(
+            summary.optional_family_presence.documents_with_phrase_spans
+            for summary in typed_summaries
+        ),
+        total_derived_views=sum(
+            summary.optional_family_presence.total_derived_views
+            for summary in typed_summaries
+        ),
+        documents_with_derived_views=sum(
+            summary.optional_family_presence.documents_with_derived_views
+            for summary in typed_summaries
+        ),
+    )
+
+    for summary in typed_summaries:
+        for rule_count in summary.validation_issue_counts_by_rule:
+            error_counts[rule_count.rule] += rule_count.error_count
+            warning_counts[rule_count.rule] += rule_count.warning_count
+        for feature_count in summary.unsupported_feature_counts:
+            unsupported_counts[feature_count.name] += feature_count.count
+
+    rules = sorted(set(error_counts) | set(warning_counts))
+    unsupported_features = sorted(unsupported_counts)
+
+    return IrCorpusSummary(
+        document_count=len(per_document),
+        per_document=per_document,
+        node_count_distributions=_build_node_count_distributions(per_document),
+        validation_issue_counts_by_rule=tuple(
+            IrRuleIssueCount(
+                rule=rule,
+                error_count=error_counts.get(rule, 0),
+                warning_count=warning_counts.get(rule, 0),
+            )
+            for rule in rules
+        ),
+        optional_family_presence=optional_family_presence,
+        unsupported_feature_counts=tuple(
+            IrNamedCount(name=name, count=unsupported_counts[name])
+            for name in unsupported_features
+        ),
+    )
+
+
 def _resolve_rule_severities(
     ir_validation: Mapping[str, Any] | None,
 ) -> Mapping[str, Any] | None:
@@ -94,6 +179,65 @@ def _resolve_rule_severities(
         raise ValueError("ir_validation.rule_severities must be a mapping.")
 
     return rule_severities
+
+
+def _coerce_ir_corpus_summary(
+    summary: IrCorpusSummary | dict[str, Any],
+) -> IrCorpusSummary:
+    if isinstance(summary, IrCorpusSummary):
+        return summary
+
+    per_document = tuple(
+        IrCorpusDocumentSummary(
+            relative_path=str(item["relative_path"]),
+            node_counts={
+                str(key): int(value)
+                for key, value in dict(item.get("node_counts", {})).items()
+            },
+            edge_counts={
+                str(key): int(value)
+                for key, value in dict(item.get("edge_counts", {})).items()
+            },
+        )
+        for item in summary.get("per_document", ())
+    )
+    rule_counts = tuple(
+        IrRuleIssueCount(
+            rule=str(item["rule"]),
+            error_count=int(item.get("error_count", 0)),
+            warning_count=int(item.get("warning_count", 0)),
+        )
+        for item in summary.get("validation_issue_counts_by_rule", ())
+    )
+    unsupported_feature_counts = tuple(
+        IrNamedCount(
+            name=str(item["name"]),
+            count=int(item.get("count", 0)),
+        )
+        for item in summary.get("unsupported_feature_counts", ())
+    )
+    optional_family_presence_payload = dict(summary.get("optional_family_presence", {}))
+
+    return IrCorpusSummary(
+        document_count=int(summary.get("document_count", len(per_document))),
+        per_document=per_document,
+        validation_issue_counts_by_rule=rule_counts,
+        optional_family_presence=IrOptionalFamilyPresence(
+            total_phrase_spans=int(
+                optional_family_presence_payload.get("total_phrase_spans", 0)
+            ),
+            documents_with_phrase_spans=int(
+                optional_family_presence_payload.get("documents_with_phrase_spans", 0)
+            ),
+            total_derived_views=int(
+                optional_family_presence_payload.get("total_derived_views", 0)
+            ),
+            documents_with_derived_views=int(
+                optional_family_presence_payload.get("documents_with_derived_views", 0)
+            ),
+        ),
+        unsupported_feature_counts=unsupported_feature_counts,
+    )
 
 
 def _count_document_node_families(document: object) -> dict[str, int]:

@@ -55,12 +55,22 @@ from motifml.ir.models import (
 )
 from motifml.ir.time import ScoreTime
 
+_MIN_SORT_ITEMS = 2
+
 
 def serialize_document(document: MotifMlIrDocument) -> str:
     """Serialize an IR document into canonical, byte-stable JSON."""
     canonical_document = _canonicalize_document(document)
     payload = _serialize_value(canonical_document)
-    return json.dumps(payload, indent=2, ensure_ascii=True) + "\n"
+    return (
+        json.dumps(
+            payload,
+            indent=2,
+            ensure_ascii=True,
+            check_circular=False,
+        )
+        + "\n"
+    )
 
 
 def deserialize_document(
@@ -68,7 +78,7 @@ def deserialize_document(
 ) -> MotifMlIrDocument:
     """Deserialize canonical JSON content into an IR document."""
     if isinstance(payload, bytes):
-        loaded = json.loads(payload.decode("utf-8"))
+        loaded = json.loads(payload)
     elif isinstance(payload, str):
         loaded = json.loads(payload)
     else:
@@ -78,95 +88,83 @@ def deserialize_document(
 
 
 def _canonicalize_document(document: MotifMlIrDocument) -> MotifMlIrDocument:
-    sorted_parts = tuple(
-        sorted(document.parts, key=lambda part: part_sort_key(part.part_id))
+    sorted_parts = _canonicalize_sequence(
+        document.parts,
+        key=lambda part: part_sort_key(part.part_id),
     )
-    sorted_staves = tuple(
-        sorted(
-            document.staves,
-            key=lambda staff: staff_sort_key(
-                staff.part_id, staff.staff_index, staff.staff_id
-            ),
-        )
+    sorted_staves = _canonicalize_sequence(
+        document.staves,
+        key=lambda staff: staff_sort_key(
+            staff.part_id,
+            staff.staff_index,
+            staff.staff_id,
+        ),
     )
-    sorted_bars = tuple(
-        sorted(document.bars, key=lambda bar: bar_sort_key(bar.bar_index, bar.bar_id))
+    sorted_bars = _canonicalize_sequence(
+        document.bars,
+        key=lambda bar: bar_sort_key(bar.bar_index, bar.bar_id),
     )
     bar_index_by_id = {bar.bar_id: bar.bar_index for bar in sorted_bars}
-    sorted_voice_lanes = tuple(
-        sorted(
-            document.voice_lanes,
-            key=lambda voice_lane: voice_lane_sort_key(
-                bar_index_by_id[voice_lane.bar_id],
-                voice_lane.staff_id,
-                voice_lane.voice_index,
-                voice_lane.voice_lane_id,
-            ),
-        )
+    sorted_voice_lanes = _canonicalize_sequence(
+        document.voice_lanes,
+        key=lambda voice_lane: voice_lane_sort_key(
+            bar_index_by_id[voice_lane.bar_id],
+            voice_lane.staff_id,
+            voice_lane.voice_index,
+            voice_lane.voice_lane_id,
+        ),
     )
-    sorted_onsets = tuple(
-        sorted(
-            document.onset_groups,
-            key=lambda onset: onset_sort_key(
-                onset.voice_lane_id,
-                onset.time,
-                onset.attack_order_in_voice,
-                onset.onset_id,
-            ),
-        )
+    sorted_onsets = _canonicalize_sequence(
+        document.onset_groups,
+        key=lambda onset: onset_sort_key(
+            onset.voice_lane_id,
+            onset.time,
+            onset.attack_order_in_voice,
+            onset.onset_id,
+        ),
     )
     onset_index_by_id = {
         onset.onset_id: index for index, onset in enumerate(sorted_onsets)
     }
-    sorted_notes = tuple(
-        sorted(
-            document.note_events,
-            key=lambda note: (
-                onset_index_by_id[note.onset_id],
-                *note_sort_key(note.string_number, note.pitch, note.note_id),
-            ),
-        )
+    sorted_notes = _canonicalize_sequence(
+        document.note_events,
+        key=lambda note: (
+            onset_index_by_id[note.onset_id],
+            *note_sort_key(note.string_number, note.pitch, note.note_id),
+        ),
     )
-    sorted_point_controls = tuple(
-        sorted(
-            document.point_control_events,
-            key=lambda control: point_control_sort_key(
-                control.scope.value,
-                control.target_ref,
-                control.time,
-                control.control_id,
-            ),
-        )
+    sorted_point_controls = _canonicalize_sequence(
+        document.point_control_events,
+        key=lambda control: point_control_sort_key(
+            control.scope.value,
+            control.target_ref,
+            control.time,
+            control.control_id,
+        ),
     )
-    sorted_span_controls = tuple(
-        sorted(
-            document.span_control_events,
-            key=lambda control: span_control_sort_key(
-                control.scope.value,
-                control.target_ref,
-                control.start_time,
-                control.end_time,
-                control.control_id,
-            ),
-        )
+    sorted_span_controls = _canonicalize_sequence(
+        document.span_control_events,
+        key=lambda control: span_control_sort_key(
+            control.scope.value,
+            control.target_ref,
+            control.start_time,
+            control.end_time,
+            control.control_id,
+        ),
     )
-    sorted_edges = tuple(
-        sorted(
-            document.edges,
-            key=lambda edge: (edge.source_id, edge.edge_type.value, edge.target_id),
-        )
+    sorted_edges = _canonicalize_sequence(
+        document.edges,
+        key=lambda edge: (edge.source_id, edge.edge_type.value, edge.target_id),
     )
 
-    sorted_phrase_spans = tuple(
-        sorted(
-            document.optional_overlays.phrase_spans,
-            key=lambda phrase_span: phrase_sort_key(
-                phrase_span.scope_ref,
-                phrase_span.start_time,
-                phrase_span.end_time,
-                phrase_span.phrase_id,
-            ),
-        )
+    sorted_phrase_spans = _canonicalize_sequence(
+        document.optional_overlays.phrase_spans,
+        key=lambda phrase_span: phrase_sort_key(
+            phrase_span.scope_ref,
+            phrase_span.start_time,
+            phrase_span.end_time,
+            phrase_span.phrase_id,
+        ),
     )
 
     return MotifMlIrDocument(
@@ -186,6 +184,25 @@ def _canonicalize_document(document: MotifMlIrDocument) -> MotifMlIrDocument:
             derived_edge_sets=document.optional_views.derived_edge_sets,
         ),
     )
+
+
+def _canonicalize_sequence(
+    values: tuple[Any, ...] | list[Any],
+    *,
+    key: Any,
+) -> tuple[Any, ...]:
+    items = tuple(values)
+    if len(items) < _MIN_SORT_ITEMS:
+        return items
+
+    previous_key = key(items[0])
+    for item in items[1:]:
+        current_key = key(item)
+        if previous_key > current_key:
+            return tuple(sorted(items, key=key))
+        previous_key = current_key
+
+    return items
 
 
 def _serialize_value(value: Any) -> Any:

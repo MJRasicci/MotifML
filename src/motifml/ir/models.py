@@ -142,7 +142,7 @@ class IrManifestDiagnosticCategory(StrEnum):
     OTHER = "other"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Transposition:
     """Written-to-sounding transposition context for one part."""
 
@@ -155,7 +155,7 @@ class Transposition:
         return self.chromatic + (self.octave * 12)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TimeSignature:
     """Canonical bar-local time signature."""
 
@@ -175,7 +175,7 @@ class TimeSignature:
         return ScoreTime(self.numerator, self.denominator)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TupletRatio:
     """Tuplet ratio metadata used by written rhythm shapes."""
 
@@ -190,7 +190,7 @@ class TupletRatio:
             raise ValueError("TupletRatio denominator must be greater than zero.")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class RhythmShape:
     """Onset-level written rhythm shape metadata."""
 
@@ -212,7 +212,7 @@ class RhythmShape:
             raise ValueError("RhythmShape secondary_tuplet requires a primary_tuplet.")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Pitch:
     """Canonical sounding pitch spelling for one note."""
 
@@ -236,7 +236,7 @@ class Pitch:
         return (self.octave, self.step.value, accidental)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TempoChangeValue:
     """Structured payload for a tempo point control."""
 
@@ -247,7 +247,7 @@ class TempoChangeValue:
             raise ValueError("TempoChangeValue beats_per_minute must be positive.")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class DynamicChangeValue:
     """Structured payload for a dynamic point control."""
 
@@ -261,7 +261,7 @@ class DynamicChangeValue:
         object.__setattr__(self, "marking", normalized)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class FermataValue:
     """Structured payload for a fermata point control."""
 
@@ -280,7 +280,7 @@ class FermataValue:
             raise ValueError("FermataValue length_scale must be positive.")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class HairpinValue:
     """Structured payload for a hairpin span control."""
 
@@ -295,7 +295,7 @@ class HairpinValue:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OttavaValue:
     """Structured payload for an ottava span control."""
 
@@ -306,7 +306,7 @@ class OttavaValue:
             raise ValueError("OttavaValue octave_shift must be non-zero.")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class GenericTechniqueFlags:
     """Generic note- or onset-local technique flags shared across instruments."""
 
@@ -340,7 +340,7 @@ class GenericTechniqueFlags:
             )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class GeneralTechniquePayload:
     """Namespace container for non-family-specific structured techniques."""
 
@@ -353,7 +353,7 @@ class GeneralTechniquePayload:
             )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class StringFrettedTechniquePayload:
     """Namespace container for fretted-string-specific technique payloads."""
 
@@ -383,7 +383,7 @@ class StringFrettedTechniquePayload:
             )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TechniquePayload:
     """Structured note/onset technique container.
 
@@ -396,7 +396,7 @@ class TechniquePayload:
     string_fretted: StringFrettedTechniquePayload | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Part:
     """Track-level IR structure without free-form textual metadata."""
 
@@ -426,7 +426,7 @@ class Part:
         object.__setattr__(self, "staff_ids", normalized_staff_ids)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Staff:
     """Staff-level structure and performance context owned by one part."""
 
@@ -458,7 +458,7 @@ class Staff:
             raise ValueError("Staff capo_fret must be non-negative when provided.")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Bar:
     """Score-wide written bar geometry and local meter context."""
 
@@ -501,7 +501,7 @@ class Bar:
             )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class VoiceLane:
     """Bar-scoped authored voice lane with a deterministic continuity chain."""
 
@@ -542,7 +542,7 @@ class VoiceLane:
             raise ValueError("VoiceLane voice_index must be non-negative.")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OnsetGroup:
     """One authored onset or rest slot inside a voice lane."""
 
@@ -601,7 +601,7 @@ class OnsetGroup:
             )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class NoteEvent:
     """One note attached to an onset group."""
 
@@ -648,7 +648,7 @@ class NoteEvent:
             )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PointControlEvent:
     """One point-local score control event."""
 
@@ -676,7 +676,7 @@ class PointControlEvent:
         _validate_point_control_value(self.kind, self.value)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SpanControlEvent:
     """One span-local score control event."""
 
@@ -725,7 +725,7 @@ CANONICAL_CONTAINMENT_PATHS: tuple[tuple[str, str], ...] = (
 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Edge:
     """Sparse intrinsic edge between two IR entities."""
 
@@ -768,7 +768,7 @@ class Edge:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class IrDocumentMetadata:
     """Build and schema metadata for one IR document."""
 
@@ -814,7 +814,7 @@ class IrDocumentMetadata:
                 )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class IrManifestDiagnosticSummary:
     """Grouped build diagnostic information attached to one manifest entry."""
 
@@ -857,7 +857,7 @@ class IrManifestDiagnosticSummary:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class IrManifestEntry:
     """File-level build manifest entry for one emitted IR document."""
 
@@ -929,7 +929,7 @@ class IrManifestEntry:
 PhraseConfidence: TypeAlias = str | float
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PhraseSpan:
     """Optional overlay describing one phrase span over a score scope."""
 
@@ -986,7 +986,7 @@ class PhraseSpan:
             )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PlaybackInstance:
     """Placeholder playback-unrolled event span for future derived traversals."""
 
@@ -1024,7 +1024,7 @@ class PlaybackInstance:
         return (self.start_time, self.end_time, self.instance_id, self.source_ref)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class DerivedEdge:
     """Optional derived relation between IR entities or overlays."""
 
@@ -1052,7 +1052,7 @@ class DerivedEdge:
         return edge_sort_key(self.source_id, self.edge_type.value, self.target_id)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class DerivedEdgeSet:
     """Named container for one optional derived-edge family or analytical slice."""
 
@@ -1074,7 +1074,7 @@ class DerivedEdgeSet:
         return (self.kind.casefold(), self.name.casefold())
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OptionalOverlays:
     """Optional overlay containers kept separate from the canonical backbone."""
 
@@ -1084,7 +1084,7 @@ class OptionalOverlays:
         object.__setattr__(self, "phrase_spans", tuple(self.phrase_spans))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OptionalViews:
     """Optional derived-view containers kept separate from canonical entities."""
 
@@ -1108,7 +1108,7 @@ class OptionalViews:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MotifMlIrDocument:
     """Top-level canonical IR document for one source score."""
 

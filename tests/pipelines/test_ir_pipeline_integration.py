@@ -5,10 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from motifml.pipeline_registry import register_pipelines
+from motifml.sharding import shard_ids_from_entries
 from tests.pipelines.ir_test_support import (
     MOTIF_JSON_FIXTURE_ROOT,
     fixture_entries,
     load_json,
+    load_partition_index,
+    load_partitioned_record_set,
     run_session,
     write_test_conf,
 )
@@ -16,7 +19,9 @@ from tests.pipelines.ir_test_support import (
 EXPECTED_FIXTURE_COUNT = len(fixture_entries())
 EXPECTED_DEFAULT_STAGE_ORDER = [
     "build_raw_corpus_manifest",
+    "build_raw_partition_index",
     "summarize_raw_corpus",
+    "build_raw_shard_manifests",
     "stage_raw_corpus_for_ir_build",
     "validate_canonical_score_surface",
     "build_written_time_map",
@@ -67,13 +72,61 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
 
     assert load_json(output_root / "raw_motif_json_manifest.json")
     assert load_json(output_root / "raw_motif_json_summary.json")
+    assert load_json(output_root / "raw_partition_index.json")
+    assert load_json(output_root / "raw_shard_manifests.json")
     assert load_json(output_root / "motif_ir_manifest.json")
     assert load_json(output_root / "motif_ir_validation_report.json")
     assert load_json(output_root / "motif_ir_summary.json")
-    assert load_json(output_root / "ir_features.json")
-    assert load_json(output_root / "model_input.json")
+    assert len(load_partitioned_record_set(output_root / "ir_features")["records"]) == (
+        EXPECTED_FIXTURE_COUNT
+    )
+    assert len(load_partitioned_record_set(output_root / "model_input")["records"]) == (
+        EXPECTED_FIXTURE_COUNT
+    )
     assert sorted((output_root / "normalized_documents").rglob("*.ir.json"))
     assert _default_stage_order() == EXPECTED_DEFAULT_STAGE_ORDER
+
+
+def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
+    conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
+
+    run_session(conf_source, ["ingestion"])
+    partition_index = load_partition_index(output_root / "raw_partition_index.json")
+    shard_ids = shard_ids_from_entries(partition_index)
+
+    assert shard_ids
+
+    for shard_id in shard_ids:
+        run_session(
+            conf_source,
+            ["shard_processing"],
+            runtime_params={"execution": {"shard_id": shard_id}},
+        )
+
+    run_session(conf_source, ["partitioned_reduce"])
+
+    manifest = load_json(output_root / "motif_ir_manifest.json")
+    validation_report = load_json(output_root / "motif_ir_validation_report.json")
+    summary = load_json(output_root / "motif_ir_summary.json")
+
+    assert len(manifest) == EXPECTED_FIXTURE_COUNT
+    assert len(validation_report) == EXPECTED_FIXTURE_COUNT
+    assert summary["document_count"] == EXPECTED_FIXTURE_COUNT
+    assert sorted((output_root / "documents").rglob("*.ir.json"))
+    assert sorted((output_root / "normalized_documents").rglob("*.ir.json"))
+    assert len(sorted((output_root / "ir_manifests").glob("*.json"))) == len(shard_ids)
+    assert len(sorted((output_root / "validation_shards").glob("*.json"))) == len(
+        shard_ids
+    )
+    assert len(sorted((output_root / "summary_shards").glob("*.json"))) == len(
+        shard_ids
+    )
+    assert len(load_partitioned_record_set(output_root / "ir_features")["records"]) == (
+        EXPECTED_FIXTURE_COUNT
+    )
+    assert len(load_partitioned_record_set(output_root / "model_input")["records"]) == (
+        EXPECTED_FIXTURE_COUNT
+    )
 
 
 def _default_stage_order() -> list[str]:

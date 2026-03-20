@@ -34,9 +34,28 @@ def extract_features(
             projection_type=typed_parameters.projection_type,
             projection=_project_document(record, typed_parameters),
         )
-        for record in sorted(normalized_ir_corpus, key=lambda item: item.relative_path)
+        for record in normalized_ir_corpus
     )
     return IrFeatureSet(parameters=typed_parameters, records=records)
+
+
+def merge_feature_shards(
+    feature_shards: list[IrFeatureSet] | list[Mapping[str, Any]],
+) -> IrFeatureSet:
+    """Merge shard-local feature sets into one global feature set."""
+    typed_shards = [_coerce_feature_set(shard) for shard in feature_shards]
+    if not typed_shards:
+        return IrFeatureSet(parameters=FeatureExtractionParameters())
+
+    parameters = typed_shards[0].parameters
+    for shard in typed_shards[1:]:
+        if shard.parameters != parameters:
+            raise ValueError("All feature shards must use identical parameters.")
+
+    return IrFeatureSet(
+        parameters=parameters,
+        records=tuple(record for shard in typed_shards for record in shard.records),
+    )
 
 
 def _project_document(
@@ -60,6 +79,23 @@ def _project_document(
         )
 
     return project_hierarchical(record.document)
+
+
+def _coerce_feature_set(value: IrFeatureSet | Mapping[str, Any]) -> IrFeatureSet:
+    if isinstance(value, IrFeatureSet):
+        return value
+
+    return IrFeatureSet(
+        parameters=coerce_feature_extraction_parameters(value.get("parameters", {})),
+        records=tuple(
+            IrFeatureRecord(
+                relative_path=str(record["relative_path"]),
+                projection_type=ProjectionType(record["projection_type"]),
+                projection=record.get("projection", {}),
+            )
+            for record in value.get("records", ())
+        ),
+    )
 
 
 def _sequence_mode_for_event_types(

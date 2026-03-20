@@ -301,7 +301,7 @@ def _append_contains_edges(  # noqa: PLR0913
             diagnostics=diagnostics,
         )
 
-    known_bar_ids = {bar.bar_id for bar in bar_emission.bars}
+    known_bar_ids = known_ids["bar"]
     for voice_lane in voice_lane_emission.voice_lanes:
         path = f"voiceLanes.{voice_lane.voice_lane_id}"
         if voice_lane.bar_id not in known_bar_ids:
@@ -324,9 +324,7 @@ def _append_contains_edges(  # noqa: PLR0913
             diagnostics=diagnostics,
         )
 
-    known_voice_lane_ids = {
-        voice_lane.voice_lane_id for voice_lane in voice_lane_emission.voice_lanes
-    }
+    known_voice_lane_ids = known_ids["voice"]
     for onset_group in onset_group_emission.onset_groups:
         path = f"onsetGroups.{onset_group.onset_id}"
         if onset_group.voice_lane_id not in known_voice_lane_ids:
@@ -352,9 +350,7 @@ def _append_contains_edges(  # noqa: PLR0913
             diagnostics=diagnostics,
         )
 
-    known_onset_ids = {
-        onset_group.onset_id for onset_group in onset_group_emission.onset_groups
-    }
+    known_onset_ids = known_ids["onset"]
     for note_event in note_event_emission.note_events:
         path = f"noteEvents.{note_event.note_id}"
         if note_event.onset_id not in known_onset_ids:
@@ -389,15 +385,24 @@ def _append_next_in_voice_edges(  # noqa: PLR0913
     edges: list[Edge],
     diagnostics: list[IrBuildDiagnostic],
 ) -> None:
-    voice_lanes_by_id = {
-        voice_lane.voice_lane_id: voice_lane
+    voice_lane_chain_by_id = {
+        voice_lane.voice_lane_id: voice_lane.voice_lane_chain_id
         for voice_lane in voice_lane_emission.voice_lanes
     }
-    onset_groups_by_chain: dict[str, list[OnsetGroup]] = {}
+    last_onset_by_chain: dict[str, OnsetGroup] = {}
 
-    for onset_group in onset_group_emission.onset_groups:
-        voice_lane = voice_lanes_by_id.get(onset_group.voice_lane_id)
-        if voice_lane is None:
+    ordered_onsets = sorted(
+        onset_group_emission.onset_groups,
+        key=lambda item: (
+            voice_lane_chain_by_id.get(item.voice_lane_id, ""),
+            item.time,
+            item.attack_order_in_voice,
+            item.onset_id,
+        ),
+    )
+    for onset_group in ordered_onsets:
+        voice_lane_chain_id = voice_lane_chain_by_id.get(onset_group.voice_lane_id)
+        if voice_lane_chain_id is None:
             diagnostics.append(
                 _error(
                     path=f"onsetGroups.{onset_group.onset_id}",
@@ -409,23 +414,12 @@ def _append_next_in_voice_edges(  # noqa: PLR0913
                 )
             )
             continue
-        onset_groups_by_chain.setdefault(voice_lane.voice_lane_chain_id, []).append(
-            onset_group
-        )
 
-    for voice_lane_chain_id, onset_groups in onset_groups_by_chain.items():
-        ordered_onsets = sorted(
-            onset_groups,
-            key=lambda item: (
-                item.time,
-                item.attack_order_in_voice,
-                item.onset_id,
-            ),
-        )
-        for source_onset, target_onset in zip(ordered_onsets, ordered_onsets[1:]):
+        source_onset = last_onset_by_chain.get(voice_lane_chain_id)
+        if source_onset is not None:
             _append_edge(
                 source_id=source_onset.onset_id,
-                target_id=target_onset.onset_id,
+                target_id=onset_group.onset_id,
                 edge_type=EdgeType.NEXT_IN_VOICE,
                 path=f"voiceLaneChains.{voice_lane_chain_id}",
                 known_ids=known_ids,
@@ -433,6 +427,7 @@ def _append_next_in_voice_edges(  # noqa: PLR0913
                 edges=edges,
                 diagnostics=diagnostics,
             )
+        last_onset_by_chain[voice_lane_chain_id] = onset_group
 
 
 def _build_note_relation_material(

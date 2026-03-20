@@ -12,7 +12,12 @@ from motifml.pipelines.tokenization.models import (
     PaddingStrategy,
     TokenizationParameters,
 )
-from motifml.pipelines.tokenization.nodes import tokenize_features
+from motifml.pipelines.tokenization.nodes import (
+    merge_model_input_shards,
+    tokenize_features,
+)
+
+EXPECTED_TIME_RESOLUTION = 48
 
 
 def test_tokenize_features_consumes_typed_parameters() -> None:
@@ -71,7 +76,7 @@ def test_tokenize_features_accepts_json_loaded_feature_sets() -> None:
             "vocabulary_strategy": "projection_native",
             "max_sequence_length": 5,
             "padding_strategy": "left",
-            "time_resolution": 48,
+            "time_resolution": EXPECTED_TIME_RESOLUTION,
         },
     )
 
@@ -96,3 +101,54 @@ def test_tokenize_features_accepts_json_loaded_feature_sets() -> None:
     assert all(
         record.attention_mask == (1, 1, 1, 1, 1) for record in model_input.records
     )
+
+
+def test_merge_model_input_shards_preserves_parameter_contract_and_order() -> None:
+    merged = merge_model_input_shards(
+        [
+            {
+                "parameters": {
+                    "vocabulary_strategy": "projection_native",
+                    "max_sequence_length": 5,
+                    "padding_strategy": "right",
+                    "time_resolution": EXPECTED_TIME_RESOLUTION,
+                },
+                "records": [
+                    {
+                        "relative_path": "fixtures/b.json",
+                        "projection_type": "sequence",
+                        "vocabulary_strategy": "projection_native",
+                        "time_resolution": EXPECTED_TIME_RESOLUTION,
+                        "original_token_count": 1,
+                        "tokens": ["x"],
+                        "attention_mask": [1],
+                    }
+                ],
+            },
+            {
+                "parameters": {
+                    "vocabulary_strategy": "projection_native",
+                    "max_sequence_length": 5,
+                    "padding_strategy": "right",
+                    "time_resolution": EXPECTED_TIME_RESOLUTION,
+                },
+                "records": [
+                    {
+                        "relative_path": "fixtures/a.json",
+                        "projection_type": "graph",
+                        "vocabulary_strategy": "projection_native",
+                        "time_resolution": EXPECTED_TIME_RESOLUTION,
+                        "original_token_count": 1,
+                        "tokens": ["y"],
+                        "attention_mask": [1],
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert merged.parameters.time_resolution == EXPECTED_TIME_RESOLUTION
+    assert [record.relative_path for record in merged.records] == [
+        "fixtures/a.json",
+        "fixtures/b.json",
+    ]

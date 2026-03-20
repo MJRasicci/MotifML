@@ -3,6 +3,7 @@
 from motifml.pipelines.ir_build.assembly_nodes import (
     assemble_ir_document,
     build_ir_manifest,
+    merge_ir_manifest_fragments,
 )
 from motifml.pipelines.ir_build.control_nodes import (
     emit_point_control_events,
@@ -24,6 +25,7 @@ from motifml.pipelines.ir_build.validation_nodes import (
 __all__ = [
     "assemble_ir_document",
     "build_ir_manifest",
+    "merge_ir_manifest_fragments",
     "build_written_time_map",
     "emit_bars",
     "emit_intrinsic_edges",

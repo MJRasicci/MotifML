@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Mapping
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field, fields, is_dataclass
 from enum import StrEnum
 from typing import Any
 
@@ -61,7 +61,7 @@ DEFAULT_RULE_SEVERITIES: dict[IrValidationRule, IrValidationSeverity] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class IrValidationIssue:
     """One concrete invariant violation within a single IR document."""
 
@@ -88,7 +88,7 @@ class IrValidationIssue:
         )
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class IrValidationRuleReport:
     """Grouped issues for one validation rule within a document."""
 
@@ -115,7 +115,7 @@ class IrValidationRuleReport:
         object.__setattr__(self, "issue_count", len(normalized_issues))
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class IrDocumentValidationReport:
     """Typed validation report for one IR document."""
 
@@ -156,7 +156,7 @@ class IrDocumentValidationReport:
         object.__setattr__(self, "passed", error_count == 0)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _ValidationContext:
     """Cached lookup state used across validation rules."""
 
@@ -698,7 +698,7 @@ def _validate_forbidden_metadata_absence(
     document: MotifMlIrDocument,
     issues_by_rule: defaultdict[IrValidationRule, list[IrValidationIssue]],
 ) -> None:
-    for path, key in _iter_forbidden_metadata_paths(asdict(document)):
+    for path, key in _iter_forbidden_metadata_paths(document):
         _append_issue(
             issues_by_rule,
             IrValidationRule.FORBIDDEN_METADATA_ABSENT,
@@ -898,7 +898,14 @@ def _iter_forbidden_metadata_paths(
     path: str = "",
 ) -> list[tuple[str, str]]:
     matches: list[tuple[str, str]] = []
-    if isinstance(value, Mapping):
+    if is_dataclass(value):
+        for field_info in fields(value):
+            item = getattr(value, field_info.name)
+            next_path = field_info.name if not path else f"{path}.{field_info.name}"
+            if field_info.name.casefold() in FORBIDDEN_METADATA_FIELDS:
+                matches.append((next_path, field_info.name))
+            matches.extend(_iter_forbidden_metadata_paths(item, path=next_path))
+    elif isinstance(value, Mapping):
         for key, item in value.items():
             key_text = str(key)
             next_path = key_text if not path else f"{path}.{key_text}"

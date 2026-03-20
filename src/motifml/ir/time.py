@@ -8,7 +8,7 @@ from math import gcd
 
 
 @total_ordering
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ScoreTime:
     """Exact score time stored as a reduced whole-note fraction.
 

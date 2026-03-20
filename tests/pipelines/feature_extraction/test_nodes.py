@@ -21,7 +21,10 @@ from motifml.ir.projections.hierarchical import HierarchicalProjection
 from motifml.ir.projections.sequence import SequenceProjection, SequenceProjectionMode
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.feature_extraction.models import FeatureExtractionParameters
-from motifml.pipelines.feature_extraction.nodes import extract_features
+from motifml.pipelines.feature_extraction.nodes import (
+    extract_features,
+    merge_feature_shards,
+)
 
 
 def test_extract_features_uses_the_sequence_projection(monkeypatch) -> None:
@@ -119,6 +122,39 @@ def test_extract_features_uses_the_hierarchical_projection(monkeypatch) -> None:
     assert features.parameters.projection_type.value == "hierarchical"
     assert isinstance(features.records[0].projection, HierarchicalProjection)
     assert captured["document"] == record.document
+
+
+def test_merge_feature_shards_preserves_parameter_contract_and_order() -> None:
+    merged = merge_feature_shards(
+        [
+            {
+                "parameters": {"projection_type": "sequence"},
+                "records": [
+                    {
+                        "relative_path": "fixtures/b.json",
+                        "projection_type": "sequence",
+                        "projection": {"mode": "notes_only", "events": []},
+                    }
+                ],
+            },
+            {
+                "parameters": {"projection_type": "sequence"},
+                "records": [
+                    {
+                        "relative_path": "fixtures/a.json",
+                        "projection_type": "sequence",
+                        "projection": {"mode": "notes_only", "events": []},
+                    }
+                ],
+            },
+        ]
+    )
+
+    assert merged.parameters.projection_type.value == "sequence"
+    assert [record.relative_path for record in merged.records] == [
+        "fixtures/a.json",
+        "fixtures/b.json",
+    ]
 
 
 def _build_record() -> MotifIrDocumentRecord:

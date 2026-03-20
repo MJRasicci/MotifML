@@ -11,6 +11,12 @@ raw_motif_json_corpus:
     build_state_filepath: data/02_intermediate/ingestion/raw_motif_json_build_state.json
     clean_output_on_rebuild: true
 
+raw_motif_json_corpus_shard:
+  type: motifml.datasets.motif_json_shard_dataset.MotifJsonShardDataset
+  filepath: data/01_raw/motif_json
+  partition_index_filepath: data/02_intermediate/ingestion/raw_partition_index.json
+  shard_id: "${runtime_params:execution.shard_id,__all__}"
+
 raw_motif_json_manifest:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/02_intermediate/ingestion/raw_motif_json_manifest.json
@@ -19,30 +25,142 @@ raw_motif_json_summary:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/ingestion/raw_motif_json_summary.json
 
+raw_partition_index:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/02_intermediate/ingestion/raw_partition_index.json
+
+raw_shard_manifests:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/02_intermediate/ingestion/raw_shard_manifests.json
+
 motif_ir_manifest:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/02_intermediate/ir/motif_ir_manifest.json
+
+motif_ir_manifest_shard:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/02_intermediate/ir/manifests/shards/${runtime_params:execution.shard_id,__all__}.json
+
+motif_ir_manifest_shard_collection:
+  type: motifml.datasets.json_directory_dataset.JsonDirectoryDataset
+  filepath: data/02_intermediate/ir/manifests/shards
 
 motif_ir_validation_report:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/ir/motif_ir_validation_report.json
 
+motif_ir_validation_report_shard:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/ir/validation_shards/${runtime_params:execution.shard_id,__all__}.json
+
+motif_ir_validation_report_shard_collection:
+  type: motifml.datasets.json_directory_dataset.JsonDirectoryDataset
+  filepath: data/08_reporting/ir/validation_shards
+
 motif_ir_summary:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/ir/motif_ir_summary.json
+
+motif_ir_summary_shard:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/ir/summary_shards/${runtime_params:execution.shard_id,__all__}.json
+
+motif_ir_summary_shard_collection:
+  type: motifml.datasets.json_directory_dataset.JsonDirectoryDataset
+  filepath: data/08_reporting/ir/summary_shards
 
 motif_ir_corpus:
   type: motifml.datasets.motif_ir_corpus_dataset.MotifIrCorpusDataset
   filepath: data/02_intermediate/ir/documents
 
+motif_ir_corpus_shard:
+  type: motifml.datasets.motif_ir_shard_dataset.MotifIrShardDataset
+  filepath: data/02_intermediate/ir/documents
+  partition_index_filepath: data/02_intermediate/ingestion/raw_partition_index.json
+  shard_id: "${runtime_params:execution.shard_id,__all__}"
+
 normalized_ir_corpus:
   type: motifml.datasets.motif_ir_corpus_dataset.MotifIrCorpusDataset
   filepath: data/03_primary/ir/documents
 
+normalized_ir_corpus_shard:
+  type: motifml.datasets.motif_ir_shard_dataset.MotifIrShardDataset
+  filepath: data/03_primary/ir/documents
+  partition_index_filepath: data/02_intermediate/ingestion/raw_partition_index.json
+  shard_id: "${runtime_params:execution.shard_id,__all__}"
+
+ingested_raw_motif_json_corpus:
+  type: MemoryDataset
+  copy_mode: assign
+
+canonical_score_validation_results:
+  type: MemoryDataset
+  copy_mode: assign
+
+written_time_maps:
+  type: MemoryDataset
+  copy_mode: assign
+
+part_staff_emissions:
+  type: MemoryDataset
+  copy_mode: assign
+
+bar_emissions:
+  type: MemoryDataset
+  copy_mode: assign
+
+voice_lane_emissions:
+  type: MemoryDataset
+  copy_mode: assign
+
+onset_group_emissions:
+  type: MemoryDataset
+  copy_mode: assign
+
+note_event_emissions:
+  type: MemoryDataset
+  copy_mode: assign
+
+point_control_emissions:
+  type: MemoryDataset
+  copy_mode: assign
+
+span_control_emissions:
+  type: MemoryDataset
+  copy_mode: assign
+
+intrinsic_edge_emissions:
+  type: MemoryDataset
+  copy_mode: assign
+
+ir_validation_report_model:
+  type: MemoryDataset
+  copy_mode: assign
+
+ir_corpus_summary_model:
+  type: MemoryDataset
+  copy_mode: assign
+
 ir_features:
-  type: motifml.datasets.json_dataset.JsonDataset
-  filepath: data/04_feature/ir/ir_features.json
+  type: motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset
+  filepath: data/04_feature/ir
+  record_suffix: ".feature.json"
+
+ir_features_shard:
+  type: motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset
+  filepath: data/04_feature/ir
+  record_suffix: ".feature.json"
+  partition_index_filepath: data/02_intermediate/ingestion/raw_partition_index.json
+  shard_id: "${runtime_params:execution.shard_id,__all__}"
 
 model_input:
-  type: motifml.datasets.json_dataset.JsonDataset
-  filepath: data/05_model_input/ir/model_input.json
+  type: motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset
+  filepath: data/05_model_input/ir
+  record_suffix: ".model_input.json"
+
+model_input_shard:
+  type: motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset
+  filepath: data/05_model_input/ir
+  record_suffix: ".model_input.json"
+  partition_index_filepath: data/02_intermediate/ingestion/raw_partition_index.json
+  shard_id: "${runtime_params:execution.shard_id,__all__}"

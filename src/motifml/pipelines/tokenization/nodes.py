@@ -42,6 +42,25 @@ def tokenize_features(
     return ModelInputSet(parameters=typed_parameters, records=records)
 
 
+def merge_model_input_shards(
+    model_input_shards: list[ModelInputSet] | list[Mapping[str, Any]],
+) -> ModelInputSet:
+    """Merge shard-local model-input sets into one global model-input set."""
+    typed_shards = [_coerce_model_input_set(shard) for shard in model_input_shards]
+    if not typed_shards:
+        return ModelInputSet(parameters=TokenizationParameters())
+
+    parameters = typed_shards[0].parameters
+    for shard in typed_shards[1:]:
+        if shard.parameters != parameters:
+            raise ValueError("All model-input shards must use identical parameters.")
+
+    return ModelInputSet(
+        parameters=parameters,
+        records=tuple(record for shard in typed_shards for record in shard.records),
+    )
+
+
 def _iter_feature_records(
     ir_features: IrFeatureSet | Mapping[str, Any],
 ) -> tuple[_FeatureRecordInput, ...]:
@@ -70,9 +89,7 @@ def _iter_feature_records(
             )
         )
 
-    return tuple(
-        sorted(normalized_records, key=lambda item: item.relative_path.casefold())
-    )
+    return tuple(normalized_records)
 
 
 def _tokenize_record(
@@ -94,6 +111,31 @@ def _tokenize_record(
         original_token_count=len(base_tokens),
         tokens=tokens,
         attention_mask=attention_mask,
+    )
+
+
+def _coerce_model_input_set(
+    value: ModelInputSet | Mapping[str, Any],
+) -> ModelInputSet:
+    if isinstance(value, ModelInputSet):
+        return value
+
+    return ModelInputSet(
+        parameters=coerce_tokenization_parameters(value.get("parameters", {})),
+        records=tuple(
+            ModelInputRecord(
+                relative_path=str(record["relative_path"]),
+                projection_type=ProjectionType(record["projection_type"]),
+                vocabulary_strategy=str(record["vocabulary_strategy"]),
+                time_resolution=int(record["time_resolution"]),
+                original_token_count=int(record["original_token_count"]),
+                tokens=tuple(str(token) for token in record.get("tokens", ())),
+                attention_mask=tuple(
+                    int(mask_value) for mask_value in record.get("attention_mask", ())
+                ),
+            )
+            for record in value.get("records", ())
+        ),
     )
 
 

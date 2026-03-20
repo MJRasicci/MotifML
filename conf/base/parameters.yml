@@ -30,3 +30,35 @@ tokenization:
   max_sequence_length: 8
   padding_strategy: right
   time_resolution: 96
+
+execution:
+  shard_id: __all__
+  max_parallel_shards: 1
+
+partitioning:
+  max_documents_per_shard: 64
+  max_raw_bytes_per_shard: 268435456
+
+performance:
+  reporting:
+    enabled: true
+    report_dir: data/08_reporting/performance
+    report_basename: pipeline_profile
+    top_n: 10
+  dataset_run_cache:
+    enabled: true
+    copy_mode: assign
+    release_when_unused: true
+    dataset_names:
+      - raw_motif_json_corpus
+      - raw_motif_json_corpus_shard
+      - motif_ir_corpus
+      - motif_ir_corpus_shard
+      - normalized_ir_corpus
+      - normalized_ir_corpus_shard
+      - motif_ir_manifest
+      - motif_ir_manifest_shard
+      - ir_features
+      - ir_features_shard
+      - model_input
+      - model_input_shard

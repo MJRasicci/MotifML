@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, is_dataclass
+from dataclasses import fields, is_dataclass
 from pathlib import Path
 from typing import Any
 
@@ -24,10 +24,16 @@ class JsonDataset(AbstractDataset[Any, Any]):
 
     def save(self, data: Any) -> None:
         """Save JSON content to disk."""
-        serializable = _to_json_compatible(data)
+        serializable = to_json_compatible(data)
         self._filepath.parent.mkdir(parents=True, exist_ok=True)
         with self._filepath.open("w", encoding="utf-8") as stream:
-            json.dump(serializable, stream, indent=self._indent, ensure_ascii=True)
+            json.dump(
+                serializable,
+                stream,
+                indent=self._indent,
+                ensure_ascii=True,
+                check_circular=False,
+            )
             stream.write("\n")
 
     def _exists(self) -> bool:
@@ -40,18 +46,26 @@ class JsonDataset(AbstractDataset[Any, Any]):
         }
 
 
-def _to_json_compatible(data: Any) -> Any:
+def to_json_compatible(data: Any) -> Any:
     """Convert common Python containers and dataclasses into JSON-safe values."""
     if is_dataclass(data):
-        return _to_json_compatible(asdict(data))
+        return {
+            field_info.name: to_json_compatible(getattr(data, field_info.name))
+            for field_info in fields(data)
+        }
 
     if isinstance(data, dict):
-        return {str(key): _to_json_compatible(value) for key, value in data.items()}
+        return {str(key): to_json_compatible(value) for key, value in data.items()}
 
     if isinstance(data, list | tuple | set):
-        return [_to_json_compatible(value) for value in data]
+        return [to_json_compatible(value) for value in data]
 
     if isinstance(data, Path):
         return data.as_posix()
 
     return data
+
+
+def _to_json_compatible(data: Any) -> Any:
+    """Backward-compatible alias for internal callers."""
+    return to_json_compatible(data)
