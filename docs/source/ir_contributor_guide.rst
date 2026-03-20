@@ -134,3 +134,5 @@ For IR changes, the highest-signal checks are:
    uv run pytest tests/ir/test_review_bundles.py
 
 Run more targeted pipeline-node tests as needed when you change specific mapping logic.
+Use :doc:`ir_review_workflow` for the reviewer-facing checklist once the implementation is
+ready for review.

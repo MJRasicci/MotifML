@@ -13,6 +13,7 @@ scaffolding.
    architecture
    ir_design
    ir_contributor_guide
+   ir_review_workflow
 
 
 Indices and tables
