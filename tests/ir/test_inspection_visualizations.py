@@ -1,11 +1,11 @@
-"""Tests for deterministic IR review visualizations."""
+"""Tests for deterministic IR inspection visualizations."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from motifml.ir.review_tables import load_ir_document_record
-from motifml.ir.review_visualizations import (
+from motifml.ir.inspection_tables import load_ir_document_record
+from motifml.ir.inspection_visualizations import (
     render_control_timeline_svg,
     render_note_relations_svg,
     render_timeline_plot_svg,

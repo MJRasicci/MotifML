@@ -1,4 +1,4 @@
-"""Review-bundle generation for IR inspection workflows."""
+"""Inspection-bundle generation for IR inspection workflows."""
 
 from __future__ import annotations
 
@@ -26,15 +26,15 @@ from motifml.datasets.motif_json_corpus_dataset import (
     MotifJsonCorpusDataset,
     MotifJsonDocument,
 )
-from motifml.ir.review_models import IrReviewBundleManifest
-from motifml.ir.review_tables import (
+from motifml.ir.inspection_models import IrInspectionBundleManifest
+from motifml.ir.inspection_tables import (
     build_control_event_rows,
     build_onset_note_tables,
     build_structure_summary,
     build_voice_lane_onset_tables,
     format_score_time,
 )
-from motifml.ir.review_visualizations import (
+from motifml.ir.inspection_visualizations import (
     render_control_timeline_svg,
     render_note_relations_svg,
     render_timeline_plot_svg,
@@ -57,12 +57,12 @@ IR_SCHEMA_PATH = (
     REPO_ROOT / "src" / "motifml" / "ir" / "schema" / "motifml-ir-document.schema.json"
 )
 PARAMETERS_PATH = REPO_ROOT / "conf" / "base" / "parameters.yml"
-DEFAULT_OUTPUT_ROOT = FIXTURE_ROOT / "ir" / "review_bundles"
-DEFAULT_REVIEW_BUNDLE_FIXTURE_IDS = (
+DEFAULT_OUTPUT_ROOT = FIXTURE_ROOT / "ir" / "inspection_bundles"
+DEFAULT_INSPECTION_BUNDLE_FIXTURE_IDS = (
     "ensemble_polyphony_controls",
     "guitar_techniques_tuplets",
 )
-REVIEW_BUNDLE_VERSION = "1.0.0"
+INSPECTION_BUNDLE_VERSION = "1.0.0"
 BUNDLE_ARTIFACT_NAMES = (
     "README.md",
     "bundle_manifest.json",
@@ -90,12 +90,12 @@ def load_fixture_catalog(
     )
 
 
-def generate_review_bundles(
+def generate_inspection_bundles(
     output_root: Path = DEFAULT_OUTPUT_ROOT,
     fixture_root: Path = FIXTURE_ROOT,
     fixture_ids: Sequence[str] | None = None,
 ) -> tuple[Path, ...]:
-    """Generate deterministic review bundles for selected tracked fixtures."""
+    """Generate deterministic inspection bundles for selected tracked fixtures."""
     catalog = load_fixture_catalog(fixture_root)
     raw_documents = _load_raw_documents_by_relative_path(fixture_root)
     parameters = _load_parameters()
@@ -114,20 +114,20 @@ def generate_review_bundles(
 
         raw_relative_path = _raw_relative_path(entry)
         raw_document = raw_documents[raw_relative_path]
-        bundle_files = build_review_bundle_files(entry, raw_document, parameters)
+        bundle_files = build_inspection_bundle_files(entry, raw_document, parameters)
         _write_bundle(bundle_root, bundle_files)
         written_paths.append(bundle_root)
 
     return tuple(written_paths)
 
 
-def build_review_bundle_files(
+def build_inspection_bundle_files(
     fixture_entry: Mapping[str, Any],
     raw_document: MotifJsonDocument,
     parameters: Mapping[str, Any],
 ) -> dict[str, str]:
-    """Build all persisted files for one review bundle."""
-    ir_record, manifest_entry, validation_report = _run_review_pipelines(
+    """Build all persisted files for one inspection bundle."""
+    ir_record, manifest_entry, validation_report = _run_inspection_pipelines(
         raw_document,
         parameters,
     )
@@ -137,8 +137,8 @@ def build_review_bundle_files(
     voice_lane_tables = build_voice_lane_onset_tables(ir_record.document)
     onset_note_tables = build_onset_note_tables(ir_record.document)
     control_rows = build_control_event_rows(ir_record.document)
-    bundle_manifest = IrReviewBundleManifest(
-        bundle_version=REVIEW_BUNDLE_VERSION,
+    bundle_manifest = IrInspectionBundleManifest(
+        bundle_version=INSPECTION_BUNDLE_VERSION,
         fixture_id=str(fixture_entry["fixture_id"]),
         description=str(fixture_entry["description"]),
         source_path=str(fixture_entry["raw_motif_json_path"]),
@@ -151,7 +151,7 @@ def build_review_bundle_files(
     )
 
     return {
-        "README.md": _render_bundle_readme(
+        "README.md": _render_inspection_bundle_readme(
             fixture_entry=fixture_entry,
             raw_document=raw_document,
             manifest_entry=manifest_entry,
@@ -171,7 +171,6 @@ def build_review_bundle_files(
                 "source_file_size_bytes": raw_document.file_size_bytes,
                 "pipeline_ir_artifact_path": manifest_entry["ir_document_path"],
                 "golden_ir_path": fixture_entry.get("golden_ir_path"),
-                "golden_ir_review_status": fixture_entry.get("golden_ir_review_status"),
             }
         ),
         "ir_document.ir.json": serialized_document,
@@ -207,7 +206,7 @@ def _resolve_fixture_entries(
         str(entry["fixture_id"]): entry for entry in catalog.get("fixtures", [])
     }
     selected_ids = (
-        tuple(DEFAULT_REVIEW_BUNDLE_FIXTURE_IDS)
+        tuple(DEFAULT_INSPECTION_BUNDLE_FIXTURE_IDS)
         if fixture_ids is None
         else tuple(fixture_ids)
     )
@@ -216,7 +215,9 @@ def _resolve_fixture_entries(
     ]
     if missing_ids:
         missing = ", ".join(sorted(missing_ids))
-        raise ValueError(f"Unknown fixture ids requested for review bundles: {missing}")
+        raise ValueError(
+            f"Unknown fixture ids requested for inspection bundles: {missing}"
+        )
 
     return [entries_by_id[fixture_id] for fixture_id in selected_ids]
 
@@ -228,7 +229,7 @@ def _raw_relative_path(fixture_entry: Mapping[str, Any]) -> str:
     return raw_path.as_posix()
 
 
-def _run_review_pipelines(
+def _run_inspection_pipelines(
     raw_document: MotifJsonDocument,
     parameters: Mapping[str, Any],
 ) -> tuple[MotifIrDocumentRecord, Mapping[str, Any], Mapping[str, Any]]:
@@ -271,7 +272,7 @@ def _run_review_pipelines(
             or len(validation_reports) != 1
         ):
             raise ValueError(
-                "Review bundle generation expects exactly one emitted IR document, "
+                "Inspection bundle generation expects exactly one emitted IR document, "
                 "manifest entry, and validation report per fixture."
             )
 
@@ -283,7 +284,7 @@ def _validate_serialized_ir(serialized_document: str) -> dict[str, Any]:
         jsonschema = importlib.import_module("jsonschema")
     except ModuleNotFoundError as exc:  # pragma: no cover - exercised in dev env
         raise RuntimeError(
-            "jsonschema is required to generate IR review bundles. "
+            "jsonschema is required to generate IR inspection bundles. "
             "Install the MotifML dev dependencies first."
         ) from exc
 
@@ -305,7 +306,7 @@ def _validate_serialized_ir(serialized_document: str) -> dict[str, Any]:
     }
 
 
-def _render_bundle_readme(  # noqa: PLR0913
+def _render_inspection_bundle_readme(  # noqa: PLR0913
     *,
     fixture_entry: Mapping[str, Any],
     raw_document: MotifJsonDocument,
@@ -313,10 +314,10 @@ def _render_bundle_readme(  # noqa: PLR0913
     validation_report: Mapping[str, Any],
     schema_validation: Mapping[str, Any],
     structural_summary: object,
-    bundle_manifest: IrReviewBundleManifest,
+    bundle_manifest: IrInspectionBundleManifest,
 ) -> str:
     lines = [
-        f"# IR Review Bundle: {fixture_entry['fixture_id']}",
+        f"# IR Inspection Bundle: {fixture_entry['fixture_id']}",
         "",
         str(fixture_entry["description"]),
         "",
@@ -558,9 +559,9 @@ def _write_bundle(bundle_root: Path, bundle_files: Mapping[str, str]) -> None:
 __all__ = [
     "BUNDLE_ARTIFACT_NAMES",
     "DEFAULT_OUTPUT_ROOT",
-    "DEFAULT_REVIEW_BUNDLE_FIXTURE_IDS",
-    "REVIEW_BUNDLE_VERSION",
-    "build_review_bundle_files",
-    "generate_review_bundles",
+    "DEFAULT_INSPECTION_BUNDLE_FIXTURE_IDS",
+    "INSPECTION_BUNDLE_VERSION",
+    "build_inspection_bundle_files",
+    "generate_inspection_bundles",
     "load_fixture_catalog",
 ]

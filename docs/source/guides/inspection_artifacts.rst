@@ -31,7 +31,7 @@ The current repository tracks these artifact families:
    Canonical persisted IR documents for a subset of fixtures. These are useful for
    spotting document-shape changes directly in JSON diffs.
 
-``tests/fixtures/ir/review_bundles/``
+``tests/fixtures/ir/inspection_bundles/``
    Deterministic inspection bundles generated from tracked fixtures. Each bundle includes
    the serialized IR document, schema-validation output, IR-validation output,
    structural summaries, CSV tables, and static SVG visualizations.
@@ -51,7 +51,7 @@ Use the repository tools to regenerate tracked artifacts:
 .. code-block:: bash
 
    uv run python tools/regenerate_ir_fixture_corpus.py
-   uv run python tools/generate_ir_review_bundles.py
+   uv run python tools/generate_ir_inspection_bundles.py
 
 The fixture-corpus generator rebuilds:
 
@@ -60,11 +60,11 @@ The fixture-corpus generator rebuilds:
 - the fixture catalog
 
 The inspection-bundle generator rebuilds the checked-in bundle directories under
-``tests/fixtures/ir/review_bundles/``. You can also target specific fixtures with:
+``tests/fixtures/ir/inspection_bundles/``. You can also target specific fixtures with:
 
 .. code-block:: bash
 
-   uv run python tools/generate_ir_review_bundles.py --fixture-id <fixture_id>
+   uv run python tools/generate_ir_inspection_bundles.py --fixture-id <fixture_id>
 
 Inspection Bundle Contents
 --------------------------
@@ -114,7 +114,7 @@ The repository already codifies parts of this artifact strategy in tests:
   generated catalog contract
 - ``tests/pipelines/test_ir_build_fixture_determinism.py`` checks byte-stable IR and
   manifest output across repeated and reordered builds
-- ``tests/ir/test_review_bundles.py`` requires the checked-in inspection bundles to
+- ``tests/ir/test_inspection_bundles.py`` requires the checked-in inspection bundles to
   reproduce exactly
 - ``tests/pipelines/test_ir_pipeline_integration.py`` checks end-to-end Kedro pipeline
   behavior across the implemented stages

@@ -1,4 +1,4 @@
-# IR Review Bundle: guitar_techniques_tuplets
+# IR Inspection Bundle: guitar_techniques_tuplets
 
 Single-staff guitar line with grace notes, triplets, linked-note techniques, bends, and harmonics.
 

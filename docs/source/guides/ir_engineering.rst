@@ -36,7 +36,8 @@ Key inputs and outputs are:
 
 - ``tests/fixtures/motif_json/`` for curated raw Motif JSON fixtures
 - ``tests/fixtures/ir/golden/`` for a tracked golden subset of persisted IR documents
-- ``tests/fixtures/ir/review_bundles/`` for deterministic tabular and SVG inspection
+- ``tests/fixtures/ir/inspection_bundles/`` for deterministic tabular and SVG
+  inspection
   bundles
 - ``tests/fixtures/ir_fixture_catalog.json`` for fixture metadata and coverage mapping
 
@@ -46,7 +47,7 @@ manually:
 .. code-block:: bash
 
    uv run python tools/regenerate_ir_fixture_corpus.py
-   uv run python tools/generate_ir_review_bundles.py
+   uv run python tools/generate_ir_inspection_bundles.py
 
 The generator scripts own the generated fixture JSON, golden IR, and inspection-bundle
 artifacts under ``tests/fixtures/``.
@@ -131,7 +132,7 @@ For IR changes, the highest-signal checks are:
    uv run pytest tests/ir/test_serialization.py
    uv run pytest tests/ir/test_fixture_corpus.py
    uv run pytest tests/pipelines/test_ir_build_fixture_determinism.py
-   uv run pytest tests/ir/test_review_bundles.py
+   uv run pytest tests/ir/test_inspection_bundles.py
    uv run pytest tests/pipelines/test_ir_pipeline_integration.py
 
 Run additional targeted tests for the specific pipeline nodes, projection modules, or

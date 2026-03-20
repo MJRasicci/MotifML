@@ -1,4 +1,4 @@
-# IR Review Bundle: ensemble_polyphony_controls
+# IR Inspection Bundle: ensemble_polyphony_controls
 
 Clarinet-plus-piano excerpt with transposition, multi-staff writing, polyphony, and authored point/span controls.
 

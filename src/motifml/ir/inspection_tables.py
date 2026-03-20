@@ -1,4 +1,4 @@
-"""Deterministic review-table helpers for IR inspection."""
+"""Deterministic inspection-table helpers for IR analysis."""
 
 from __future__ import annotations
 
@@ -18,6 +18,17 @@ from motifml.ir.ids import (
     span_control_sort_key,
     voice_lane_sort_key,
 )
+from motifml.ir.inspection_models import (
+    BarInspectionRollup,
+    ControlEventRow,
+    InspectionNamedCount,
+    IrStructureSummary,
+    OnsetNoteRow,
+    OnsetNoteTable,
+    VoiceLaneInspectionRollup,
+    VoiceLaneOnsetRow,
+    VoiceLaneOnsetTable,
+)
 from motifml.ir.models import (
     DynamicChangeValue,
     FermataValue,
@@ -27,17 +38,6 @@ from motifml.ir.models import (
     Pitch,
     TechniquePayload,
     TempoChangeValue,
-)
-from motifml.ir.review_models import (
-    BarReviewRollup,
-    ControlEventRow,
-    IrStructureSummary,
-    OnsetNoteRow,
-    OnsetNoteTable,
-    ReviewNamedCount,
-    VoiceLaneOnsetRow,
-    VoiceLaneOnsetTable,
-    VoiceLaneReviewRollup,
 )
 from motifml.ir.serialization import deserialize_document
 from motifml.ir.time import ScoreTime
@@ -93,7 +93,7 @@ def build_structure_summary(document: MotifMlIrDocument) -> IrStructureSummary:
 
     edge_counts = Counter(edge.edge_type.value for edge in document.edges)
     edge_counts_by_type = tuple(
-        ReviewNamedCount(name=name, count=edge_counts[name])
+        InspectionNamedCount(name=name, count=edge_counts[name])
         for name in sorted(edge_counts)
     )
 
@@ -124,7 +124,7 @@ def build_structure_summary(document: MotifMlIrDocument) -> IrStructureSummary:
             if control.start_time < bar_end and control.end_time > bar_start
         )
         bar_rollups.append(
-            BarReviewRollup(
+            BarInspectionRollup(
                 bar_id=bar.bar_id,
                 bar_index=bar.bar_index,
                 start=bar.start,
@@ -146,7 +146,7 @@ def build_structure_summary(document: MotifMlIrDocument) -> IrStructureSummary:
             for note in notes_by_onset_id.get(onset.onset_id, ())
         ]
         voice_lane_rollups.append(
-            VoiceLaneReviewRollup(
+            VoiceLaneInspectionRollup(
                 part_id=voice_lane.part_id,
                 staff_id=voice_lane.staff_id,
                 bar_id=voice_lane.bar_id,
@@ -287,7 +287,7 @@ def build_onset_note_tables(document: MotifMlIrDocument) -> tuple[OnsetNoteTable
 def build_control_event_rows(
     document: MotifMlIrDocument,
 ) -> tuple[ControlEventRow, ...]:
-    """Normalize point and span controls into one deterministic review table."""
+    """Normalize point and span controls into one deterministic inspection table."""
     bars = _sorted_bars(document)
 
     rows = [
@@ -354,7 +354,7 @@ def build_control_event_rows(
 
 
 def render_structure_summary_markdown(summary: IrStructureSummary) -> str:
-    """Render a readable Markdown rollup for notebook review."""
+    """Render a readable Markdown rollup for notebook inspection."""
     lines = [
         "| Family | Count |",
         "| --- | ---: |",

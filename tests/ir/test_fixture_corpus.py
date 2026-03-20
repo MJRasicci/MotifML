@@ -9,7 +9,6 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-from motifml.ir.fixture_catalog import PENDING_GOLDEN_REVIEW_STATUS
 from motifml.ir.serialization import deserialize_document, serialize_document
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -23,7 +22,6 @@ def test_fixture_catalog_covers_the_full_section_4_surface():
     catalog = _load_json(CATALOG_PATH)
     readme = README_PATH.read_text(encoding="utf-8")
     required_coverage = set(catalog["required_coverage"])
-    allowed_review_statuses = set(catalog["allowed_golden_ir_review_statuses"])
     covered_surface: set[str] = set()
     golden_fixture_count = 0
 
@@ -39,14 +37,11 @@ def test_fixture_catalog_covers_the_full_section_4_surface():
         covered_surface.update(entry["covers"])
 
         golden_relative_path = entry["golden_ir_path"]
-        review_status = entry["golden_ir_review_status"]
         if golden_relative_path is None:
-            assert review_status is None
             continue
 
         golden_fixture_count += 1
         assert (FIXTURE_ROOT / golden_relative_path).exists()
-        assert review_status in allowed_review_statuses
 
     assert covered_surface == required_coverage
     assert 0 < golden_fixture_count < len(catalog["fixtures"])
@@ -119,23 +114,11 @@ def test_regenerator_reproduces_the_tracked_fixture_corpus(tmp_path: Path):
         ).read_text(encoding="utf-8")
 
 
-def test_new_golden_artifacts_default_to_pending_review(tmp_path: Path):
-    fixture_root = tmp_path / "fixtures"
-    generate_fixture_corpus = runpy.run_path(str(REGENERATOR_PATH))[
-        "generate_fixture_corpus"
-    ]
-    generate_fixture_corpus(fixture_root)
+def test_fixture_catalog_omits_legacy_status_fields():
+    catalog = _load_json(CATALOG_PATH)
 
-    catalog = _load_json(fixture_root / CATALOG_PATH.name)
-    golden_entries = [
-        entry for entry in catalog["fixtures"] if entry["golden_ir_path"] is not None
-    ]
-
-    assert golden_entries
-    assert all(
-        entry["golden_ir_review_status"] == PENDING_GOLDEN_REVIEW_STATUS
-        for entry in golden_entries
-    )
+    assert "allowed_golden_ir_review_statuses" not in catalog
+    assert all("golden_ir_review_status" not in entry for entry in catalog["fixtures"])
 
 
 def _generated_artifact_paths(catalog: dict[str, Any]) -> list[str]:

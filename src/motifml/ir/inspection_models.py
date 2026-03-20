@@ -1,4 +1,4 @@
-"""Typed review-only models for inspecting MotifML IR documents."""
+"""Typed inspection models for analyzing MotifML IR documents."""
 
 from __future__ import annotations
 
@@ -8,8 +8,8 @@ from motifml.ir.time import ScoreTime
 
 
 @dataclass(frozen=True)
-class ReviewNamedCount:
-    """A deterministic name/count pair used in review summaries."""
+class InspectionNamedCount:
+    """A deterministic name/count pair used in inspection summaries."""
 
     name: str
     count: int
@@ -20,8 +20,8 @@ class ReviewNamedCount:
 
 
 @dataclass(frozen=True)
-class BarReviewRollup:
-    """Review counts for one bar."""
+class BarInspectionRollup:
+    """Inspection counts for one bar."""
 
     bar_id: str
     bar_index: int
@@ -44,8 +44,8 @@ class BarReviewRollup:
 
 
 @dataclass(frozen=True)
-class VoiceLaneReviewRollup:
-    """Review counts for one authored voice lane."""
+class VoiceLaneInspectionRollup:
+    """Inspection counts for one authored voice lane."""
 
     part_id: str
     staff_id: str
@@ -92,9 +92,9 @@ class IrStructureSummary:
     point_control_count: int
     span_control_count: int
     edge_count: int
-    edge_counts_by_type: tuple[ReviewNamedCount, ...] = ()
-    bar_rollups: tuple[BarReviewRollup, ...] = ()
-    voice_lane_rollups: tuple[VoiceLaneReviewRollup, ...] = ()
+    edge_counts_by_type: tuple[InspectionNamedCount, ...] = ()
+    bar_rollups: tuple[BarInspectionRollup, ...] = ()
+    voice_lane_rollups: tuple[VoiceLaneInspectionRollup, ...] = ()
 
     def __post_init__(self) -> None:
         for field_name in (
@@ -146,7 +146,7 @@ class IrStructureSummary:
 
 @dataclass(frozen=True)
 class VoiceLaneOnsetRow:
-    """One onset row for a per-bar / per-voice review table."""
+    """One onset row for a per-bar / per-voice inspection table."""
 
     part_id: str
     staff_id: str
@@ -416,8 +416,8 @@ class ControlEventRow:
 
 
 @dataclass(frozen=True)
-class IrReviewBundleManifest:
-    """Deterministic metadata describing one generated review bundle."""
+class IrInspectionBundleManifest:
+    """Deterministic metadata describing one generated inspection bundle."""
 
     bundle_version: str
     fixture_id: str
@@ -470,14 +470,14 @@ def _require_non_negative(value: int, field_name: str) -> None:
 
 
 __all__ = [
-    "BarReviewRollup",
+    "BarInspectionRollup",
     "ControlEventRow",
-    "IrReviewBundleManifest",
+    "IrInspectionBundleManifest",
     "IrStructureSummary",
     "OnsetNoteRow",
     "OnsetNoteTable",
-    "ReviewNamedCount",
+    "InspectionNamedCount",
     "VoiceLaneOnsetRow",
     "VoiceLaneOnsetTable",
-    "VoiceLaneReviewRollup",
+    "VoiceLaneInspectionRollup",
 ]

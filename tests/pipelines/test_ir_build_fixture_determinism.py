@@ -15,9 +15,9 @@ from motifml.datasets.motif_json_corpus_dataset import MotifJsonCorpusDataset
 from motifml.pipelines.ir_build.pipeline import create_pipeline as create_ir_build
 from tests.pipelines.ir_test_support import (
     MOTIF_JSON_FIXTURE_ROOT,
-    approved_fixture_entries,
     default_parameters,
     fixture_entries,
+    golden_fixture_entries,
     load_ir_document_bytes,
     load_json,
     materialize_raw_fixture_subset,
@@ -123,8 +123,8 @@ def test_ir_build_fixture_runs_are_byte_stable_and_manifested(
     assert manifest_entry["edge_counts"] == expected_counts["edge_counts"]
 
 
-@pytest.mark.parametrize("fixture_entry", approved_fixture_entries(), ids=_fixture_id)
-def test_ir_validation_reports_zero_errors_for_approved_valid_fixtures(
+@pytest.mark.parametrize("fixture_entry", golden_fixture_entries(), ids=_fixture_id)
+def test_ir_validation_reports_zero_errors_for_golden_fixtures(
     tmp_path: Path,
     fixture_entry: dict[str, Any],
 ):

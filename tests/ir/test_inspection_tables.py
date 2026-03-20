@@ -1,4 +1,4 @@
-"""Tests for deterministic IR review table helpers."""
+"""Tests for deterministic IR inspection table helpers."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from motifml.ir.review_tables import (
+from motifml.ir.inspection_tables import (
     build_control_event_rows,
     build_onset_note_tables,
     build_structure_summary,

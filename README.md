@@ -91,7 +91,7 @@ uv run python tools/regenerate_ir_fixture_corpus.py
 Regenerate the tracked inspection bundles:
 
 ```bash
-uv run python tools/generate_ir_review_bundles.py
+uv run python tools/generate_ir_inspection_bundles.py
 ```
 
 The core project documentation is organized as:

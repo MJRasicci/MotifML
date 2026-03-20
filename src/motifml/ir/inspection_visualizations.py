@@ -1,4 +1,4 @@
-"""Deterministic static SVG review visualizations for MotifML IR documents."""
+"""Deterministic static SVG inspection visualizations for MotifML IR documents."""
 
 from __future__ import annotations
 
@@ -7,14 +7,14 @@ from collections.abc import Sequence
 from html import escape
 
 from motifml.ir.ids import bar_sort_key, edge_sort_key, note_sort_key
-from motifml.ir.models import EdgeType, MotifMlIrDocument
-from motifml.ir.review_tables import (
+from motifml.ir.inspection_tables import (
     build_control_event_rows,
     build_structure_summary,
     build_voice_lane_onset_tables,
     format_pitch,
     format_score_time,
 )
+from motifml.ir.models import EdgeType, MotifMlIrDocument
 from motifml.ir.time import ScoreTime
 
 SVG_WIDTH = 960
@@ -575,7 +575,7 @@ def _svg_document(width: int, height: int, elements: Sequence[str]) -> str:
     body = "\n".join(elements)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
-        f'viewBox="0 0 {width} {height}" role="img" aria-label="MotifML IR review visualization">'
+        f'viewBox="0 0 {width} {height}" role="img" aria-label="MotifML IR inspection visualization">'
         f"<style>{_svg_style()}</style>{body}</svg>"
     )
 

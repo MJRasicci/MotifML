@@ -10,11 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from motifml.ir.fixture_catalog import (
-    PENDING_GOLDEN_REVIEW_STATUS,
-    VALID_GOLDEN_REVIEW_STATUSES,
-    normalize_golden_review_status,
-)
 from motifml.ir.ids import (
     bar_id,
     note_id,
@@ -121,7 +116,6 @@ def generate_fixture_corpus(output_root: Path = DEFAULT_FIXTURE_ROOT) -> None:
     raw_fixture_root = fixture_root / RAW_FIXTURE_SUBDIR
     golden_fixture_root = fixture_root / GOLDEN_FIXTURE_SUBDIR
     catalog_path = fixture_root / CATALOG_FILENAME
-    existing_review_statuses = _load_existing_review_statuses(catalog_path)
 
     raw_fixture_root.mkdir(parents=True, exist_ok=True)
     golden_fixture_root.mkdir(parents=True, exist_ok=True)
@@ -134,7 +128,6 @@ def generate_fixture_corpus(output_root: Path = DEFAULT_FIXTURE_ROOT) -> None:
         raw_path.write_text(_dump_json(spec.raw_builder()), encoding="utf-8")
 
         golden_relative_path: str | None = None
-        golden_review_status: str | None = None
         if spec.golden_builder is not None:
             golden_path = golden_fixture_root / f"{spec.fixture_id}.ir.json"
             golden_path.write_text(
@@ -142,10 +135,6 @@ def generate_fixture_corpus(output_root: Path = DEFAULT_FIXTURE_ROOT) -> None:
                 encoding="utf-8",
             )
             golden_relative_path = golden_path.relative_to(fixture_root).as_posix()
-            golden_review_status = existing_review_statuses.get(
-                spec.fixture_id,
-                PENDING_GOLDEN_REVIEW_STATUS,
-            )
 
         catalog_entries.append(
             {
@@ -154,7 +143,6 @@ def generate_fixture_corpus(output_root: Path = DEFAULT_FIXTURE_ROOT) -> None:
                 "covers": list(spec.covers),
                 "raw_motif_json_path": raw_path.relative_to(fixture_root).as_posix(),
                 "golden_ir_path": golden_relative_path,
-                "golden_ir_review_status": golden_review_status,
             }
         )
 
@@ -164,7 +152,6 @@ def generate_fixture_corpus(output_root: Path = DEFAULT_FIXTURE_ROOT) -> None:
         "required_coverage": list(REQUIRED_COVERAGE),
         "raw_schema_path": RAW_SCHEMA_PATH,
         "ir_schema_path": IR_SCHEMA_PATH,
-        "allowed_golden_ir_review_statuses": list(VALID_GOLDEN_REVIEW_STATUSES),
         "fixtures": catalog_entries,
     }
     catalog_path.write_text(_dump_json(catalog), encoding="utf-8")
@@ -1702,38 +1689,6 @@ def _contains_edges(*pairs: tuple[str, str]) -> tuple[Edge, ...]:
         Edge(source_id=source, target_id=target, edge_type=EdgeType.CONTAINS)
         for source, target in pairs
     )
-
-
-def _load_existing_review_statuses(catalog_path: Path) -> dict[str, str]:
-    if not catalog_path.exists():
-        return {}
-
-    catalog_payload = json.loads(catalog_path.read_text(encoding="utf-8"))
-    statuses: dict[str, str] = {}
-    for entry in catalog_payload.get("fixtures", []):
-        fixture_id = entry.get("fixture_id")
-        review_status = entry.get("golden_ir_review_status")
-        if review_status is None:
-            continue
-        if not isinstance(fixture_id, str):
-            raise ValueError(
-                "Fixture catalog entries with golden review state must define a string "
-                "'fixture_id'."
-            )
-        if not isinstance(review_status, str):
-            raise ValueError(
-                f"Fixture '{fixture_id}' has non-string golden review status "
-                f"{review_status!r}."
-            )
-        try:
-            statuses[fixture_id] = normalize_golden_review_status(review_status)
-        except ValueError as error:
-            raise ValueError(
-                f"Fixture '{fixture_id}' has unsupported golden review status "
-                f"'{review_status}'. Expected one of {VALID_GOLDEN_REVIEW_STATUSES}."
-            ) from error
-
-    return statuses
 
 
 def _remove_managed_json_files(directory: Path) -> None:

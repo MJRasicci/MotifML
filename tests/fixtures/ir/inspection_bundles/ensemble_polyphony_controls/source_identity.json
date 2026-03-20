@@ -15,6 +15,5 @@
   "source_hash": "f213ff4622535dff829fc6746816a6c99b162c2c8b89bf30e159355886a4bd4d",
   "source_file_size_bytes": 11427,
   "pipeline_ir_artifact_path": "data/02_intermediate/ir/documents/ensemble_polyphony_controls.json.ir.json",
-  "golden_ir_path": "ir/golden/ensemble_polyphony_controls.ir.json",
-  "golden_ir_review_status": "approved"
+  "golden_ir_path": "ir/golden/ensemble_polyphony_controls.ir.json"
 }

@@ -1,4 +1,4 @@
-"""Regression coverage for deterministic IR review bundle generation."""
+"""Regression coverage for deterministic IR inspection bundle generation."""
 
 from __future__ import annotations
 
@@ -7,17 +7,19 @@ import runpy
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-TOOL_PATH = REPO_ROOT / "tools" / "generate_ir_review_bundles.py"
-CHECKED_IN_BUNDLE_ROOT = REPO_ROOT / "tests" / "fixtures" / "ir" / "review_bundles"
+TOOL_PATH = REPO_ROOT / "tools" / "generate_ir_inspection_bundles.py"
+CHECKED_IN_BUNDLE_ROOT = REPO_ROOT / "tests" / "fixtures" / "ir" / "inspection_bundles"
 
 
-def test_generate_review_bundles_reproduces_checked_in_artifacts(
+def test_generate_inspection_bundles_reproduces_checked_in_artifacts(
     tmp_path: Path,
 ) -> None:
-    bundle_root = tmp_path / "review_bundles"
-    generate_review_bundles = runpy.run_path(str(TOOL_PATH))["generate_review_bundles"]
+    bundle_root = tmp_path / "inspection_bundles"
+    generate_inspection_bundles = runpy.run_path(str(TOOL_PATH))[
+        "generate_inspection_bundles"
+    ]
 
-    generate_review_bundles(bundle_root)
+    generate_inspection_bundles(bundle_root)
 
     expected_files = _relative_files(CHECKED_IN_BUNDLE_ROOT)
     actual_files = _relative_files(bundle_root)
@@ -29,7 +31,7 @@ def test_generate_review_bundles_reproduces_checked_in_artifacts(
         ).read_text(encoding="utf-8")
 
 
-def test_checked_in_review_bundles_cover_required_fixture_types() -> None:
+def test_checked_in_inspection_bundles_cover_required_fixture_types() -> None:
     manifests = {
         path.parent.name: json.loads(path.read_text(encoding="utf-8"))
         for path in sorted(CHECKED_IN_BUNDLE_ROOT.rglob("bundle_manifest.json"))
