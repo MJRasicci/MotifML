@@ -8,6 +8,7 @@ name = "motifml"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
+    "chardet<6",
     "ipython>=8.10",
     "jupyterlab>=3.0",
     "notebook",
