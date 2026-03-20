@@ -8,7 +8,7 @@ import nbformat
 from nbclient import NotebookClient
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-NOTEBOOK_PATH = REPO_ROOT / "analysis" / "notebooks" / "ir_inspection.ipynb"
+NOTEBOOK_PATH = REPO_ROOT / "notebooks" / "ir_inspection.ipynb"
 GOLDEN_FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "ir" / "golden"
 EXPECTED_NOTEBOOK_SVG_COUNT = 4
 
