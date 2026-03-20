@@ -1,8 +1,17 @@
 # MotifML Agent Instructions
 
-MotifML is a structured ML pipeline for modeling symbolic musical data. It transforms music representations into datasets for training neural networks to predict, generate, and analyze musical structure.
+MotifML is a Kedro-based symbolic-music research codebase. The repository currently
+focuses on raw-corpus ingestion, canonical IR construction and validation, reporting, and
+baseline normalization, feature-extraction, and tokenization stages that prepare
+downstream ML-ready datasets.
 
-Agents assist with implementation, refactoring, experimentation, and documentation. **Defer to the human maintainer on:** architecture decisions, domain modeling, pipeline structure, dataset definitions, and training methodology.
+Training, generation, and evaluation systems are planned project directions, but they are
+not yet implemented as first-class pipelines in this repository.
+
+Agents assist with implementation, refactoring, experimentation, and documentation.
+**Defer to the maintainer on:** architecture decisions, domain modeling, pipeline
+structure, dataset definitions, and training methodology. If a task touches those areas,
+pause and propose a design rather than deciding unilaterally.
 
 ---
 
@@ -11,8 +20,9 @@ Agents assist with implementation, refactoring, experimentation, and documentati
 ### Reproducibility
 
 - All pipelines must be deterministic: explicit configuration, versioned parameters, no hidden state, no randomness without a fixed seed
-- `kedro run` on identical code + parameters + data must reproduce training results
-- Any change affecting training behavior must surface in config/params
+- `kedro run` on identical code + parameters + data must reproduce pipeline outputs and, where applicable, training results
+- Tracked generated artifacts must be reproducible from repository tools
+- Any change affecting training behavior or persisted data contracts must surface in config/params
 
 ### Pipeline Architecture (Kedro)
 
@@ -21,7 +31,7 @@ MotifML uses **Kedro** for all orchestration. Agents must not bypass Kedro to im
 Pipeline stages:
 
 ```
-01_raw → 02_intermediate → 03_primary → 04_feature → 05_model_input → 06_models → 07_model_output → 08_reporting
+00_corpus → 01_raw → 02_intermediate → 03_primary → 04_feature → 05_model_input → 06_models → 07_model_output → 08_reporting
 ```
 
 Node rules:
@@ -29,6 +39,18 @@ Node rules:
 - Pure functions: typed inputs/outputs, no side effects, no global state
 - **No direct file I/O inside nodes** — all data flows through the Kedro Data Catalog
 - No hardcoded paths (e.g., `open("data/01_raw/...")`); reference datasets by catalog name
+
+Current implemented pipelines:
+
+- `ingestion`: builds and summarizes the raw Motif JSON corpus
+- `ir_build`: validates raw Motif JSON and emits canonical IR documents plus a manifest
+- `ir_validation`: produces IR validation reports and corpus summaries
+- `normalization`: current deterministic passthrough baseline from canonical IR to normalized IR
+- `feature_extraction`: projects normalized IR into sequence, graph, or hierarchical views
+- `tokenization`: packages extracted features into baseline model-input artifacts
+
+Do not assume training, generation, or evaluation pipelines already exist unless they are
+explicitly added to the repository.
 
 ### Domain Model Integrity
 
@@ -60,10 +82,10 @@ All variable behavior (model architecture, hyperparameters, dataset splits, devi
 
 ```python
 def extract_features(
-    normalized_tracks: list[Track],
-    parameters: FeatureParameters
-) -> FeatureDataset:
-    """Extract musical features from normalized tracks."""
+    normalized_ir_corpus: list[MotifIrDocumentRecord],
+    parameters: FeatureExtractionParameters,
+) -> IrFeatureSet:
+    """Project normalized IR documents into the configured feature surface."""
 ```
 
 Keep functions small; break complex logic into helpers.
@@ -73,8 +95,8 @@ Keep functions small; break complex logic into helpers.
 Prefer multiple small, composable pipelines over one monolithic pipeline:
 
 ```
+kedro run --pipeline=ingestion
 kedro run --pipeline=feature_extraction
-kedro run --pipeline=training
 kedro run
 ```
 
@@ -84,9 +106,10 @@ Pipelines must not tightly couple unrelated stages.
 
 | Stage | Purpose | Rules |
 |---|---|---|
-| `01_raw` | External/imported source data | **Never modify** |
-| `02_intermediate` | Temporary transform artifacts | Not canonical |
-| `03_primary` | Cleaned, normalized domain model data | Canonical for feature extraction |
+| `00_corpus` | External source corpus | **Never modify**; this is the imported source boundary |
+| `01_raw` | Generated raw Motif JSON corpus | Derived from `00_corpus`; do not hand-edit |
+| `02_intermediate` | Transform artifacts, manifests, and canonical IR outputs | Not the normalized primary layer |
+| `03_primary` | Cleaned, normalized domain model data | Current baseline stores normalized IR here |
 | `04_feature` | Engineered features | — |
 | `05_model_input` | Tensors, windows, tokenized sequences | Document assumptions (resolution, length, tokenization) |
 | `06_models` | Serialized models and checkpoints | — |
@@ -97,12 +120,15 @@ Pipelines must not tightly couple unrelated stages.
 
 ## ML & Training Guidelines
 
+These guidelines apply when training and evaluation systems are introduced. They are
+intended to shape future work, not to imply that those subsystems are already present.
+
 ### Code Separation
 
 ```
-model/       # architecture definitions
-training/    # training loops
-evaluation/  # metrics and analysis
+src/motifml/model/       # architecture definitions
+src/motifml/training/    # training loops
+src/motifml/evaluation/  # metrics and analysis
 ```
 
 Never write monolithic scripts that combine dataset loading, training, and evaluation.
@@ -130,6 +156,23 @@ Allowed for exploration, inspection, and visualization only. Production logic li
 
 ---
 
+## Generated Artifacts and Documentation
+
+- Keep documentation in `docs/source/overview/`, `docs/source/guides/`, and `docs/source/reference/` aligned with implemented behavior
+- Do not hand-edit generated fixture or inspection artifacts when a repository tool owns them
+- Use the tracked generators for managed artifacts:
+  - `uv run python tools/regenerate_ir_fixture_corpus.py`
+  - `uv run python tools/generate_ir_inspection_bundles.py`
+- If a change affects persisted contracts, fixture outputs, or tracked inspection artifacts, update the docs and regenerate the managed artifacts in the same change set
+
+Managed generated surfaces include:
+
+- `tests/fixtures/ir/golden/`
+- `tests/fixtures/ir/inspection_bundles/`
+- `tests/fixtures/ir_fixture_catalog.json`
+
+---
+
 ## Agent Safety Rules
 
 Agents must **not**:
@@ -139,7 +182,8 @@ Agents must **not**:
 - Bypass the Kedro Data Catalog
 - Commit large data artifacts
 
-If a task requires any of the above, **propose it for human review** rather than implementing it.
+If a task requires any of the above, pause and ask for explicit maintainer direction
+rather than implementing it unilaterally.
 
 ---
 
@@ -160,4 +204,6 @@ update code
 
 ## When in Doubt
 
-If a task involves altering the domain model, changing pipeline structure, modifying dataset formats, or introducing new ML architectures — **propose a design first**. Architectural integrity takes priority over implementation speed.
+If a task involves altering the domain model, changing pipeline structure, modifying
+dataset formats, or introducing new ML architectures, pause and propose a design first.
+Architectural integrity takes priority over implementation speed.
