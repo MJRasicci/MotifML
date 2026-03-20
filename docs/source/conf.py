@@ -15,7 +15,8 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from motifml import __version__ as release
 
 project = "MotifML"
-author = "MotifML maintainers"
+author = "Michael Rasicci"
+copyright = "2026 Michael Rasicci"
 version = re.match(r"^([0-9]+\.[0-9]+).*", release).group(1)
 
 extensions = [
