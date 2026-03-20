@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from motifml.pipeline_registry import register_pipelines
 from tests.pipelines.ir_test_support import (
     MOTIF_JSON_FIXTURE_ROOT,
     fixture_entries,
@@ -29,6 +30,7 @@ EXPECTED_DEFAULT_STAGE_ORDER = [
     "emit_intrinsic_edges",
     "assemble_ir_document",
     "build_ir_manifest",
+    "normalize_ir_corpus",
     "validate_ir_documents",
     "publish_ir_validation_report",
     "summarize_ir_corpus",
@@ -66,10 +68,9 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
     assert load_json(output_root / "motif_ir_manifest.json")
     assert load_json(output_root / "motif_ir_validation_report.json")
     assert load_json(output_root / "motif_ir_summary.json")
+    assert sorted((output_root / "normalized_documents").rglob("*.ir.json"))
     assert _default_stage_order() == EXPECTED_DEFAULT_STAGE_ORDER
 
 
 def _default_stage_order() -> list[str]:
-    from motifml.pipeline_registry import register_pipelines
-
     return [node.name for node in register_pipelines()["__default__"].nodes]

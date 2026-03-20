@@ -37,3 +37,7 @@ motif_ir_summary:
 motif_ir_corpus:
   type: motifml.datasets.motif_ir_corpus_dataset.MotifIrCorpusDataset
   filepath: data/02_intermediate/ir/documents
+
+normalized_ir_corpus:
+  type: motifml.datasets.motif_ir_corpus_dataset.MotifIrCorpusDataset
+  filepath: data/03_primary/ir/documents

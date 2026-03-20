@@ -108,6 +108,10 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "type": "motifml.datasets.motif_ir_corpus_dataset.MotifIrCorpusDataset",
             "filepath": str(output_root / "documents"),
         },
+        "normalized_ir_corpus": {
+            "type": "motifml.datasets.motif_ir_corpus_dataset.MotifIrCorpusDataset",
+            "filepath": str(output_root / "normalized_documents"),
+        },
     }
 
     (conf_base / "catalog.yml").write_text(

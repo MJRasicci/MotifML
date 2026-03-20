@@ -10,6 +10,9 @@ from motifml.pipelines.ir_build.pipeline import create_pipeline as create_ir_bui
 from motifml.pipelines.ir_validation.pipeline import (
     create_pipeline as create_ir_validation,
 )
+from motifml.pipelines.normalization.pipeline import (
+    create_pipeline as create_normalization,
+)
 
 
 def _stage_raw_corpus_for_ir_build(
@@ -30,6 +33,7 @@ def register_pipelines() -> dict[str, Pipeline]:
     ingestion = create_ingestion()
     ir_build = create_ir_build()
     ir_validation = create_ir_validation()
+    normalization = create_normalization()
     staged_ir_build = pipeline(
         [
             node(
@@ -48,5 +52,6 @@ def register_pipelines() -> dict[str, Pipeline]:
         "ingestion": ingestion,
         "ir_build": ir_build,
         "ir_validation": ir_validation,
-        "__default__": ingestion + staged_ir_build + ir_validation,
+        "normalization": normalization,
+        "__default__": ingestion + staged_ir_build + ir_validation + normalization,
     }
