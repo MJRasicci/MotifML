@@ -1,14 +1,18 @@
-.. motifml documentation master file, created by sphinx-quickstart.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+MotifML Documentation
+=====================
 
-Welcome to project motifml's API docs!
-=============================================
+MotifML builds deterministic machine-learning artifacts from symbolic scores exported by
+the Motif toolchain. The current repository implements ingestion, canonical IR build and
+validation, review tooling, and downstream normalization, feature, and tokenization
+scaffolding.
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 2
+   :caption: Guides
 
-   modules
+   architecture
+   ir_design
+   ir_contributor_guide
 
 
 Indices and tables
