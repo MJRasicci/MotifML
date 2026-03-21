@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from motifml.datasets.tokenized_model_input_runtime_dataset import (
+    TokenizedModelInputRuntimeDataset,
+)
 from motifml.datasets.training_checkpoint_dataset import TrainingCheckpointDataset
 from tests.pipelines.ir_test_support import (
     MOTIF_JSON_FIXTURE_ROOT,
@@ -41,6 +44,52 @@ def test_baseline_training_pipeline_runs_in_one_command(tmp_path: Path) -> None:
     )
 
     _assert_persisted_training_artifacts(output_root)
+
+
+def test_default_pipeline_outputs_support_lazy_model_input_iteration(
+    tmp_path: Path,
+) -> None:
+    conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
+
+    run_session(
+        conf_source,
+        ["__default__"],
+        runtime_params=_baseline_training_runtime_overrides(),
+    )
+
+    runtime = TokenizedModelInputRuntimeDataset(
+        filepath=str(output_root / "model_input")
+    ).load()
+    vocabulary = load_json(output_root / "vocabulary.json")
+
+    first_document = next(
+        iter(
+            runtime.build_document_dataset(
+                split="train",
+                iteration_options={
+                    "shuffle_documents": False,
+                },
+            )
+        )
+    )
+    first_batch = next(
+        iter(
+            runtime.build_window_data_loader(
+                split="train",
+                vocabulary=vocabulary,
+                batch_size=1,
+                iteration_options={
+                    "shuffle_documents": False,
+                    "shuffle_windows": False,
+                },
+            )
+        )
+    )
+
+    assert first_document.row.split.value == "train"
+    assert first_document.row.window_start_offsets
+    assert list(first_batch.document_ids) == [first_document.row.document_id]
+    assert list(first_batch.relative_paths) == [first_document.row.relative_path]
 
 
 def _baseline_training_runtime_overrides() -> dict[str, object]:

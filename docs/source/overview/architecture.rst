@@ -174,6 +174,8 @@ Current Pipeline Responsibilities
    builds the baseline decoder-only Transformer from frozen Kedro parameters, and writes
    model checkpoints plus training history and run metadata. The canonical
    single-command run path is ``uv run kedro run --pipeline=baseline_training``.
+   Corpus-wide materialization of tokenized documents or token windows is considered a
+   regression against this contract.
 
 ``evaluation``
    Reloads the best persisted baseline checkpoint, computes quantitative next-token

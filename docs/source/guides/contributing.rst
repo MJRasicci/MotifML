@@ -79,6 +79,15 @@ When changing the codebase:
 If a change affects persisted datasets, schema surfaces, or pipeline outputs, call that
 out explicitly in the PR description so the impact is easy to trace later.
 
+Lazy ``05_model_input`` loading is a hard regression surface.
+
+- training and evaluation code must consume tokenized documents and token windows
+  through the lazy runtime handle or equivalent streaming iterators
+- do not introduce corpus-wide in-memory materialization of tokenized rows or training
+  windows as part of the normal baseline path
+- keep regression tests that prove the first batch can be assembled without touching
+  later documents in the corpus
+
 Testing and Verification
 ------------------------
 

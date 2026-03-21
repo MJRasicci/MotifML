@@ -71,3 +71,17 @@ canonical record-path builder:
 
 Those helpers remain separate from the Kedro dataset class so record models, dataset
 persistence, and reporting can all reuse one storage-layout contract.
+
+Lazy Runtime Consumption
+------------------------
+
+The persisted ``05_model_input`` contract is designed to be consumed lazily at runtime.
+Training and evaluation should stream tokenized documents and token windows through
+``motifml.datasets.tokenized_model_input_runtime_dataset.TokenizedModelInputRuntimeDataset``
+and the ``motifml.training`` lazy loader helpers rather than building corpus-wide
+in-memory lists.
+
+Treat corpus-wide materialization of tokenized document rows or reconstructed training
+windows as a regression against the baseline training contract. Maintainers should keep
+tests that prove the first batch can be assembled without touching later documents in
+the corpus.
