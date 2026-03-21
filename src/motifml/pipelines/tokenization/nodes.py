@@ -2,22 +2,41 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from motifml.ir.projections.sequence import SequenceProjection
 from motifml.pipelines.feature_extraction.models import (
     IrFeatureRecord,
     IrFeatureSet,
     ProjectionType,
+    coerce_feature_extraction_parameters,
 )
 from motifml.pipelines.tokenization.models import (
     ModelInputRecord,
     ModelInputSet,
     PaddingStrategy,
+    ShardTokenCounts,
+    TokenCountEntry,
     TokenizationParameters,
+    VocabularyParameters,
+    coerce_shard_token_counts,
     coerce_tokenization_parameters,
+    coerce_vocabulary_parameters,
 )
+from motifml.training.contracts import (
+    DatasetSplit,
+    SplitManifestEntry,
+    coerce_split_manifest_entries,
+)
+from motifml.training.sequence_schema import (
+    SequenceSchemaContract,
+    coerce_sequence_schema_contract,
+)
+from motifml.training.special_token_policy import coerce_special_token_policy
+from motifml.training.token_codec import encode_projected_events_to_tokens
 from motifml.training.token_families import PAD_TOKEN
 
 
@@ -41,6 +60,64 @@ def tokenize_features(
     return ModelInputSet(parameters=typed_parameters, records=records)
 
 
+def count_training_split_tokens(
+    ir_features: IrFeatureSet | Mapping[str, Any],
+    split_manifest: tuple[SplitManifestEntry, ...] | list[Mapping[str, Any]],
+    sequence_schema: SequenceSchemaContract | Mapping[str, Any],
+    parameters: VocabularyParameters | Mapping[str, Any],
+    special_token_policy: Mapping[str, Any],
+) -> ShardTokenCounts:
+    """Count training-split token frequencies in a stable reducer-friendly shape."""
+    typed_parameters = coerce_vocabulary_parameters(parameters)
+    typed_sequence_schema = coerce_sequence_schema_contract(sequence_schema)
+    typed_special_token_policy = coerce_special_token_policy(special_token_policy)
+    manifest_entries = coerce_split_manifest_entries(split_manifest)
+    split_version = _split_version_for_manifest(manifest_entries)
+    split_by_path = {entry.relative_path: entry for entry in manifest_entries}
+    feature_set = _coerce_feature_set(ir_features)
+    if feature_set.parameters.feature_version is None:
+        raise ValueError("ir_features.parameters.feature_version must be populated.")
+
+    counted_relative_paths: list[str] = []
+    token_counter: Counter[str] = Counter()
+    for record in feature_set.records:
+        split_entry = split_by_path.get(record.relative_path)
+        if split_entry is None or split_entry.split is not DatasetSplit.TRAIN:
+            continue
+        if record.projection_type is not ProjectionType.SEQUENCE:
+            raise ValueError(
+                "count_training_split_tokens only supports sequence projections."
+            )
+        if not isinstance(record.projection, SequenceProjection):
+            raise ValueError(
+                "Sequence feature records must contain typed SequenceProjection data "
+                "for token counting."
+            )
+        counted_relative_paths.append(record.relative_path)
+        token_counter.update(
+            encode_projected_events_to_tokens(
+                record.projection.events,
+                time_resolution=typed_parameters.time_resolution,
+                note_payload_fields=typed_sequence_schema.note_payload_fields,
+                special_token_policy=typed_special_token_policy,
+            )
+        )
+
+    return ShardTokenCounts(
+        feature_version=feature_set.parameters.feature_version,
+        split_version=split_version,
+        time_resolution=typed_parameters.time_resolution,
+        special_token_policy=typed_special_token_policy.to_version_payload(),
+        counted_document_count=len(counted_relative_paths),
+        total_token_count=sum(token_counter.values()),
+        counted_relative_paths=tuple(counted_relative_paths),
+        token_counts=tuple(
+            TokenCountEntry(token=token, count=count)
+            for token, count in sorted(token_counter.items())
+        ),
+    )
+
+
 def merge_model_input_shards(
     model_input_shards: list[ModelInputSet] | list[Mapping[str, Any]],
 ) -> ModelInputSet:
@@ -57,6 +134,37 @@ def merge_model_input_shards(
     return ModelInputSet(
         parameters=parameters,
         records=tuple(record for shard in typed_shards for record in shard.records),
+    )
+
+
+def merge_token_count_shards(
+    token_count_shards: list[ShardTokenCounts] | list[Mapping[str, Any]],
+) -> ShardTokenCounts:
+    """Merge shard-local token-count artifacts while preserving deterministic order."""
+    typed_shards = [coerce_shard_token_counts(shard) for shard in token_count_shards]
+    if not typed_shards:
+        raise ValueError("token_count_shards must contain at least one shard artifact.")
+
+    baseline = typed_shards[0]
+    token_counter: Counter[str] = Counter()
+    counted_relative_paths: list[str] = []
+    for shard in typed_shards:
+        _validate_shard_count_contract(shard, baseline)
+        token_counter.update({entry.token: entry.count for entry in shard.token_counts})
+        counted_relative_paths.extend(shard.counted_relative_paths)
+
+    return ShardTokenCounts(
+        feature_version=baseline.feature_version,
+        split_version=baseline.split_version,
+        time_resolution=baseline.time_resolution,
+        special_token_policy=dict(baseline.special_token_policy),
+        counted_document_count=len(counted_relative_paths),
+        total_token_count=sum(token_counter.values()),
+        counted_relative_paths=tuple(counted_relative_paths),
+        token_counts=tuple(
+            TokenCountEntry(token=token, count=count)
+            for token, count in sorted(token_counter.items())
+        ),
     )
 
 
@@ -89,6 +197,23 @@ def _iter_feature_records(
         )
 
     return tuple(normalized_records)
+
+
+def _coerce_feature_set(value: IrFeatureSet | Mapping[str, Any]) -> IrFeatureSet:
+    if isinstance(value, IrFeatureSet):
+        return value
+
+    return IrFeatureSet(
+        parameters=coerce_feature_extraction_parameters(value.get("parameters", {})),
+        records=tuple(
+            IrFeatureRecord(
+                relative_path=str(record["relative_path"]),
+                projection_type=ProjectionType(record["projection_type"]),
+                projection=record.get("projection", {}),
+            )
+            for record in value.get("records", ())
+        ),
+    )
 
 
 def _tokenize_record(
@@ -136,6 +261,30 @@ def _coerce_model_input_set(
             for record in value.get("records", ())
         ),
     )
+
+
+def _split_version_for_manifest(entries: tuple[SplitManifestEntry, ...]) -> str:
+    if not entries:
+        raise ValueError("split_manifest must contain at least one entry.")
+    split_version = entries[0].split_version
+    for entry in entries[1:]:
+        if entry.split_version != split_version:
+            raise ValueError("split_manifest entries must share one split_version.")
+    return split_version
+
+
+def _validate_shard_count_contract(
+    shard: ShardTokenCounts,
+    baseline: ShardTokenCounts,
+) -> None:
+    if shard.feature_version != baseline.feature_version:
+        raise ValueError("All token-count shards must share one feature_version.")
+    if shard.split_version != baseline.split_version:
+        raise ValueError("All token-count shards must share one split_version.")
+    if shard.time_resolution != baseline.time_resolution:
+        raise ValueError("All token-count shards must share one time_resolution.")
+    if shard.special_token_policy != baseline.special_token_policy:
+        raise ValueError("All token-count shards must share one special_token_policy.")
 
 
 def _projection_summary_tokens(record: _FeatureRecordInput) -> tuple[str, ...]:

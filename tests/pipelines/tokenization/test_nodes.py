@@ -2,7 +2,15 @@
 
 from __future__ import annotations
 
-from motifml.ir.projections.sequence import SequenceProjection, SequenceProjectionMode
+from motifml.ir.models import NoteEvent, Pitch
+from motifml.ir.projections.sequence import (
+    NoteSequenceEvent,
+    SequenceProjection,
+    SequenceProjectionMode,
+    StructureMarkerKind,
+    StructureMarkerSequenceEvent,
+)
+from motifml.ir.time import ScoreTime
 from motifml.pipelines.feature_extraction.models import (
     FeatureExtractionParameters,
     IrFeatureRecord,
@@ -11,14 +19,19 @@ from motifml.pipelines.feature_extraction.models import (
 from motifml.pipelines.tokenization.models import (
     PaddingStrategy,
     TokenizationParameters,
+    VocabularyParameters,
 )
 from motifml.pipelines.tokenization.nodes import (
+    count_training_split_tokens,
     merge_model_input_shards,
     tokenize_features,
 )
-from motifml.training.token_families import PAD_TOKEN
+from motifml.training.contracts import DatasetSplit, SplitManifestEntry
+from motifml.training.sequence_schema import SequenceSchemaContract
+from motifml.training.token_families import BOS_TOKEN, EOS_TOKEN, PAD_TOKEN
 
 EXPECTED_TIME_RESOLUTION = 48
+EXPECTED_TRAIN_TOKEN_COUNT = 6
 
 
 def test_tokenize_features_consumes_typed_parameters() -> None:
@@ -153,3 +166,114 @@ def test_merge_model_input_shards_preserves_parameter_contract_and_order() -> No
         "fixtures/a.json",
         "fixtures/b.json",
     ]
+
+
+def test_count_training_split_tokens_is_deterministic_and_filters_to_train() -> None:
+    feature_set = IrFeatureSet(
+        parameters=FeatureExtractionParameters(
+            projection_type="sequence",
+            feature_version="feature-v1",
+        ),
+        records=(
+            IrFeatureRecord(
+                relative_path="fixtures/validation.json",
+                projection_type="sequence",
+                projection=SequenceProjection(
+                    mode=SequenceProjectionMode.NOTES_ONLY,
+                    events=(_build_note_event("D", ScoreTime(1, 4)),),
+                ),
+            ),
+            IrFeatureRecord(
+                relative_path="fixtures/train.json",
+                projection_type="sequence",
+                projection=SequenceProjection(
+                    mode=SequenceProjectionMode.NOTES_ONLY,
+                    events=(
+                        StructureMarkerSequenceEvent(
+                            time=ScoreTime(0, 1),
+                            marker_kind=StructureMarkerKind.BAR,
+                            entity_id="bar:1",
+                        ),
+                        _build_note_event("C", ScoreTime(1, 4)),
+                    ),
+                ),
+            ),
+        ),
+    )
+    split_manifest = (
+        SplitManifestEntry(
+            document_id="fixtures/train.json",
+            relative_path="fixtures/train.json",
+            split=DatasetSplit.TRAIN,
+            group_key="fixtures/train.json",
+            split_version="split-v1",
+        ),
+        SplitManifestEntry(
+            document_id="fixtures/validation.json",
+            relative_path="fixtures/validation.json",
+            split=DatasetSplit.VALIDATION,
+            group_key="fixtures/validation.json",
+            split_version="split-v1",
+        ),
+    )
+    vocabulary_parameters = VocabularyParameters(time_resolution=96)
+    sequence_schema = SequenceSchemaContract()
+    policy = {
+        "bos": "document",
+        "eos": "document",
+        "padding_interaction": "outside_boundaries",
+        "unknown_token_mapping": "map_to_unk",
+    }
+
+    first = count_training_split_tokens(
+        feature_set,
+        split_manifest,
+        sequence_schema,
+        vocabulary_parameters,
+        policy,
+    )
+    repeated = count_training_split_tokens(
+        feature_set,
+        split_manifest,
+        sequence_schema,
+        vocabulary_parameters,
+        policy,
+    )
+
+    assert first == repeated
+    assert first.feature_version == "feature-v1"
+    assert first.split_version == "split-v1"
+    assert first.counted_relative_paths == ("fixtures/train.json",)
+    assert first.counted_document_count == 1
+    assert first.total_token_count == EXPECTED_TRAIN_TOKEN_COUNT
+    assert {entry.token: entry.count for entry in first.token_counts} == {
+        BOS_TOKEN: 1,
+        EOS_TOKEN: 1,
+        "STRUCTURE:BAR": 1,
+        "TIME_SHIFT:96": 1,
+        "NOTE_PITCH:C4": 1,
+        "NOTE_DURATION:96": 1,
+    }
+    assert "NOTE_PITCH:D4" not in {entry.token for entry in first.token_counts}
+
+
+def _build_note_event(pitch_step: str, time: ScoreTime) -> NoteSequenceEvent:
+    onset_id = f"onset:{pitch_step.lower()}:1"
+    return NoteSequenceEvent(
+        time=time,
+        note=NoteEvent(
+            note_id=f"note:{onset_id}:1",
+            onset_id=onset_id,
+            part_id="part:1",
+            staff_id="staff:part:1:1",
+            time=time,
+            attack_duration=ScoreTime(1, 4),
+            sounding_duration=ScoreTime(1, 4),
+            pitch=Pitch(step=pitch_step, octave=4),
+        ),
+        part_id="part:1",
+        staff_id="staff:part:1:1",
+        bar_id="bar:1",
+        voice_lane_id="voice:1",
+        onset_id=onset_id,
+    )
