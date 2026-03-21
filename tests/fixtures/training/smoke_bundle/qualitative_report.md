@@ -1,7 +1,7 @@
 # Baseline Evaluation Report
 
-- Evaluation Run: `ef214e8abe56997860e7c3be52a8dd34d040c46b479f3007b3ce9d8a416cd611`
-- Training Run: `59323acfe5cf05e02422f121c0601765b98b8155b047cf12ca35ff7d4eb25308`
+- Evaluation Run: `241ec6cf17f06c80e769452756053609adb31123d85275624438c6df6202bbc8`
+- Training Run: `eb8ed8dd6235aa5906335694f9bde070bebab3ab0c1ff08a874b0ad07827bc5f`
 
 ## Validation
 
@@ -28,4 +28,4 @@
 - Document ID: `ensemble_polyphony_controls.json`
 - Prompt: `<bos> STRUCTURE:PART STRUCTURE:PART ... (+1 more)`
 - Reference Continuation: `STRUCTURE:STAFF STRUCTURE:STAFF STRUCTURE:BAR ... (+1 more)`
-- Generated Continuation: `NOTE_DURATION:96 TIME_SHIFT:32 NOTE_DURATION:96 ... (+1 more)`
+- Generated Continuation: `NOTE_DURATION:2882880 TIME_SHIFT:960960 NOTE_DURATION:2882880 ... (+1 more)`

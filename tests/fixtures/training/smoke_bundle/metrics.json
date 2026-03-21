@@ -1,6 +1,6 @@
 {
-  "evaluation_run_id": "ef214e8abe56997860e7c3be52a8dd34d040c46b479f3007b3ce9d8a416cd611",
-  "training_run_id": "59323acfe5cf05e02422f121c0601765b98b8155b047cf12ca35ff7d4eb25308",
+  "evaluation_run_id": "241ec6cf17f06c80e769452756053609adb31123d85275624438c6df6202bbc8",
+  "training_run_id": "eb8ed8dd6235aa5906335694f9bde070bebab3ab0c1ff08a874b0ad07827bc5f",
   "best_checkpoint": {
     "epoch_index": 0,
     "validation_loss": 3.133404016494751,
@@ -97,8 +97,8 @@
             "sequence_id": "validation:ensemble_polyphony_controls.json:ensemble_polyphony_controls.json:generated",
             "check_name": "transition",
             "token_index": 2,
-            "token": "NOTE_DURATION:96",
-            "message": "Token transition violates the baseline sequence grammar: 'TIME_SHIFT:32' -> 'NOTE_DURATION:96'."
+            "token": "NOTE_DURATION:2882880",
+            "message": "Token transition violates the baseline sequence grammar: 'TIME_SHIFT:960960' -> 'NOTE_DURATION:2882880'."
           }
         ]
       }

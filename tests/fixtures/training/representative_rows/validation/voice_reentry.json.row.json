@@ -7,8 +7,8 @@
   "sequence_mode": "baseline_v1",
   "normalized_ir_version": "5e52c695b2121186f92364cdbf0ba1d44973617048c8ba3947f0381e598714f7",
   "feature_version": "65a6cd7042d55798e2ea7deeff30614bc56449c21d8ef4d6646bea5ca801ea14",
-  "vocabulary_version": "ef4f1756503de6d14f888d8a85abac943e65d7623a5553ff89a8249b9d2b5dd6",
-  "model_input_version": "08ec6c7f96600434764c14fa933a024812d4032979886c1dce6aadbff39b7b7a",
+  "vocabulary_version": "04050943f3939455abbb0c5900fb4534365dd7827d2bef320104647a3c23eed2",
+  "model_input_version": "21032a8e527d9069f93ca2c5477cd7487175e7a576c19b472628ffd996d795ce",
   "storage_schema_version": "parquet-v1",
   "token_count": 31,
   "token_ids": [

@@ -1,5 +1,5 @@
 {
-  "vocabulary_version": "ef4f1756503de6d14f888d8a85abac943e65d7623a5553ff89a8249b9d2b5dd6",
+  "vocabulary_version": "04050943f3939455abbb0c5900fb4534365dd7827d2bef320104647a3c23eed2",
   "feature_version": "65a6cd7042d55798e2ea7deeff30614bc56449c21d8ef4d6646bea5ca801ea14",
   "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
   "token_count": 43,
@@ -10,20 +10,20 @@
     "<eos>": 2,
     "<unk>": 3,
     "STRUCTURE:ONSET_GROUP": 4,
-    "NOTE_DURATION:32": 5,
+    "NOTE_DURATION:960960": 5,
     "NOTE_PITCH:E4": 6,
     "STRUCTURE:BAR": 7,
     "STRUCTURE:VOICE_LANE": 8,
-    "TIME_SHIFT:96": 9,
-    "NOTE_DURATION:96": 10,
+    "TIME_SHIFT:2882880": 9,
+    "NOTE_DURATION:2882880": 10,
     "NOTE_PITCH:G4": 11,
     "STRUCTURE:PART": 12,
     "STRUCTURE:STAFF": 13,
-    "TIME_SHIFT:32": 14,
+    "TIME_SHIFT:960960": 14,
     "CONTROL_POINT:PART:DYNAMIC_CHANGE:MP": 15,
     "CONTROL_POINT:SCORE:TEMPO_CHANGE:BPM=96": 16,
-    "NOTE_DURATION:192": 17,
-    "NOTE_DURATION:24": 18,
+    "NOTE_DURATION:5765760": 17,
+    "NOTE_DURATION:720720": 18,
     "NOTE_PITCH:D4": 19,
     "NOTE_PITCH:F4": 20
   },
@@ -53,20 +53,20 @@
       "count": 1
     },
     {
-      "token": "NOTE_DURATION:192",
-      "count": 1
-    },
-    {
-      "token": "NOTE_DURATION:24",
-      "count": 1
-    },
-    {
-      "token": "NOTE_DURATION:32",
-      "count": 3
-    },
-    {
-      "token": "NOTE_DURATION:96",
+      "token": "NOTE_DURATION:2882880",
       "count": 2
+    },
+    {
+      "token": "NOTE_DURATION:5765760",
+      "count": 1
+    },
+    {
+      "token": "NOTE_DURATION:720720",
+      "count": 1
+    },
+    {
+      "token": "NOTE_DURATION:960960",
+      "count": 3
     },
     {
       "token": "NOTE_PITCH:D4",
@@ -105,12 +105,12 @@
       "count": 3
     },
     {
-      "token": "TIME_SHIFT:32",
-      "count": 2
+      "token": "TIME_SHIFT:2882880",
+      "count": 3
     },
     {
-      "token": "TIME_SHIFT:96",
-      "count": 3
+      "token": "TIME_SHIFT:960960",
+      "count": 2
     }
   ],
   "construction_parameters": {
@@ -122,7 +122,7 @@
       "eos": "<eos>",
       "unk": "<unk>"
     },
-    "time_resolution": 96
+    "time_resolution": 2882880
   },
   "special_token_policy": {
     "bos": "document",
@@ -138,20 +138,20 @@
     "<eos>",
     "<unk>",
     "STRUCTURE:ONSET_GROUP",
-    "NOTE_DURATION:32",
+    "NOTE_DURATION:960960",
     "NOTE_PITCH:E4",
     "STRUCTURE:BAR",
     "STRUCTURE:VOICE_LANE",
-    "TIME_SHIFT:96",
-    "NOTE_DURATION:96",
+    "TIME_SHIFT:2882880",
+    "NOTE_DURATION:2882880",
     "NOTE_PITCH:G4",
     "STRUCTURE:PART",
     "STRUCTURE:STAFF",
-    "TIME_SHIFT:32",
+    "TIME_SHIFT:960960",
     "CONTROL_POINT:PART:DYNAMIC_CHANGE:MP",
     "CONTROL_POINT:SCORE:TEMPO_CHANGE:BPM=96",
-    "NOTE_DURATION:192",
-    "NOTE_DURATION:24",
+    "NOTE_DURATION:5765760",
+    "NOTE_DURATION:720720",
     "NOTE_PITCH:D4",
     "NOTE_PITCH:F4"
   ]

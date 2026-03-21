@@ -1,5 +1,5 @@
 {
-  "model_input_version": "08ec6c7f96600434764c14fa933a024812d4032979886c1dce6aadbff39b7b7a",
+  "model_input_version": "21032a8e527d9069f93ca2c5477cd7487175e7a576c19b472628ffd996d795ce",
   "storage_schema_version": "parquet-v1",
   "total_document_count": 4,
   "split_summaries": [
