@@ -29,6 +29,36 @@ class QualitativeSamplingParameters:
 
 
 @dataclass(frozen=True, slots=True)
+class EvaluationGuardrailParameters:
+    """Acceptance thresholds for baseline evaluation guardrails."""
+
+    maximum_split_unk_rate: float = 0.25
+    maximum_generated_unk_rate: float = 0.25
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "maximum_split_unk_rate",
+            _normalize_fraction(
+                self.maximum_split_unk_rate,
+                "maximum_split_unk_rate",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "maximum_generated_unk_rate",
+            _normalize_fraction(
+                self.maximum_generated_unk_rate,
+                "maximum_generated_unk_rate",
+            ),
+        )
+
+    def to_json_dict(self) -> dict[str, Any]:
+        """Serialize the evaluation guardrails into JSON-compatible form."""
+        return to_json_compatible(self)
+
+
+@dataclass(frozen=True, slots=True)
 class EvaluationParameters:
     """Configuration surface loaded from ``params:evaluation``."""
 
@@ -39,6 +69,9 @@ class EvaluationParameters:
     splits: tuple[DatasetSplit, ...] = (DatasetSplit.VALIDATION, DatasetSplit.TEST)
     qualitative: QualitativeSamplingParameters | Mapping[str, Any] = field(
         default_factory=QualitativeSamplingParameters
+    )
+    guardrails: EvaluationGuardrailParameters | Mapping[str, Any] = field(
+        default_factory=EvaluationGuardrailParameters
     )
 
     def __post_init__(self) -> None:
@@ -56,6 +89,11 @@ class EvaluationParameters:
             self,
             "qualitative",
             coerce_qualitative_sampling_parameters(self.qualitative),
+        )
+        object.__setattr__(
+            self,
+            "guardrails",
+            coerce_evaluation_guardrail_parameters(self.guardrails),
         )
 
     def to_json_dict(self) -> dict[str, Any]:
@@ -89,6 +127,30 @@ def coerce_evaluation_parameters(
         decode_max_tokens=int(value.get("decode_max_tokens", 256)),
         splits=tuple(value.get("splits", ("validation", "test"))),
         qualitative=value.get("qualitative", {}),
+        guardrails=value.get("guardrails", {}),
+    )
+
+
+def coerce_evaluation_guardrail_parameters(
+    value: EvaluationGuardrailParameters | Mapping[str, Any] | None,
+) -> EvaluationGuardrailParameters:
+    """Coerce evaluation guardrail payloads into the typed contract."""
+    if value is None:
+        return EvaluationGuardrailParameters()
+    if isinstance(value, EvaluationGuardrailParameters):
+        return value
+
+    defaults = EvaluationGuardrailParameters()
+    return EvaluationGuardrailParameters(
+        maximum_split_unk_rate=float(
+            value.get("maximum_split_unk_rate", defaults.maximum_split_unk_rate)
+        ),
+        maximum_generated_unk_rate=float(
+            value.get(
+                "maximum_generated_unk_rate",
+                defaults.maximum_generated_unk_rate,
+            )
+        ),
     )
 
 
@@ -107,9 +169,18 @@ def _require_positive_int(value: Any, field_name: str) -> int:
     return value
 
 
+def _normalize_fraction(value: float, field_name: str) -> float:
+    normalized = float(value)
+    if normalized < 0.0 or normalized > 1.0:
+        raise ValueError(f"{field_name} must be between 0.0 and 1.0.")
+    return normalized
+
+
 __all__ = [
+    "EvaluationGuardrailParameters",
     "EvaluationParameters",
     "QualitativeSamplingParameters",
+    "coerce_evaluation_guardrail_parameters",
     "coerce_evaluation_parameters",
     "coerce_qualitative_sampling_parameters",
 ]

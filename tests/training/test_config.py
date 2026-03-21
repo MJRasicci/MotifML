@@ -27,6 +27,7 @@ OVERRIDE_CONTEXT_LENGTH = 384
 EXPECTED_WORST_DOCUMENT_LIMIT = 10
 EXPECTED_OVERSIZED_TOKEN_COUNT_THRESHOLD = 8192
 EXPECTED_MINIMUM_VOCABULARY_SIZE = 7
+EXPECTED_MAXIMUM_EVALUATION_UNK_RATE = 0.25
 
 
 def test_parameters_yaml_defines_all_training_parameter_families() -> None:
@@ -123,6 +124,16 @@ def test_parameters_yaml_defines_model_input_reporting_thresholds() -> None:
     assert (
         reporting["oversized_token_count_threshold"]
         == EXPECTED_OVERSIZED_TOKEN_COUNT_THRESHOLD
+    )
+
+
+def test_parameters_yaml_defines_evaluation_unknown_token_guardrails() -> None:
+    parameters = _load_parameters()
+    guardrails = parameters["evaluation"]["guardrails"]
+
+    assert guardrails["maximum_split_unk_rate"] == EXPECTED_MAXIMUM_EVALUATION_UNK_RATE
+    assert (
+        guardrails["maximum_generated_unk_rate"] == EXPECTED_MAXIMUM_EVALUATION_UNK_RATE
     )
 
 

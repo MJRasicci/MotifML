@@ -465,6 +465,8 @@ class VocabularyStatsReport:
     vocabulary_size: int
     token_family_coverage: tuple[TokenFamilyCoverageEntry, ...]
     top_tokens: tuple[TokenCountEntry, ...]
+    unk_token_count: int
+    unk_token_fraction: float
     guardrails: VocabularyGuardrailReport | Mapping[str, Any]
     construction_parameters: dict[str, Any]
 
@@ -518,6 +520,15 @@ class VocabularyStatsReport:
                 )
                 for entry in self.top_tokens
             ),
+        )
+        if self.unk_token_count < 0:
+            raise ValueError("unk_token_count must be non-negative.")
+        if self.unk_token_count > self.token_count:
+            raise ValueError("unk_token_count must not exceed token_count.")
+        object.__setattr__(
+            self,
+            "unk_token_fraction",
+            _normalize_fraction(self.unk_token_fraction, "unk_token_fraction"),
         )
         object.__setattr__(
             self,
@@ -714,6 +725,7 @@ def coerce_vocabulary_stats_report(
         top_token_count = top_token_payload.count
     token_count = int(value["token_count"])
     vocabulary_size = int(value["vocabulary_size"])
+    unk_token_count = int(value.get("unk_token_count", 0))
 
     return VocabularyStatsReport(
         vocabulary_version=str(value["vocabulary_version"]),
@@ -723,6 +735,8 @@ def coerce_vocabulary_stats_report(
         vocabulary_size=vocabulary_size,
         token_family_coverage=tuple(value.get("token_family_coverage", ())),
         top_tokens=top_tokens,
+        unk_token_count=unk_token_count,
+        unk_token_fraction=float(value.get("unk_token_fraction", 0.0)),
         guardrails=value.get(
             "guardrails",
             {

@@ -161,6 +161,9 @@ evaluation:
     samples_per_split: 2
     prompt_token_count: 32
     summary_token_limit: 24
+  guardrails:
+    maximum_split_unk_rate: 0.25
+    maximum_generated_unk_rate: 0.25
 
 execution:
   shard_id: __all__

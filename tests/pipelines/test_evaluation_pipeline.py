@@ -33,7 +33,11 @@ def test_evaluation_pipeline_persists_metrics_samples_and_report(
     validation_metrics = metrics["splits"]["validation"]
     assert validation_metrics["quantitative"]["token_count"] > 0
     assert "baseline_comparison" in validation_metrics
+    assert "unknown_token_usage" in validation_metrics
+    assert "generated_unknown_token_usage" in validation_metrics
     assert "structural" in validation_metrics
+    assert validation_metrics["unknown_token_usage"]["unk_rate"] >= 0.0
+    assert validation_metrics["generated_unknown_token_usage"]["unk_rate"] >= 0.0
 
     assert samples["evaluation_run_id"] == metrics["evaluation_run_id"]
     assert len(samples["samples"]["validation"]) == 1
@@ -112,6 +116,10 @@ def _baseline_evaluation_runtime_overrides() -> dict[str, object]:
                 "samples_per_split": 1,
                 "prompt_token_count": 4,
                 "summary_token_limit": 3,
+            },
+            "guardrails": {
+                "maximum_split_unk_rate": 0.5,
+                "maximum_generated_unk_rate": 0.5,
             },
         },
     }

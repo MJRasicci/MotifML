@@ -20,6 +20,10 @@ from motifml.evaluation.structural_checks import (
     DecodedTokenSequence,
     evaluate_structural_quality,
 )
+from motifml.evaluation.unknown_tokens import (
+    build_unknown_token_usage_report,
+    raise_if_unknown_token_rate_exceeds,
+)
 from motifml.model import DecoderOnlyTransformer
 from motifml.model.config import DecoderOnlyTransformerConfig
 from motifml.training.config import freeze_parameter_snapshot
@@ -116,9 +120,40 @@ def evaluate_decoder_only_transformer(
             _generated_sequences(split.value, qualitative_samples),
             reference_sequences=_reference_sequences(split.value, qualitative_samples),
         )
+        split_unknown_token_usage = build_unknown_token_usage_report(
+            _iter_token_sequences(
+                model_input_runtime.build_document_dataset(
+                    split=split,
+                    iteration_options=_ordered_iteration_options(),
+                )
+            ),
+            unk_token=typed_vocabulary.token_to_id["<unk>"],
+            maximum_unk_rate=(
+                typed_evaluation_parameters.guardrails.maximum_split_unk_rate
+            ),
+        )
+        generated_unknown_token_usage = build_unknown_token_usage_report(
+            (sample.generated_continuation_tokens for sample in qualitative_samples),
+            unk_token="<unk>",
+            maximum_unk_rate=(
+                typed_evaluation_parameters.guardrails.maximum_generated_unk_rate
+            ),
+        )
+        raise_if_unknown_token_rate_exceeds(
+            split_unknown_token_usage,
+            context=f"{split.value} evaluation split",
+        )
+        raise_if_unknown_token_rate_exceeds(
+            generated_unknown_token_usage,
+            context=f"{split.value} generated samples",
+        )
         split_metrics[split.value] = {
             "quantitative": quantitative_metrics.to_json_dict(),
             "baseline_comparison": baseline_comparison,
+            "unknown_token_usage": split_unknown_token_usage.to_json_dict(),
+            "generated_unknown_token_usage": (
+                generated_unknown_token_usage.to_json_dict()
+            ),
             "structural": structural_report.to_json_dict(),
         }
         samples_by_split[split.value] = [

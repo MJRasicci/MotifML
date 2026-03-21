@@ -25,6 +25,8 @@ def render_qualitative_report_markdown(
     for split_name in sorted(split_metrics):
         split_payload = split_metrics[split_name]
         quantitative = split_payload["quantitative"]
+        split_unk_usage = split_payload["unknown_token_usage"]
+        generated_unk_usage = split_payload["generated_unknown_token_usage"]
         structural = split_payload["structural"]
         lines.extend(
             [
@@ -36,12 +38,20 @@ def render_qualitative_report_markdown(
                 f"- Perplexity: {quantitative['perplexity']:.6f}",
                 f"- Accuracy: {quantitative['accuracy']:.6f}",
                 f"- Top-{quantitative['top_k']} Accuracy: {quantitative['top_k_accuracy']:.6f}",
+                "- Evaluation `<unk>` Rate: "
+                f"{split_unk_usage['unk_rate']:.6f} "
+                f"({split_unk_usage['unk_token_count']}/{split_unk_usage['token_count']}, "
+                f"max {split_unk_usage['maximum_unk_rate']:.6f})",
                 "",
                 "### Structural Checks",
                 "",
                 f"- Valid Transition Rate: {structural['valid_transition_rate']:.6f}",
                 f"- Boundary-Order Pass Rate: {structural['boundary_order_pass_rate']:.6f}",
-                f"- Generated `<unk>` Rate: {structural['generated_unk_rate']:.6f}",
+                "- Generated `<unk>` Rate: "
+                f"{generated_unk_usage['unk_rate']:.6f} "
+                f"({generated_unk_usage['unk_token_count']}/"
+                f"{generated_unk_usage['token_count']}, "
+                f"max {generated_unk_usage['maximum_unk_rate']:.6f})",
                 f"- Pitch Out-of-Range Fraction: {structural['out_of_range_pitch_fraction']:.6f}",
                 "- Duration Distribution TV Distance: "
                 f"{structural['duration_distribution_total_variation']:.6f}",

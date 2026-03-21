@@ -499,6 +499,14 @@ def reduce_vocabulary(
         top_tokens=tuple(
             sorted(retained_counts, key=lambda item: (-item.count, item.token))[:10]
         ),
+        unk_token_count=_unk_token_count(
+            retained_counts,
+            unk_token=(typed_parameters.special_tokens or SPECIAL_TOKENS)["unk"],
+        ),
+        unk_token_fraction=_unk_token_fraction(
+            retained_counts,
+            unk_token=(typed_parameters.special_tokens or SPECIAL_TOKENS)["unk"],
+        ),
         guardrails=guardrail_report,
         construction_parameters=vocabulary_version_payload,
     )
@@ -1013,6 +1021,28 @@ def _build_vocabulary_guardrail_report(
         maximum_unk_fraction=guardrails.maximum_unk_fraction,
         passed=passed,
     )
+
+
+def _unk_token_count(
+    retained_counts: tuple[TokenCountEntry, ...],
+    *,
+    unk_token: str,
+) -> int:
+    for entry in retained_counts:
+        if entry.token == unk_token:
+            return entry.count
+    return 0
+
+
+def _unk_token_fraction(
+    retained_counts: tuple[TokenCountEntry, ...],
+    *,
+    unk_token: str,
+) -> float:
+    retained_token_count = sum(entry.count for entry in retained_counts)
+    if retained_token_count <= 0:
+        return 0.0
+    return _unk_token_count(retained_counts, unk_token=unk_token) / retained_token_count
 
 
 def _token_family(token: str) -> str:

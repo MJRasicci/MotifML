@@ -347,6 +347,8 @@ def test_reduce_vocabulary_is_deterministic_and_assigns_stable_ids() -> None:
     assert first_stats.guardrails.top_token == "NOTE_DURATION:96"
     assert first_stats.guardrails.top_token_count == EXPECTED_TOP_TOKEN_COUNT
     assert first_stats.guardrails.top_token_fraction == pytest.approx(4 / 14)
+    assert first_stats.unk_token_count == 0
+    assert first_stats.unk_token_fraction == pytest.approx(0.0)
     assert (
         first_stats.guardrails.estimated_unk_token_count == EXPECTED_DROPPED_TOKEN_COUNT
     )
