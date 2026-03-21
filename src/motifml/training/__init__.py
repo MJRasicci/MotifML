@@ -31,6 +31,11 @@ from motifml.training.token_families import (
     build_structure_token,
     build_time_shift_token,
 )
+from motifml.training.token_ordering import (
+    EventTokenSpan,
+    expand_sequence_event_spans,
+    flatten_token_spans,
+)
 from motifml.training.versioning import (
     build_contract_version,
     build_feature_version,
@@ -44,6 +49,7 @@ __all__ = [
     "BOS_TOKEN",
     "DatasetSplit",
     "EOS_TOKEN",
+    "EventTokenSpan",
     "EvaluationRunMetadata",
     "ModelInputMetadata",
     "PAD_TOKEN",
@@ -70,6 +76,8 @@ __all__ = [
     "build_time_shift_token",
     "build_vocabulary_version",
     "deserialize_metadata_artifact",
+    "expand_sequence_event_spans",
+    "flatten_token_spans",
     "freeze_parameter_snapshot",
     "serialize_metadata_artifact",
 ]
