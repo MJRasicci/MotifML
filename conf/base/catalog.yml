@@ -129,6 +129,34 @@ vocab_stats:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/training/vocab_stats.json
 
+model_input_version:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/05_model_input/ir/model_input_version.json
+
+model_input_version_shard:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/05_model_input/ir/versions/shards/${runtime_params:execution.shard_id,__all__}.json
+
+model_input_version_shard_collection:
+  type: motifml.datasets.json_directory_dataset.JsonDirectoryDataset
+  filepath: data/05_model_input/ir/versions/shards
+
+model_input_stats:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/training/model_input_stats.json
+
+model_input_stats_shard:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/training/model_input_stats/shards/${runtime_params:execution.shard_id,__all__}.json
+
+model_input_stats_shard_collection:
+  type: motifml.datasets.json_directory_dataset.JsonDirectoryDataset
+  filepath: data/08_reporting/training/model_input_stats/shards
+
+model_input_storage_schema:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/05_model_input/ir/storage_schema.json
+
 ingested_raw_motif_json_corpus:
   type: MemoryDataset
   copy_mode: assign
@@ -194,13 +222,11 @@ ir_features_shard:
   shard_id: "${runtime_params:execution.shard_id,__all__}"
 
 model_input:
-  type: motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset
+  type: motifml.datasets.tokenized_model_input_dataset.TokenizedModelInputDataset
   filepath: data/05_model_input/ir
-  record_suffix: ".model_input.json"
+  shard_id: global
 
 model_input_shard:
-  type: motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset
+  type: motifml.datasets.tokenized_model_input_dataset.TokenizedModelInputDataset
   filepath: data/05_model_input/ir
-  record_suffix: ".model_input.json"
-  partition_index_filepath: data/02_intermediate/ingestion/raw_partition_index.json
   shard_id: "${runtime_params:execution.shard_id,__all__}"

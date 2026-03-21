@@ -12,8 +12,9 @@ EXPECTED_IR_VALIDATION_NODE_COUNT = 4
 EXPECTED_NORMALIZATION_NODE_COUNT = 2
 EXPECTED_DATASET_SPLITTING_NODE_COUNT = 2
 EXPECTED_FEATURE_EXTRACTION_NODE_COUNT = 1
-EXPECTED_TOKENIZATION_NODE_COUNT = 1
+EXPECTED_TOKENIZATION_NODE_COUNT = 3
 EXPECTED_VOCABULARY_COUNTING_NODE_COUNT = 1
+EXPECTED_MODEL_INPUT_REDUCE_NODE_COUNT = 2
 EXPECTED_DEFAULT_NODE_ORDER = [
     "build_raw_corpus_manifest",
     "build_raw_partition_index",
@@ -34,12 +35,16 @@ EXPECTED_DEFAULT_NODE_ORDER = [
     "build_ir_manifest",
     "normalize_ir_corpus",
     "validate_ir_documents",
+    "assign_dataset_splits",
     "build_normalized_ir_version",
     "publish_ir_validation_report",
     "summarize_ir_corpus",
+    "build_split_statistics",
     "extract_features",
     "report_ir_scale_metrics",
-    "tokenize_features",
+    "count_training_split_tokens_for_default_run",
+    "reduce_vocabulary_for_default_run",
+    "build_model_input_artifacts",
 ]
 
 
@@ -64,6 +69,7 @@ def test_register_pipelines_exposes_project_pipelines():
     assert "tokenization_shard" in pipelines
     assert "partitioned_reduce" in pipelines
     assert "shard_reduce" in pipelines
+    assert "model_input_reduce" in pipelines
     assert "shard_processing" in pipelines
     assert "__default__" in pipelines
     assert len(pipelines["ingestion"].nodes) == EXPECTED_INGESTION_NODE_COUNT
@@ -82,6 +88,10 @@ def test_register_pipelines_exposes_project_pipelines():
     assert (
         len(pipelines["vocabulary_counting_shard"].nodes)
         == EXPECTED_VOCABULARY_COUNTING_NODE_COUNT
+    )
+    assert (
+        len(pipelines["model_input_reduce"].nodes)
+        == EXPECTED_MODEL_INPUT_REDUCE_NODE_COUNT
     )
 
 
@@ -146,9 +156,20 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
 
     assert pipelines["tokenization"].inputs() == {
         "ir_features",
-        "params:tokenization",
+        "split_manifest",
+        "params:sequence_schema",
+        "params:vocabulary",
+        "params:model_input",
+        "params:data_split",
     }
-    assert pipelines["tokenization"].outputs() == {"model_input"}
+    assert pipelines["tokenization"].outputs() == {
+        "vocab_stats",
+        "vocabulary_version",
+        "model_input",
+        "model_input_stats",
+        "model_input_version",
+    }
+    assert pipelines["tokenization"].all_outputs() >= {"vocabulary"}
 
     assert pipelines["ingestion"].all_outputs() >= {
         "raw_motif_json_manifest",
@@ -180,6 +201,14 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "params:vocabulary",
         "params:data_split",
     }
+    assert pipelines["model_input_reduce"].inputs() == {
+        "model_input_version_shard_collection",
+        "model_input_stats_shard_collection",
+    }
+    assert pipelines["model_input_reduce"].outputs() == {
+        "model_input_stats",
+        "model_input_version",
+    }
 
     assert pipelines["normalization_shard"].inputs() == {
         "motif_ir_corpus_shard",
@@ -209,11 +238,19 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
 
     assert pipelines["tokenization_shard"].inputs() == {
         "ir_features_shard",
-        "params:tokenization",
+        "split_manifest",
+        "vocabulary",
+        "params:sequence_schema",
+        "params:model_input",
+        "params:execution",
     }
-    assert pipelines["tokenization_shard"].outputs() == {"model_input_shard"}
+    assert pipelines["tokenization_shard"].outputs() == {
+        "model_input_shard",
+        "model_input_stats_shard",
+        "model_input_version_shard",
+    }
     assert pipelines["shard_processing"].outputs() >= {
         "motif_ir_summary_shard",
         "motif_ir_validation_report_shard",
-        "model_input_shard",
+        "ir_features_shard",
     }

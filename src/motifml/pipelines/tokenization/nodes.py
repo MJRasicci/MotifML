@@ -69,6 +69,10 @@ from motifml.training.model_input import (
     TokenizedDocumentRow,
     build_window_start_offsets,
 )
+from motifml.training.model_input_stats import (
+    build_model_input_shard_stats,
+    reduce_model_input_stats_shards,
+)
 from motifml.training.sequence_schema import (
     SequenceSchemaContract,
     coerce_sequence_schema_contract,
@@ -83,6 +87,8 @@ from motifml.training.versioning import (
     build_model_input_version,
     build_vocabulary_version,
 )
+
+GLOBAL_MODEL_INPUT_SHARD_ID = "global"
 
 
 @dataclass(frozen=True)
@@ -182,12 +188,14 @@ def count_training_split_tokens_from_model_input_parameters(
     )
 
 
-def tokenize_features_with_vocabulary(
+def tokenize_features_with_vocabulary(  # noqa: PLR0913
     ir_features: IrFeatureSet | Mapping[str, Any],
     split_manifest: tuple[SplitManifestEntry, ...] | list[Mapping[str, Any]],
     sequence_schema: SequenceSchemaContract | Mapping[str, Any],
     vocabulary: VocabularyArtifact | Mapping[str, Any],
     model_input_parameters: Mapping[str, Any],
+    *,
+    shard_id: str | None = None,
 ) -> dict[str, Any]:
     """Tokenize sequence features into typed per-document model-input rows."""
     feature_set = _coerce_feature_set(ir_features)
@@ -305,11 +313,91 @@ def tokenize_features_with_vocabulary(
             )
         )
 
-    return {
+    payload = {
         "parameters": metadata,
         "storage_schema": storage_schema,
         "records": tuple(records),
     }
+    if shard_id is not None:
+        payload["shard_id"] = shard_id
+    return payload
+
+
+def build_model_input_artifacts(
+    ir_features: IrFeatureSet | Mapping[str, Any],
+    split_manifest: tuple[SplitManifestEntry, ...] | list[Mapping[str, Any]],
+    sequence_schema: SequenceSchemaContract | Mapping[str, Any],
+    vocabulary: VocabularyArtifact | Mapping[str, Any],
+    model_input_parameters: Mapping[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], ModelInputMetadata]:
+    """Build global model-input artifacts for the non-sharded default pipeline."""
+    model_input = tokenize_features_with_vocabulary(
+        ir_features,
+        split_manifest,
+        sequence_schema,
+        vocabulary,
+        model_input_parameters,
+        shard_id=GLOBAL_MODEL_INPUT_SHARD_ID,
+    )
+    metadata = _coerce_model_input_metadata(model_input["parameters"])
+    shard_stats = build_model_input_shard_stats(
+        model_input["records"],
+        shard_id=GLOBAL_MODEL_INPUT_SHARD_ID,
+        reporting_parameters=_reporting_parameters_from_model_input(
+            model_input_parameters
+        ),
+    )
+    return (
+        model_input,
+        reduce_model_input_stats_shards((shard_stats,)).to_json_dict(),
+        metadata,
+    )
+
+
+def build_shard_model_input_artifacts(  # noqa: PLR0913
+    ir_features: IrFeatureSet | Mapping[str, Any],
+    split_manifest: tuple[SplitManifestEntry, ...] | list[Mapping[str, Any]],
+    sequence_schema: SequenceSchemaContract | Mapping[str, Any],
+    vocabulary: VocabularyArtifact | Mapping[str, Any],
+    model_input_parameters: Mapping[str, Any],
+    execution_parameters: Mapping[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any], ModelInputMetadata]:
+    """Build shard-local model-input artifacts for the partitioned pipeline flow."""
+    shard_id = _shard_id_from_execution_parameters(execution_parameters)
+    model_input = tokenize_features_with_vocabulary(
+        ir_features,
+        split_manifest,
+        sequence_schema,
+        vocabulary,
+        model_input_parameters,
+        shard_id=shard_id,
+    )
+    metadata = _coerce_model_input_metadata(model_input["parameters"])
+    shard_stats = build_model_input_shard_stats(
+        model_input["records"],
+        shard_id=shard_id,
+        reporting_parameters=_reporting_parameters_from_model_input(
+            model_input_parameters
+        ),
+    )
+    return model_input, shard_stats.to_json_dict(), metadata
+
+
+def merge_model_input_version_fragments(
+    fragments: list[ModelInputMetadata] | list[Mapping[str, Any]],
+) -> ModelInputMetadata:
+    """Merge shard-local model-input metadata fragments into one global artifact."""
+    typed_fragments = [_coerce_model_input_metadata(fragment) for fragment in fragments]
+    if not typed_fragments:
+        raise ValueError("No model_input_version fragments were provided.")
+
+    baseline = typed_fragments[0]
+    for fragment in typed_fragments[1:]:
+        if fragment != baseline:
+            raise ValueError(
+                "All model_input_version fragments must be identical across shards."
+            )
+    return baseline
 
 
 def merge_model_input_shards(
@@ -437,6 +525,19 @@ def reduce_vocabulary_from_data_split_parameters(
         token_count_shards,
         parameters,
         split_seed=data_split_parameters["hash_seed"],
+    )
+
+
+def reduce_vocabulary_from_count_artifact(
+    token_count: ShardTokenCounts | Mapping[str, Any],
+    parameters: VocabularyParameters | Mapping[str, Any],
+    data_split_parameters: Mapping[str, Any],
+) -> tuple[VocabularyArtifact, VocabularyStatsReport, VocabularyMetadata]:
+    """Reduce one default-pipeline count artifact into the frozen vocabulary."""
+    return reduce_vocabulary_from_data_split_parameters(
+        [token_count],
+        parameters,
+        data_split_parameters,
     )
 
 
@@ -982,6 +1083,17 @@ def _storage_parameters_from_model_input(
     return storage_parameters
 
 
+def _reporting_parameters_from_model_input(
+    model_input_parameters: Mapping[str, Any],
+) -> Mapping[str, Any] | None:
+    reporting_parameters = model_input_parameters.get("reporting")
+    if reporting_parameters is None:
+        return None
+    if not isinstance(reporting_parameters, Mapping):
+        raise ValueError("model_input.reporting must be a mapping when provided.")
+    return reporting_parameters
+
+
 def _model_input_version_payload(
     model_input_parameters: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -992,6 +1104,23 @@ def _model_input_version_payload(
         "stride": int(model_input_parameters["stride"]),
         "padding_strategy": str(model_input_parameters["padding_strategy"]),
     }
+
+
+def _coerce_model_input_metadata(
+    value: ModelInputMetadata | Mapping[str, Any],
+) -> ModelInputMetadata:
+    if isinstance(value, ModelInputMetadata):
+        return value
+    return ModelInputMetadata.from_json_dict(value)
+
+
+def _shard_id_from_execution_parameters(
+    execution_parameters: Mapping[str, Any],
+) -> str:
+    shard_id = str(execution_parameters.get("shard_id", "")).strip()
+    if not shard_id:
+        raise ValueError("execution.shard_id must be provided for shard tokenization.")
+    return shard_id
 
 
 def _projection_summary_tokens(record: _FeatureRecordInput) -> tuple[str, ...]:

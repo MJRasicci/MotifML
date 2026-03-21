@@ -19,9 +19,15 @@ from motifml.pipelines.ir_validation.pipeline import (
 from motifml.pipelines.normalization.pipeline import (
     create_pipeline as create_normalization,
 )
-from motifml.pipelines.partitioned.pipeline import create_reduce_pipeline
+from motifml.pipelines.partitioned.pipeline import (
+    create_model_input_reduce_pipeline,
+    create_reduce_pipeline,
+)
 from motifml.pipelines.tokenization.pipeline import (
     create_pipeline as create_tokenization,
+)
+from motifml.pipelines.tokenization.pipeline import (
+    create_shard_pipeline as create_tokenization_shard,
 )
 from motifml.pipelines.vocabulary_counting.pipeline import (
     create_pipeline as create_vocabulary_counting,
@@ -46,8 +52,10 @@ def register_pipelines() -> dict[str, Pipeline]:
     dataset_splitting = create_dataset_splitting()
     feature_extraction = create_feature_extraction()
     tokenization = create_tokenization()
+    tokenization_shard = create_tokenization_shard()
     vocabulary_counting = create_vocabulary_counting()
     partitioned_reduce = create_reduce_pipeline()
+    model_input_reduce = create_model_input_reduce_pipeline()
 
     staged_ir_build = pipeline(
         [
@@ -98,17 +106,11 @@ def register_pipelines() -> dict[str, Pipeline]:
         },
         outputs={"ir_features": "ir_features_shard"},
     )
-    tokenization_shard = pipeline(
-        tokenization,
-        inputs={"ir_features": "ir_features_shard"},
-        outputs={"model_input": "model_input_shard"},
-    )
     shard_processing = (
         ir_build_shard
         + normalization_shard
         + ir_validation_shard
         + feature_extraction_shard
-        + tokenization_shard
     )
 
     return {
@@ -129,12 +131,14 @@ def register_pipelines() -> dict[str, Pipeline]:
         "tokenization_shard": tokenization_shard,
         "partitioned_reduce": partitioned_reduce,
         "shard_reduce": partitioned_reduce,
+        "model_input_reduce": model_input_reduce,
         "shard_processing": shard_processing,
         "__default__": (
             ingestion
             + staged_ir_build
             + ir_validation
             + normalization
+            + dataset_splitting
             + feature_extraction
             + tokenization
         ),

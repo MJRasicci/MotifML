@@ -13,6 +13,8 @@ from kedro.framework.session import KedroSession
 from kedro.framework.startup import bootstrap_project
 from kedro.runner import SequentialRunner
 
+from motifml.datasets.tokenized_model_input_dataset import TokenizedModelInputDataset
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures"
 MOTIF_JSON_FIXTURE_ROOT = FIXTURE_ROOT / "motif_json"
@@ -218,6 +220,44 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "type": "motifml.datasets.json_dataset.JsonDataset",
             "filepath": str(output_root / "vocab_stats.json"),
         },
+        "model_input_version": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "model_input" / "model_input_version.json"),
+        },
+        "model_input_version_shard": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(
+                output_root
+                / "model_input"
+                / "versions"
+                / "shards"
+                / "${runtime_params:execution.shard_id,__all__}.json"
+            ),
+        },
+        "model_input_version_shard_collection": {
+            "type": "motifml.datasets.json_directory_dataset.JsonDirectoryDataset",
+            "filepath": str(output_root / "model_input" / "versions" / "shards"),
+        },
+        "model_input_stats": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "model_input_stats.json"),
+        },
+        "model_input_stats_shard": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(
+                output_root
+                / "model_input_stats_shards"
+                / "${runtime_params:execution.shard_id,__all__}.json"
+            ),
+        },
+        "model_input_stats_shard_collection": {
+            "type": "motifml.datasets.json_directory_dataset.JsonDirectoryDataset",
+            "filepath": str(output_root / "model_input_stats_shards"),
+        },
+        "model_input_storage_schema": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "model_input" / "storage_schema.json"),
+        },
         "ir_features": {
             "type": "motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset",
             "filepath": str(output_root / "ir_features"),
@@ -231,15 +271,13 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "shard_id": "${runtime_params:execution.shard_id,__all__}",
         },
         "model_input": {
-            "type": "motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset",
+            "type": "motifml.datasets.tokenized_model_input_dataset.TokenizedModelInputDataset",
             "filepath": str(output_root / "model_input"),
-            "record_suffix": ".model_input.json",
+            "shard_id": "global",
         },
         "model_input_shard": {
-            "type": "motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset",
+            "type": "motifml.datasets.tokenized_model_input_dataset.TokenizedModelInputDataset",
             "filepath": str(output_root / "model_input"),
-            "record_suffix": ".model_input.json",
-            "partition_index_filepath": str(output_root / "raw_partition_index.json"),
             "shard_id": "${runtime_params:execution.shard_id,__all__}",
         },
     }
@@ -299,6 +337,21 @@ def load_partitioned_record_set(path: Path) -> dict[str, Any]:
         if record_path.is_file()
     ]
     return {"parameters": parameters, "records": records}
+
+
+def load_tokenized_model_input(
+    path: Path,
+    *,
+    split: str | None = None,
+    shard_id: str | None = None,
+) -> dict[str, Any]:
+    """Load a tokenized model-input dataset from disk for integration assertions."""
+    dataset = TokenizedModelInputDataset(
+        filepath=str(path),
+        split=split,
+        shard_id=shard_id,
+    )
+    return dataset.load()
 
 
 def load_ir_document_bytes(output_root: Path) -> dict[str, bytes]:

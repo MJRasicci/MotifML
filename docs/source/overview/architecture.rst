@@ -44,8 +44,13 @@ flow:
      -> data/03_primary/ir/normalized_ir_version.json
      -> data/02_intermediate/training/split_manifest.json
      -> data/04_feature/ir/parameters.json + data/04_feature/ir/records/**/*.feature.json
-     -> data/05_model_input/ir/parameters.json + data/05_model_input/ir/records/**/*.model_input.json
      -> data/08_reporting/training/split_stats.json
+     -> data/05_model_input/ir/vocabulary.json + data/05_model_input/ir/vocabulary_version.json
+     -> data/08_reporting/training/vocab_stats.json
+     -> data/05_model_input/ir/parameters.json + data/05_model_input/ir/storage_schema.json
+     -> data/05_model_input/ir/records/<split>/<shard_id>/**/*.model_input.parquet
+     -> data/05_model_input/ir/model_input_version.json
+     -> data/08_reporting/training/model_input_stats.json
 
 The raw corpus is sourced from files under ``data/00_corpus/`` together with the Motif
 CLI binary at ``tools/motif-cli``. ``MotifJsonCorpusDataset`` fingerprints the source
@@ -56,8 +61,8 @@ files and CLI binary, stores the build state at
 Kedro Pipelines
 ---------------
 
-``src/motifml/pipeline_registry.py`` registers seven named pipelines and one default
-composition:
+``src/motifml/pipeline_registry.py`` registers named stage pipelines together with shard
+and reducer variants:
 
 - ``ingestion`` builds a file-level manifest and aggregate summary for the raw Motif JSON
   corpus
@@ -76,8 +81,14 @@ composition:
   feature views according to ``params:feature_extraction`` and the frozen
   ``params:sequence_schema`` contract, and persists explicit ``feature_version`` plus
   ``sequence_schema_version`` metadata with the partitioned ``04_feature`` output
-- ``tokenization`` converts projected features into a deterministic baseline
-  ``model_input`` dataset according to ``params:tokenization``
+- ``tokenization`` counts training-split tokens, reduces a frozen vocabulary, and
+  persists Parquet-backed tokenized document rows plus ``model_input`` reporting and
+  version metadata according to ``params:sequence_schema``, ``params:vocabulary``,
+  ``params:model_input``, and ``params:data_split``
+- ``tokenization_shard`` persists shard-local Parquet-backed tokenized rows after the
+  shared frozen vocabulary has been reduced
+- ``model_input_reduce`` merges shard-local ``model_input_version`` fragments and
+  aggregate ``model_input_stats`` reporting into the corpus-level reporting surface
 
 The default pipeline composes those stages into a single DAG. A small staging node
 ensures that IR build depends on the completed ingestion summary without mutating the raw
@@ -124,13 +135,17 @@ Current Pipeline Responsibilities
    sequence contract.
 
 ``tokenization``
-   Packages projected features into a deterministic baseline model-input surface. The
-   current implementation records projection metadata and simple structural counts in a
-   fixed-length token sequence; it should be treated as a baseline contract rather than a
-   finalized modeling vocabulary. Explicit sequence token naming, BOS/EOS placement,
-   unknown-token handling, and encode/decode helpers now live under ``motifml.training``
-   so future tokenization, inspection, notebook, and evaluation code can reuse one
-   shared interpretation layer.
+   Freezes the vocabulary-backed ``05_model_input`` contract. The pipeline counts
+   training-split tokens, reduces one frozen vocabulary, tokenizes each projected
+   sequence document into integer ids plus deterministic window metadata, and persists
+   Parquet-backed tokenized rows together with ``model_input_version`` and
+   ``model_input_stats`` artifacts. Explicit token naming, BOS/EOS placement,
+   unknown-token handling, and encode/decode helpers live under ``motifml.training`` so
+   tokenization, inspection, notebook, and evaluation code reuse one shared
+   interpretation layer.
+   The default pipeline persists rows under a synthetic ``global`` shard partition,
+   while shard-local execution preserves concrete shard ids under the same physical
+   layout so one dataset contract serves both execution modes.
 
 Configuration Surfaces
 ----------------------
@@ -140,8 +155,9 @@ The main project surfaces are:
 
 - ``conf/base/catalog.yml`` for dataset locations and the raw-corpus auto-build contract
 - ``conf/base/parameters.yml`` for IR build metadata, validation severities, feature
-  projection settings, tokenization parameters, normalization contract settings, and the
-  shared training-phase parameter families
+  projection settings, normalization contract settings, and the shared training-phase
+  parameter families for dataset splitting, vocabulary construction, and model-input
+  persistence
 - ``conf/local/`` for machine-specific or sensitive overrides that should not be
   committed
 
@@ -151,8 +167,9 @@ Examples of currently configured parameters include:
 - per-rule validation severities for the structural validator
 - projection type, explicit sequence mode, and sequence-schema settings for feature
   extraction
-- vocabulary strategy, max sequence length, padding strategy, time resolution, and
-  special-token policy settings for tokenization and model-input preparation
+- vocabulary thresholds plus special-token policy settings for tokenization
+- context length, stride, padding strategy, reporting thresholds, and storage settings
+  for model-input persistence
 
 Code Organization
 -----------------

@@ -12,6 +12,7 @@ from tests.pipelines.ir_test_support import (
     load_json,
     load_partition_index,
     load_partitioned_record_set,
+    load_tokenized_model_input,
     run_session,
     write_test_conf,
 )
@@ -37,12 +38,16 @@ EXPECTED_DEFAULT_STAGE_ORDER = [
     "build_ir_manifest",
     "normalize_ir_corpus",
     "validate_ir_documents",
+    "assign_dataset_splits",
     "build_normalized_ir_version",
     "publish_ir_validation_report",
     "summarize_ir_corpus",
+    "build_split_statistics",
     "extract_features",
     "report_ir_scale_metrics",
-    "tokenize_features",
+    "count_training_split_tokens_for_default_run",
+    "reduce_vocabulary_for_default_run",
+    "build_model_input_artifacts",
 ]
 
 
@@ -72,6 +77,7 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
     run_session(conf_source)
 
     ir_features = load_partitioned_record_set(output_root / "ir_features")
+    model_input = load_tokenized_model_input(output_root / "model_input")
 
     assert load_json(output_root / "raw_motif_json_manifest.json")
     assert load_json(output_root / "raw_motif_json_summary.json")
@@ -84,9 +90,26 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
     assert ir_features["parameters"]["feature_version"]
     assert ir_features["parameters"]["sequence_schema_version"]
     assert ir_features["parameters"]["normalized_ir_version"]
-    assert len(load_partitioned_record_set(output_root / "model_input")["records"]) == (
-        EXPECTED_FIXTURE_COUNT
+    assert load_json(output_root / "split_manifest.json")
+    assert load_json(output_root / "split_stats.json")
+    assert load_json(output_root / "vocabulary.json")
+    assert load_json(output_root / "vocab_stats.json")
+    assert load_json(output_root / "model_input" / "model_input_version.json")[
+        "model_input_version"
+    ]
+    assert load_json(output_root / "model_input_stats.json")[
+        "total_document_count"
+    ] == (EXPECTED_FIXTURE_COUNT)
+    assert (
+        load_json(output_root / "model_input" / "storage_schema.json")[
+            "storage_schema_version"
+        ]
+        == "parquet-v1"
     )
+    assert len(model_input["records"]) == EXPECTED_FIXTURE_COUNT
+    assert model_input["parameters"]["model_input_version"]
+    assert model_input["parameters"]["vocabulary_version"]
+    assert model_input["storage_schema"]["storage_schema_version"] == "parquet-v1"
     assert sorted((output_root / "normalized_documents").rglob("*.ir.json"))
     assert load_json(output_root / "normalized_ir_version.json")[
         "normalized_ir_version"
@@ -121,6 +144,15 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
 
     run_session(conf_source, ["partitioned_reduce"])
 
+    for shard_id in shard_ids:
+        run_session(
+            conf_source,
+            ["tokenization_shard"],
+            runtime_params={"execution": {"shard_id": shard_id}},
+        )
+
+    run_session(conf_source, ["model_input_reduce"])
+
     manifest = load_json(output_root / "motif_ir_manifest.json")
     validation_report = load_json(output_root / "motif_ir_validation_report.json")
     summary = load_json(output_root / "motif_ir_summary.json")
@@ -128,6 +160,11 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
     vocabulary = load_json(output_root / "vocabulary.json")
     vocabulary_version = load_json(output_root / "vocabulary_version.json")
     vocab_stats = load_json(output_root / "vocab_stats.json")
+    model_input = load_tokenized_model_input(output_root / "model_input")
+    model_input_version = load_json(
+        output_root / "model_input" / "model_input_version.json"
+    )
+    model_input_stats = load_json(output_root / "model_input_stats.json")
 
     assert len(manifest) == EXPECTED_FIXTURE_COUNT
     assert len(validation_report) == EXPECTED_FIXTURE_COUNT
@@ -148,6 +185,12 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
         shard_ids
     )
     assert len(sorted((output_root / "token_counts").glob("*.json"))) == len(shard_ids)
+    assert len(
+        sorted((output_root / "model_input" / "versions" / "shards").glob("*.json"))
+    ) == len(shard_ids)
+    assert len(
+        sorted((output_root / "model_input_stats_shards").glob("*.json"))
+    ) == len(shard_ids)
     assert len(ir_features["records"]) == EXPECTED_FIXTURE_COUNT
     assert ir_features["parameters"]["feature_version"]
     assert ir_features["parameters"]["sequence_schema_version"]
@@ -155,9 +198,18 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
     assert vocabulary["vocabulary_version"] == vocabulary_version["vocabulary_version"]
     assert vocab_stats["vocabulary_version"] == vocabulary["vocabulary_version"]
     assert vocab_stats["guardrails"]["passed"] is True
-    assert len(load_partitioned_record_set(output_root / "model_input")["records"]) == (
-        EXPECTED_FIXTURE_COUNT
+    assert len(model_input["records"]) == EXPECTED_FIXTURE_COUNT
+    assert (
+        load_json(output_root / "model_input" / "storage_schema.json")[
+            "storage_schema_version"
+        ]
+        == "parquet-v1"
     )
+    assert (
+        model_input["parameters"]["model_input_version"]
+        == model_input_version["model_input_version"]
+    )
+    assert model_input_stats["total_document_count"] == EXPECTED_FIXTURE_COUNT
 
 
 def test_kedro_session_emits_stable_normalized_ir_version_for_unchanged_inputs(

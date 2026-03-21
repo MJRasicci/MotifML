@@ -12,8 +12,10 @@ from motifml.pipelines.ir_validation.nodes import (
 )
 from motifml.pipelines.normalization.nodes import merge_normalized_ir_version_fragments
 from motifml.pipelines.tokenization.nodes import (
+    merge_model_input_version_fragments,
     reduce_vocabulary_from_data_split_parameters,
 )
+from motifml.training.model_input_stats import reduce_model_input_stats_shards
 
 
 def create_reduce_pipeline(**kwargs: object) -> Pipeline:
@@ -64,4 +66,27 @@ def create_reduce_pipeline(**kwargs: object) -> Pipeline:
             ),
         ],
         tags=["partitioned", "reduce"],
+    )
+
+
+def create_model_input_reduce_pipeline(**kwargs: object) -> Pipeline:
+    """Create reducers for shard-level model-input artifacts."""
+    del kwargs
+
+    return pipeline(
+        [
+            node(
+                func=merge_model_input_version_fragments,
+                inputs="model_input_version_shard_collection",
+                outputs="model_input_version",
+                name="merge_model_input_version_fragments",
+            ),
+            node(
+                func=reduce_model_input_stats_shards,
+                inputs="model_input_stats_shard_collection",
+                outputs="model_input_stats",
+                name="reduce_model_input_stats_shards",
+            ),
+        ],
+        tags=["partitioned", "reduce", "tokenization"],
     )
