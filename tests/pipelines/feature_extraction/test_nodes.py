@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import motifml.pipelines.feature_extraction.nodes as feature_extraction_nodes
 from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
 from motifml.ir.ids import point_control_id, span_control_id
 from motifml.ir.models import (
@@ -43,7 +44,8 @@ from motifml.pipelines.feature_extraction.nodes import (
     extract_features,
     merge_feature_shards,
 )
-from motifml.training.sequence_schema import SequenceSchemaContract
+from motifml.pipelines.normalization.models import NormalizedIrVersionMetadata
+from motifml.training.sequence_schema import NotePayloadField, SequenceSchemaContract
 
 
 def test_extract_features_uses_the_sequence_projection(monkeypatch) -> None:
@@ -62,6 +64,7 @@ def test_extract_features_uses_the_sequence_projection(monkeypatch) -> None:
 
     features = extract_features(
         [record],
+        _build_normalized_ir_version_metadata(),
         FeatureExtractionParameters(
             projection_type="sequence",
             sequence_mode=BASELINE_SEQUENCE_MODE,
@@ -108,6 +111,7 @@ def test_extract_features_uses_the_graph_projection(monkeypatch) -> None:
 
     features = extract_features(
         [record],
+        _build_normalized_ir_version_metadata(),
         {
             "projection_type": "graph",
             "derived_edge_families_included": ["playback_next"],
@@ -136,6 +140,7 @@ def test_extract_features_uses_the_hierarchical_projection(monkeypatch) -> None:
 
     features = extract_features(
         [record],
+        _build_normalized_ir_version_metadata(),
         {
             "projection_type": "hierarchical",
             "derived_edge_families_included": [],
@@ -186,6 +191,7 @@ def test_extract_features_excludes_structure_markers_when_schema_disables_them()
 ):
     features = extract_features(
         [_build_record()],
+        _build_normalized_ir_version_metadata(),
         {
             "projection_type": "sequence",
             "sequence_mode": BASELINE_SEQUENCE_MODE,
@@ -210,6 +216,7 @@ def test_extract_features_excludes_structure_markers_when_schema_disables_them()
 def test_extract_features_excludes_control_families_when_schema_disables_them() -> None:
     features = extract_features(
         [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
         {
             "projection_type": "sequence",
             "sequence_mode": BASELINE_SEQUENCE_MODE,
@@ -229,6 +236,154 @@ def test_extract_features_excludes_control_families_when_schema_disables_them() 
     )
     assert all(
         not isinstance(event, SpanControlSequenceEvent) for event in projection.events
+    )
+
+
+def test_extract_features_persists_feature_and_schema_versions() -> None:
+    schema = SequenceSchemaContract()
+
+    features = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        schema,
+    )
+
+    assert features.parameters.normalized_ir_version == "normalized-v1"
+    assert features.parameters.sequence_schema_version == schema.sequence_schema_version
+    assert features.parameters.feature_version
+
+
+def test_extract_features_feature_version_is_stable_for_unchanged_inputs() -> None:
+    first = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(),
+    )
+    second = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(),
+    )
+
+    assert first.parameters.feature_version == second.parameters.feature_version
+
+
+def test_extract_features_feature_version_changes_when_normalized_ir_version_changes() -> (
+    None
+):
+    first = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata("normalized-v1"),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(),
+    )
+    second = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata("normalized-v2"),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(),
+    )
+
+    assert first.parameters.feature_version != second.parameters.feature_version
+
+
+def test_extract_features_feature_version_changes_when_sequence_ordering_changes(
+    monkeypatch,
+) -> None:
+    first = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(),
+    )
+    monkeypatch.setattr(
+        feature_extraction_nodes,
+        "SEQUENCE_EVENT_ORDERING_VERSION",
+        "time_then_family_then_entity_v2",
+    )
+
+    second = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(),
+    )
+
+    assert first.parameters.feature_version != second.parameters.feature_version
+
+
+def test_extract_features_feature_version_changes_when_sequence_schema_changes() -> (
+    None
+):
+    first = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(),
+    )
+    second = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(
+            note_payload_fields=(
+                NotePayloadField.PITCH,
+                NotePayloadField.DURATION,
+                NotePayloadField.STRING_NUMBER,
+            )
+        ),
+    )
+
+    assert first.parameters.sequence_schema_version != (
+        second.parameters.sequence_schema_version
+    )
+    assert first.parameters.feature_version != second.parameters.feature_version
+
+
+def _build_normalized_ir_version_metadata(
+    normalized_ir_version: str = "normalized-v1",
+) -> NormalizedIrVersionMetadata:
+    return NormalizedIrVersionMetadata(
+        normalized_ir_version=normalized_ir_version,
+        contract_name="motifml.normalized_ir",
+        contract_version="1.0.0",
+        serialized_document_format="motifml.ir.document",
+        normalization_strategy="passthrough_v1",
+        upstream_ir_schema_version="1.0.0",
+        task_agnostic_guarantees=(
+            "stable_source_relative_identity",
+            "task_agnostic_domain_truth",
+        ),
     )
 
 

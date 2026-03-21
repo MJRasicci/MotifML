@@ -38,9 +38,9 @@ EXPECTED_DEFAULT_STAGE_ORDER = [
     "normalize_ir_corpus",
     "validate_ir_documents",
     "build_normalized_ir_version",
-    "extract_features",
     "publish_ir_validation_report",
     "summarize_ir_corpus",
+    "extract_features",
     "report_ir_scale_metrics",
     "tokenize_features",
 ]
@@ -71,6 +71,8 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
     conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
     run_session(conf_source)
 
+    ir_features = load_partitioned_record_set(output_root / "ir_features")
+
     assert load_json(output_root / "raw_motif_json_manifest.json")
     assert load_json(output_root / "raw_motif_json_summary.json")
     assert load_json(output_root / "raw_partition_index.json")
@@ -78,9 +80,10 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
     assert load_json(output_root / "motif_ir_manifest.json")
     assert load_json(output_root / "motif_ir_validation_report.json")
     assert load_json(output_root / "motif_ir_summary.json")
-    assert len(load_partitioned_record_set(output_root / "ir_features")["records"]) == (
-        EXPECTED_FIXTURE_COUNT
-    )
+    assert len(ir_features["records"]) == EXPECTED_FIXTURE_COUNT
+    assert ir_features["parameters"]["feature_version"]
+    assert ir_features["parameters"]["sequence_schema_version"]
+    assert ir_features["parameters"]["normalized_ir_version"]
     assert len(load_partitioned_record_set(output_root / "model_input")["records"]) == (
         EXPECTED_FIXTURE_COUNT
     )
@@ -112,6 +115,7 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
     manifest = load_json(output_root / "motif_ir_manifest.json")
     validation_report = load_json(output_root / "motif_ir_validation_report.json")
     summary = load_json(output_root / "motif_ir_summary.json")
+    ir_features = load_partitioned_record_set(output_root / "ir_features")
 
     assert len(manifest) == EXPECTED_FIXTURE_COUNT
     assert len(validation_report) == EXPECTED_FIXTURE_COUNT
@@ -131,9 +135,10 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
     assert len(sorted((output_root / "summary_shards").glob("*.json"))) == len(
         shard_ids
     )
-    assert len(load_partitioned_record_set(output_root / "ir_features")["records"]) == (
-        EXPECTED_FIXTURE_COUNT
-    )
+    assert len(ir_features["records"]) == EXPECTED_FIXTURE_COUNT
+    assert ir_features["parameters"]["feature_version"]
+    assert ir_features["parameters"]["sequence_schema_version"]
+    assert ir_features["parameters"]["normalized_ir_version"]
     assert len(load_partitioned_record_set(output_root / "model_input")["records"]) == (
         EXPECTED_FIXTURE_COUNT
     )

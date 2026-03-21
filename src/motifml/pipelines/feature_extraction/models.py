@@ -35,6 +35,9 @@ class FeatureExtractionParameters:
     sequence_mode: str = BASELINE_SEQUENCE_MODE
     event_types_included: tuple[str, ...] = ()
     derived_edge_families_included: tuple[str, ...] = ()
+    normalized_ir_version: str | None = None
+    sequence_schema_version: str | None = None
+    feature_version: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -59,6 +62,27 @@ class FeatureExtractionParameters:
                 self.derived_edge_families_included,
                 "derived_edge_families_included",
             ),
+        )
+        object.__setattr__(
+            self,
+            "normalized_ir_version",
+            _normalize_optional_text(
+                self.normalized_ir_version,
+                "normalized_ir_version",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "sequence_schema_version",
+            _normalize_optional_text(
+                self.sequence_schema_version,
+                "sequence_schema_version",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "feature_version",
+            _normalize_optional_text(self.feature_version, "feature_version"),
         )
 
 
@@ -117,6 +141,9 @@ def coerce_feature_extraction_parameters(
         derived_edge_families_included=tuple(
             value.get("derived_edge_families_included", ())
         ),
+        normalized_ir_version=value.get("normalized_ir_version"),
+        sequence_schema_version=value.get("sequence_schema_version"),
+        feature_version=value.get("feature_version"),
     )
 
 
@@ -148,6 +175,12 @@ def _normalize_text(value: str, field_name: str) -> str:
         raise ValueError(f"{field_name} must be non-empty.")
 
     return normalized
+
+
+def _normalize_optional_text(value: str | None, field_name: str) -> str | None:
+    if value is None:
+        return None
+    return _normalize_text(str(value), field_name)
 
 
 def _normalize_text_sequence(

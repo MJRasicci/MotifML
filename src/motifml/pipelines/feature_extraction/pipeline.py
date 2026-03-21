@@ -17,6 +17,7 @@ def create_pipeline(**kwargs: object) -> Pipeline:
                 func=extract_features,
                 inputs=[
                     "normalized_ir_corpus",
+                    "normalized_ir_version",
                     "params:feature_extraction",
                     "params:sequence_schema",
                 ],

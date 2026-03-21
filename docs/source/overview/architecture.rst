@@ -40,8 +40,9 @@ flow:
      -> data/08_reporting/ir/motif_ir_validation_report.json
      -> data/08_reporting/ir/motif_ir_summary.json
      -> data/03_primary/ir/documents/*.ir.json
-     -> data/04_feature/ir/ir_features.json
-     -> data/05_model_input/ir/model_input.json
+     -> data/03_primary/ir/normalized_ir_version.json
+     -> data/04_feature/ir/parameters.json + data/04_feature/ir/records/**/*.feature.json
+     -> data/05_model_input/ir/parameters.json + data/05_model_input/ir/records/**/*.model_input.json
 
 The raw corpus is sourced from files under ``data/00_corpus/`` together with the Motif
 CLI binary at ``tools/motif-cli``. ``MotifJsonCorpusDataset`` fingerprints the source
@@ -67,7 +68,8 @@ composition:
   not leaked into the normalized artifact surface
 - ``feature_extraction`` projects normalized IR into sequence, graph, or hierarchical
   feature views according to ``params:feature_extraction`` and the frozen
-  ``params:sequence_schema`` contract
+  ``params:sequence_schema`` contract, and persists explicit ``feature_version`` plus
+  ``sequence_schema_version`` metadata with the partitioned ``04_feature`` output
 - ``tokenization`` converts projected features into a deterministic baseline
   ``model_input`` dataset according to ``params:tokenization``
 
@@ -105,7 +107,10 @@ Current Pipeline Responsibilities
 
    For the baseline sequence path, ``feature_extraction.sequence_mode`` now makes the
    intended sequence surface explicit instead of inferring it only from legacy
-   event-family flags.
+   event-family flags. Persisted feature parameters also capture
+   ``normalized_ir_version``, ``sequence_schema_version``, and the derived
+   ``feature_version`` so downstream training preparation can freeze the exact emitted
+   sequence contract.
 
 ``tokenization``
    Packages projected features into a deterministic baseline model-input surface. The

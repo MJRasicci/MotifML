@@ -84,7 +84,10 @@ def register_pipelines() -> dict[str, Pipeline]:
     )
     feature_extraction_shard = pipeline(
         feature_extraction,
-        inputs={"normalized_ir_corpus": "normalized_ir_corpus_shard"},
+        inputs={
+            "normalized_ir_corpus": "normalized_ir_corpus_shard",
+            "normalized_ir_version": "normalized_ir_version_shard",
+        },
         outputs={"ir_features": "ir_features_shard"},
     )
     tokenization_shard = pipeline(

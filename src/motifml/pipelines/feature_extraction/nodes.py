@@ -11,6 +11,7 @@ from motifml.ir.projections.hierarchical import project_hierarchical
 from motifml.ir.projections.sequence import (
     NoteSequenceEvent,
     PointControlSequenceEvent,
+    SequenceProjection,
     SequenceProjectionConfig,
     SequenceProjectionMode,
     SpanControlSequenceEvent,
@@ -25,33 +26,50 @@ from motifml.pipelines.feature_extraction.models import (
     ProjectionType,
     coerce_feature_extraction_parameters,
 )
+from motifml.pipelines.normalization.models import (
+    NormalizedIrVersionMetadata,
+    coerce_normalized_ir_version_metadata,
+)
 from motifml.training.sequence_schema import (
     SequenceSchemaContract,
     coerce_sequence_schema_contract,
 )
+from motifml.training.versioning import build_feature_version
+
+SEQUENCE_EVENT_ORDERING_VERSION = "time_then_family_then_entity_v1"
+_SEQUENCE_SCHEMA_NOT_APPLICABLE = "not_applicable"
 
 
 def extract_features(
     normalized_ir_corpus: list[MotifIrDocumentRecord],
+    normalized_ir_version: NormalizedIrVersionMetadata | Mapping[str, Any],
     parameters: FeatureExtractionParameters | Mapping[str, Any],
     sequence_schema: SequenceSchemaContract | Mapping[str, Any],
 ) -> IrFeatureSet:
     """Project each normalized IR document into the configured feature surface."""
+    typed_normalized_ir_version = coerce_normalized_ir_version_metadata(
+        normalized_ir_version
+    )
     typed_parameters = coerce_feature_extraction_parameters(parameters)
     typed_sequence_schema = coerce_sequence_schema_contract(sequence_schema)
+    output_parameters = _build_output_parameters(
+        typed_parameters,
+        typed_normalized_ir_version,
+        typed_sequence_schema,
+    )
     records = tuple(
         IrFeatureRecord(
             relative_path=record.relative_path,
-            projection_type=typed_parameters.projection_type,
+            projection_type=output_parameters.projection_type,
             projection=_project_document(
                 record,
-                typed_parameters,
+                output_parameters,
                 typed_sequence_schema,
             ),
         )
         for record in normalized_ir_corpus
     )
-    return IrFeatureSet(parameters=typed_parameters, records=records)
+    return IrFeatureSet(parameters=output_parameters, records=records)
 
 
 def merge_feature_shards(
@@ -96,6 +114,58 @@ def _project_document(
         )
 
     return project_hierarchical(record.document)
+
+
+def _build_output_parameters(
+    parameters: FeatureExtractionParameters,
+    normalized_ir_version: NormalizedIrVersionMetadata,
+    sequence_schema: SequenceSchemaContract,
+) -> FeatureExtractionParameters:
+    sequence_schema_version = (
+        sequence_schema.sequence_schema_version
+        if parameters.projection_type is ProjectionType.SEQUENCE
+        else _SEQUENCE_SCHEMA_NOT_APPLICABLE
+    )
+    return FeatureExtractionParameters(
+        projection_type=parameters.projection_type,
+        sequence_mode=parameters.sequence_mode,
+        event_types_included=parameters.event_types_included,
+        derived_edge_families_included=parameters.derived_edge_families_included,
+        normalized_ir_version=normalized_ir_version.normalized_ir_version,
+        sequence_schema_version=sequence_schema_version,
+        feature_version=build_feature_version(
+            normalized_ir_version=normalized_ir_version.normalized_ir_version,
+            projection_config=_feature_projection_contract_payload(
+                parameters,
+                sequence_schema,
+            ),
+            sequence_schema_version=sequence_schema_version,
+        ),
+    )
+
+
+def _feature_projection_contract_payload(
+    parameters: FeatureExtractionParameters,
+    sequence_schema: SequenceSchemaContract,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        "projection_type": parameters.projection_type.value,
+        "sequence_mode": parameters.sequence_mode,
+        "event_types_included": list(parameters.event_types_included),
+        "derived_edge_families_included": list(
+            parameters.derived_edge_families_included
+        ),
+    }
+    if parameters.projection_type is ProjectionType.SEQUENCE:
+        payload["event_ordering_version"] = SEQUENCE_EVENT_ORDERING_VERSION
+        payload["projection_mode"] = _sequence_projection_mode(
+            parameters,
+            sequence_schema,
+        ).value
+    else:
+        payload["event_ordering_version"] = _SEQUENCE_SCHEMA_NOT_APPLICABLE
+        payload["projection_mode"] = _SEQUENCE_SCHEMA_NOT_APPLICABLE
+    return payload
 
 
 def _coerce_feature_set(value: IrFeatureSet | Mapping[str, Any]) -> IrFeatureSet:
@@ -149,9 +219,9 @@ def _sequence_projection_mode(
 
 
 def _apply_sequence_schema(
-    projection,
+    projection: SequenceProjection,
     sequence_schema: SequenceSchemaContract,
-):
+) -> SequenceProjection:
     filtered_events = tuple(
         event
         for event in projection.events

@@ -9,7 +9,7 @@ from motifml.pipeline_registry import register_pipelines
 EXPECTED_INGESTION_NODE_COUNT = 4
 EXPECTED_IR_BUILD_NODE_COUNT = 12
 EXPECTED_IR_VALIDATION_NODE_COUNT = 4
-EXPECTED_NORMALIZATION_NODE_COUNT = 1
+EXPECTED_NORMALIZATION_NODE_COUNT = 2
 EXPECTED_FEATURE_EXTRACTION_NODE_COUNT = 1
 EXPECTED_TOKENIZATION_NODE_COUNT = 1
 EXPECTED_DEFAULT_NODE_ORDER = [
@@ -32,9 +32,10 @@ EXPECTED_DEFAULT_NODE_ORDER = [
     "build_ir_manifest",
     "normalize_ir_corpus",
     "validate_ir_documents",
-    "extract_features",
+    "build_normalized_ir_version",
     "publish_ir_validation_report",
     "summarize_ir_corpus",
+    "extract_features",
     "report_ir_scale_metrics",
     "tokenize_features",
 ]
@@ -104,12 +105,20 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "motif_ir_validation_report",
     }
 
-    assert pipelines["normalization"].inputs() == {"motif_ir_corpus"}
-    assert pipelines["normalization"].outputs() == {"normalized_ir_corpus"}
+    assert pipelines["normalization"].inputs() == {
+        "motif_ir_corpus",
+        "params:normalization",
+    }
+    assert pipelines["normalization"].all_outputs() >= {
+        "normalized_ir_corpus",
+        "normalized_ir_version",
+    }
 
     assert pipelines["feature_extraction"].inputs() == {
         "normalized_ir_corpus",
+        "normalized_ir_version",
         "params:feature_extraction",
+        "params:sequence_schema",
     }
     assert pipelines["feature_extraction"].outputs() == {"ir_features"}
 
@@ -142,16 +151,25 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
     }
     assert pipelines["partitioned_reduce"].inputs() == {
         "motif_ir_manifest_shard_collection",
+        "normalized_ir_version_shard_collection",
         "motif_ir_summary_shard_collection",
         "motif_ir_validation_report_shard_collection",
     }
 
-    assert pipelines["normalization_shard"].inputs() == {"motif_ir_corpus_shard"}
-    assert pipelines["normalization_shard"].outputs() == {"normalized_ir_corpus_shard"}
+    assert pipelines["normalization_shard"].inputs() == {
+        "motif_ir_corpus_shard",
+        "params:normalization",
+    }
+    assert pipelines["normalization_shard"].all_outputs() >= {
+        "normalized_ir_corpus_shard",
+        "normalized_ir_version_shard",
+    }
 
     assert pipelines["feature_extraction_shard"].inputs() == {
         "normalized_ir_corpus_shard",
+        "normalized_ir_version_shard",
         "params:feature_extraction",
+        "params:sequence_schema",
     }
     assert pipelines["feature_extraction_shard"].outputs() == {"ir_features_shard"}
 
