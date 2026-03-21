@@ -104,6 +104,10 @@ class TokenizedDocumentRow:
             raise ValueError("window_start_offsets must be sorted in ascending order.")
         if len(normalized_offsets) != len(set(normalized_offsets)):
             raise ValueError("window_start_offsets must be unique.")
+        if normalized_offsets and not normalized_token_ids:
+            raise ValueError(
+                "window_start_offsets must be empty when token_ids are empty."
+            )
         if normalized_token_ids and normalized_offsets:
             max_offset = max(normalized_offsets)
             if max_offset >= len(normalized_token_ids):
@@ -206,6 +210,13 @@ def coerce_tokenized_document_rows(
     return tuple(coerce_tokenized_document_row(row) for row in rows)
 
 
+def sort_tokenized_document_rows(
+    rows: Sequence[TokenizedDocumentRow | Mapping[str, Any]],
+) -> tuple[TokenizedDocumentRow, ...]:
+    """Sort tokenized-document rows into the canonical persisted order."""
+    return tuple(sorted(coerce_tokenized_document_rows(rows), key=_row_sort_key))
+
+
 def _normalize_text(value: str, field_name: str) -> str:
     normalized = str(value).strip()
     if not normalized:
@@ -288,8 +299,26 @@ def _optional_mapping_from_payload(
     return {str(item_key): item for item_key, item in value.items()}
 
 
+def _row_sort_key(row: TokenizedDocumentRow) -> tuple[int, str, str, str]:
+    return (
+        _split_order(row.split),
+        row.relative_path.casefold(),
+        row.document_id.casefold(),
+        row.model_input_version.casefold(),
+    )
+
+
+def _split_order(split: DatasetSplit) -> int:
+    return {
+        DatasetSplit.TRAIN: 0,
+        DatasetSplit.VALIDATION: 1,
+        DatasetSplit.TEST: 2,
+    }[DatasetSplit(split)]
+
+
 __all__ = [
     "TokenizedDocumentRow",
     "coerce_tokenized_document_row",
     "coerce_tokenized_document_rows",
+    "sort_tokenized_document_rows",
 ]

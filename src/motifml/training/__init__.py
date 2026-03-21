@@ -19,6 +19,7 @@ from motifml.training.model_input import (
     TokenizedDocumentRow,
     coerce_tokenized_document_row,
     coerce_tokenized_document_rows,
+    sort_tokenized_document_rows,
 )
 from motifml.training.special_token_policy import (
     BoundaryPlacement,
@@ -112,4 +113,5 @@ __all__ = [
     "flatten_token_spans",
     "freeze_parameter_snapshot",
     "serialize_metadata_artifact",
+    "sort_tokenized_document_rows",
 ]

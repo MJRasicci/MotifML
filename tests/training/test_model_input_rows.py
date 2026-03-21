@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from motifml.training.model_input import TokenizedDocumentRow
+from motifml.training.model_input import (
+    TokenizedDocumentRow,
+    sort_tokenized_document_rows,
+)
 from motifml.training.special_token_policy import SpecialTokenPolicy
 
 
@@ -59,6 +62,10 @@ def test_tokenized_document_row_normalizes_inputs_into_stable_equality() -> None
             {"window_start_offsets": (0, 4)},
             "window_start_offsets must point inside the token_ids sequence",
         ),
+        (
+            {"token_count": 0, "token_ids": (), "window_start_offsets": (0,)},
+            "window_start_offsets must be empty when token_ids are empty",
+        ),
         ({"padding_strategy": "diagonal"}, "padding_strategy must be one of"),
     ],
 )
@@ -90,3 +97,53 @@ def test_tokenized_document_row_rejects_invalid_contract_values(
 
     with pytest.raises(ValueError, match=expected_message):
         TokenizedDocumentRow(**payload)
+
+
+def test_sort_tokenized_document_rows_orders_records_by_split_then_path() -> None:
+    validation_row = TokenizedDocumentRow(
+        relative_path="fixtures/b.json",
+        document_id="doc-b",
+        split="validation",
+        split_version="split-v1",
+        projection_type="sequence",
+        sequence_mode="baseline_v1",
+        normalized_ir_version="normalized-v1",
+        feature_version="feature-v1",
+        vocabulary_version="vocab-v1",
+        model_input_version="model-input-v1",
+        storage_schema_version="parquet-v1",
+        token_count=4,
+        token_ids=(3, 4, 5, 6),
+        window_start_offsets=(0, 2),
+        context_length=256,
+        stride=128,
+        padding_strategy="right",
+        special_token_policy=SpecialTokenPolicy().to_version_payload(),
+    )
+    train_row = TokenizedDocumentRow(
+        relative_path="fixtures/a.json",
+        document_id="doc-a",
+        split="train",
+        split_version="split-v1",
+        projection_type="sequence",
+        sequence_mode="baseline_v1",
+        normalized_ir_version="normalized-v1",
+        feature_version="feature-v1",
+        vocabulary_version="vocab-v1",
+        model_input_version="model-input-v1",
+        storage_schema_version="parquet-v1",
+        token_count=4,
+        token_ids=(3, 4, 5, 6),
+        window_start_offsets=(0, 2),
+        context_length=256,
+        stride=128,
+        padding_strategy="right",
+        special_token_policy=SpecialTokenPolicy().to_version_payload(),
+    )
+
+    sorted_rows = sort_tokenized_document_rows([validation_row, train_row])
+
+    assert [row.relative_path for row in sorted_rows] == [
+        "fixtures/a.json",
+        "fixtures/b.json",
+    ]
