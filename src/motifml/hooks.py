@@ -8,7 +8,8 @@ import resource
 import sys
 import threading
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass, fields, is_dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from time import perf_counter_ns, thread_time_ns
@@ -133,6 +134,7 @@ class _PerformanceRunState:
         self._wrapped_dataset_names: set[str] = set()
         self._released_wrapped_dataset_names: set[str] = set()
         self.dataset_cache_releases: list[_DatasetCacheReleaseRecord] = []
+        self.kedro_viz_stats: dict[str, dict[str, int]] = {}
         self._remaining_dataset_loads: Counter[str] = Counter()
         self._finalized = False
         self._lock = threading.Lock()
@@ -277,6 +279,14 @@ class _PerformanceRunState:
             )
         )
 
+    def record_kedro_viz_dataset_stats(self, dataset_name: str, data: Any) -> None:
+        stats = _build_kedro_viz_dataset_stats(data)
+        if not stats:
+            return
+
+        with self._lock:
+            self.kedro_viz_stats.setdefault(dataset_name, {}).update(stats)
+
     def finalize(self, *, error: str | None = None) -> Path | None:
         with self._lock:
             if self._finalized:
@@ -413,9 +423,12 @@ class ProjectHooks:
         pipeline: Pipeline,
         catalog: Any,
     ) -> None:
-        del run_result, pipeline, catalog
+        del run_result, pipeline
         state = self._pop_state(run_params)
         if state is not None:
+            _write_kedro_viz_stats(
+                catalog=catalog, stats_by_dataset=state.kedro_viz_stats
+            )
             state.finalize()
 
     @hook_impl
@@ -426,9 +439,12 @@ class ProjectHooks:
         pipeline: Pipeline,
         catalog: Any,
     ) -> None:
-        del pipeline, catalog
+        del pipeline
         state = self._pop_state(run_params)
         if state is not None:
+            _write_kedro_viz_stats(
+                catalog=catalog, stats_by_dataset=state.kedro_viz_stats
+            )
             state.finalize(error=f"{type(error).__name__}: {error}")
 
     @hook_impl
@@ -494,6 +510,7 @@ class ProjectHooks:
         state = self._sole_active_state()
         if state is not None:
             state.finish_dataset(dataset_name, node, operation="load", data=data)
+            state.record_kedro_viz_dataset_stats(dataset_name, data)
 
     @hook_impl
     def before_dataset_saved(self, dataset_name: str, data: Any, node: Node) -> None:
@@ -507,6 +524,7 @@ class ProjectHooks:
         state = self._sole_active_state()
         if state is not None:
             state.finish_dataset(dataset_name, node, operation="save", data=data)
+            state.record_kedro_viz_dataset_stats(dataset_name, data)
 
     def _get_state(self, run_id: str) -> _PerformanceRunState | None:
         with self._state_lock:
@@ -617,6 +635,205 @@ def _safe_ratio(numerator: float, denominator: float) -> float:
     if denominator <= 0:
         return 0.0
     return numerator / denominator
+
+
+def _build_kedro_viz_dataset_stats(data: Any) -> dict[str, int]:
+    rows, columns = _infer_table_shape(data)
+    stats: dict[str, int] = {}
+    if rows is not None:
+        stats["rows"] = rows
+    if columns is not None:
+        stats["columns"] = columns
+    return stats
+
+
+def _infer_table_shape(data: Any) -> tuple[int | None, int | None]:
+    rows: int | None = None
+    columns: int | None = None
+
+    if isinstance(data, str | bytes | bytearray):
+        return rows, columns
+
+    if is_dataclass(data):
+        records = getattr(data, "records", None)
+        if _is_non_string_sized_iterable(records):
+            rows = len(records)
+            columns = _infer_iterable_width(records)
+        else:
+            rows = 1
+            columns = len(fields(data))
+    elif isinstance(data, Mapping):
+        records = data.get("records")
+        if _is_non_string_sized_iterable(records):
+            rows = len(records)
+            columns = _infer_iterable_width(records)
+        else:
+            rows = 1
+            columns = len(data)
+    elif _is_non_string_sized_iterable(data):
+        rows = len(data)
+        columns = _infer_iterable_width(data)
+
+    return rows, columns
+
+
+def _is_non_string_sized_iterable(value: Any) -> bool:
+    if value is None or isinstance(value, str | bytes | bytearray | Mapping):
+        return False
+    try:
+        iter(value)
+        len(value)  # type: ignore[arg-type]
+    except TypeError:
+        return False
+    return True
+
+
+def _infer_iterable_width(values: Any) -> int:
+    iterator = iter(values)
+    try:
+        first_value = next(iterator)
+    except StopIteration:
+        return 0
+    return _infer_record_width(first_value)
+
+
+def _infer_record_width(record: Any) -> int:
+    if is_dataclass(record):
+        return len(fields(record))
+    if isinstance(record, Mapping):
+        return len(record)
+    if isinstance(record, str | bytes | bytearray):
+        return 1
+    try:
+        return len(record)  # type: ignore[arg-type]
+    except TypeError:
+        return 1
+
+
+def _write_kedro_viz_stats(
+    *,
+    catalog: Any,
+    stats_by_dataset: Mapping[str, Mapping[str, int]],
+) -> None:
+    if not stats_by_dataset:
+        return
+
+    project_root = _find_kedro_project_root(Path.cwd())
+    if project_root is None:
+        LOGGER.warning(
+            "Skipping Kedro-Viz dataset stats because no Kedro project root was found."
+        )
+        return
+
+    stats_path = project_root / ".viz" / "stats.json"
+    existing_stats = _read_kedro_viz_stats(stats_path)
+    merged_stats = dict(existing_stats)
+
+    for dataset_name, current_stats in stats_by_dataset.items():
+        merged_dataset_stats = dict(existing_stats.get(dataset_name, {}))
+        merged_dataset_stats.update(
+            {key: int(value) for key, value in current_stats.items()}
+        )
+        file_size = _dataset_file_size(catalog=catalog, dataset_name=dataset_name)
+        if file_size is not None:
+            merged_dataset_stats["file_size"] = file_size
+        if merged_dataset_stats:
+            merged_stats[dataset_name] = _order_kedro_viz_stats(merged_dataset_stats)
+
+    stats_path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = stats_path.with_suffix(".tmp")
+    temp_path.write_text(
+        json.dumps(merged_stats, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    temp_path.replace(stats_path)
+
+
+def _find_kedro_project_root(start_path: Path) -> Path | None:
+    for candidate in [start_path, *start_path.parents]:
+        pyproject_path = candidate / "pyproject.toml"
+        if not pyproject_path.is_file():
+            continue
+        try:
+            if "[tool.kedro]" in pyproject_path.read_text(encoding="utf-8"):
+                return candidate
+        except OSError:
+            continue
+    return None
+
+
+def _read_kedro_viz_stats(path: Path) -> dict[str, dict[str, int]]:
+    if not path.exists():
+        return {}
+
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        LOGGER.warning("Ignoring unreadable Kedro-Viz stats file '%s': %s", path, exc)
+        return {}
+
+    if not isinstance(loaded, dict):
+        return {}
+
+    normalized: dict[str, dict[str, int]] = {}
+    for dataset_name, stats in loaded.items():
+        if not isinstance(dataset_name, str) or not isinstance(stats, dict):
+            continue
+        normalized[dataset_name] = {
+            key: int(value)
+            for key, value in stats.items()
+            if isinstance(key, str) and isinstance(value, int | float)
+        }
+    return normalized
+
+
+def _dataset_file_size(*, catalog: Any, dataset_name: str) -> int | None:
+    try:
+        dataset = catalog.get(dataset_name)
+    except DatasetNotFoundError:
+        return None
+    except Exception as exc:  # pragma: no cover - defensive hook fallback
+        LOGGER.warning(
+            "Unable to access dataset '%s' while computing Viz stats: %s",
+            dataset_name,
+            exc,
+        )
+        return None
+
+    dataset_path = _dataset_path(dataset)
+    if dataset_path is None or not dataset_path.exists():
+        return None
+
+    if dataset_path.is_file():
+        return dataset_path.stat().st_size
+    if dataset_path.is_dir():
+        return sum(
+            child_path.stat().st_size
+            for child_path in dataset_path.rglob("*")
+            if child_path.is_file()
+        )
+    return None
+
+
+def _dataset_path(dataset: Any) -> Path | None:
+    for attribute_name in ("filepath", "_filepath"):
+        raw_path = getattr(dataset, attribute_name, None)
+        if isinstance(raw_path, Path):
+            return raw_path
+        if isinstance(raw_path, str) and "://" not in raw_path:
+            return Path(raw_path)
+    return None
+
+
+def _order_kedro_viz_stats(stats: Mapping[str, int]) -> dict[str, int]:
+    ordered: dict[str, int] = {}
+    for key in ("rows", "columns", "file_size"):
+        if key in stats:
+            ordered[key] = int(stats[key])
+    for key, value in stats.items():
+        if key not in ordered:
+            ordered[key] = int(value)
+    return ordered
 
 
 def _optional_delta(
