@@ -124,6 +124,9 @@ model_input:
   storage:
     backend: parquet
     schema_version: parquet-v1
+  reporting:
+    worst_document_limit: 10
+    oversized_token_count_threshold: 8192
 
 model:
   architecture: decoder_only_transformer

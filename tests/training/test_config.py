@@ -24,6 +24,8 @@ PARAMETERS_PATH = "conf/base/parameters.yml"
 OVERRIDE_BATCH_SIZE = 16
 OVERRIDE_TOP_K = 10
 OVERRIDE_CONTEXT_LENGTH = 384
+EXPECTED_WORST_DOCUMENT_LIMIT = 10
+EXPECTED_OVERSIZED_TOKEN_COUNT_THRESHOLD = 8192
 EXPECTED_MINIMUM_VOCABULARY_SIZE = 7
 
 
@@ -111,6 +113,17 @@ def test_parameters_yaml_uses_the_frozen_model_input_storage_contract() -> None:
 
     assert storage["backend"] == MODEL_INPUT_STORAGE_BACKEND
     assert storage["schema_version"] == MODEL_INPUT_STORAGE_SCHEMA_VERSION
+
+
+def test_parameters_yaml_defines_model_input_reporting_thresholds() -> None:
+    parameters = _load_parameters()
+    reporting = parameters["model_input"]["reporting"]
+
+    assert reporting["worst_document_limit"] == EXPECTED_WORST_DOCUMENT_LIMIT
+    assert (
+        reporting["oversized_token_count_threshold"]
+        == EXPECTED_OVERSIZED_TOKEN_COUNT_THRESHOLD
+    )
 
 
 def _load_parameters() -> dict[str, object]:
