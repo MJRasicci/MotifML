@@ -10,6 +10,7 @@ from motifml.training.data_loading import (
     LazyTokenizedDocumentDataset,
     LazyTokenWindowDataset,
     LoadedTokenizedDocument,
+    LoaderIterationOptions,
     SpecialTokenIds,
     build_token_window_example,
     discover_model_input_shards,
@@ -209,6 +210,7 @@ def test_lazy_token_window_dataset_reconstructs_persisted_windows_deterministica
             eos_token_id=2,
             unk_token_id=3,
         ),
+        iteration_options=LoaderIterationOptions(shuffle_windows=False),
     )
 
     first = list(dataset)
@@ -222,6 +224,118 @@ def test_lazy_token_window_dataset_reconstructs_persisted_windows_deterministica
     assert first[-1].input_ids == (8, 7, 5, 2)
     assert first[-1].target_ids == (7, 5, 2, 0)
     assert first[-1].attention_mask == (1, 1, 1, 0)
+
+
+def test_lazy_tokenized_document_dataset_reproducibly_shuffles_train_order_by_epoch(
+    tmp_path: Path,
+) -> None:
+    dataset_root = _build_train_iteration_fixture(tmp_path)
+    first = LazyTokenizedDocumentDataset(
+        dataset_root,
+        split="train",
+        iteration_options=LoaderIterationOptions(seed=17),
+    )
+    repeated = LazyTokenizedDocumentDataset(
+        dataset_root,
+        split="train",
+        iteration_options=LoaderIterationOptions(seed=17),
+    )
+    next_epoch = first.with_epoch(1)
+    validation = LazyTokenizedDocumentDataset(
+        dataset_root,
+        split="validation",
+        iteration_options=LoaderIterationOptions(seed=17),
+    )
+
+    first_order = [
+        (document.shard_id, document.row.relative_path) for document in first
+    ]
+    repeated_order = [
+        (document.shard_id, document.row.relative_path) for document in repeated
+    ]
+    next_epoch_order = [
+        (document.shard_id, document.row.relative_path) for document in next_epoch
+    ]
+    validation_order = [
+        (document.shard_id, document.row.relative_path) for document in validation
+    ]
+
+    assert repeated_order == first_order
+    assert next_epoch_order != first_order
+    assert validation_order == [
+        ("shard-00001", "fixtures/validation_a.json"),
+        ("shard-00002", "fixtures/validation_b.json"),
+    ]
+
+
+def test_lazy_token_window_dataset_reproducibly_shuffles_train_windows_only() -> None:
+    document = LoadedTokenizedDocument(
+        shard_id="shard-00000",
+        record_path="records/train/shard-00000/fixtures/train_windows.json.model_input.parquet",
+        row=TokenizedDocumentRow(
+            relative_path="fixtures/train_windows.json",
+            document_id="train-windows-doc",
+            split="train",
+            split_version="split-v1",
+            projection_type="sequence",
+            sequence_mode="baseline_v1",
+            normalized_ir_version="normalized-v1",
+            feature_version="feature-v1",
+            vocabulary_version="vocab-v1",
+            model_input_version="model-input-v1",
+            storage_schema_version="parquet-v1",
+            token_count=14,
+            token_ids=(1, 4, 6, 5, 8, 7, 5, 9, 10, 11, 12, 13, 14, 2),
+            window_start_offsets=(0, 2, 4, 6, 8, 10),
+            context_length=4,
+            stride=2,
+            padding_strategy="right",
+            special_token_policy=SpecialTokenPolicy().to_version_payload(),
+        ),
+    )
+    first = LazyTokenWindowDataset(
+        (document,),
+        split="train",
+        special_token_ids=SpecialTokenIds(
+            pad_token_id=0,
+            bos_token_id=1,
+            eos_token_id=2,
+            unk_token_id=3,
+        ),
+        iteration_options=LoaderIterationOptions(seed=17),
+    )
+    repeated = LazyTokenWindowDataset(
+        (document,),
+        split="train",
+        special_token_ids=SpecialTokenIds(
+            pad_token_id=0,
+            bos_token_id=1,
+            eos_token_id=2,
+            unk_token_id=3,
+        ),
+        iteration_options=LoaderIterationOptions(seed=17),
+    )
+    next_epoch = first.with_epoch(1)
+    validation = LazyTokenWindowDataset(
+        (document,),
+        split="validation",
+        special_token_ids=SpecialTokenIds(
+            pad_token_id=0,
+            bos_token_id=1,
+            eos_token_id=2,
+            unk_token_id=3,
+        ),
+        iteration_options=LoaderIterationOptions(seed=17),
+    )
+
+    first_offsets = [example.window_start_offset for example in first]
+    repeated_offsets = [example.window_start_offset for example in repeated]
+    next_epoch_offsets = [example.window_start_offset for example in next_epoch]
+    validation_offsets = [example.window_start_offset for example in validation]
+
+    assert repeated_offsets == first_offsets
+    assert next_epoch_offsets != first_offsets
+    assert validation_offsets == [0, 2, 4, 6, 8, 10]
 
 
 def _build_model_input_fixture(tmp_path: Path) -> Path:
@@ -247,6 +361,57 @@ def _build_model_input_fixture(tmp_path: Path) -> Path:
             "records": [
                 _build_row(relative_path="fixtures/b.json", split="validation"),
                 _build_row(relative_path="fixtures/c.json", split="train"),
+            ],
+        }
+    )
+    return dataset_root
+
+
+def _build_train_iteration_fixture(tmp_path: Path) -> Path:
+    dataset_root = tmp_path / "train_iteration_model_input"
+    shard_zero = TokenizedModelInputDataset(
+        filepath=str(dataset_root),
+        shard_id="shard-00000",
+    )
+    shard_one = TokenizedModelInputDataset(
+        filepath=str(dataset_root),
+        shard_id="shard-00001",
+    )
+    shard_two = TokenizedModelInputDataset(
+        filepath=str(dataset_root),
+        shard_id="shard-00002",
+    )
+
+    shard_zero.save(
+        {
+            "parameters": {"model_input_version": "model-input-v1"},
+            "records": [
+                _build_row(relative_path="fixtures/train_a.json", split="train"),
+                _build_row(relative_path="fixtures/train_b.json", split="train"),
+            ],
+        }
+    )
+    shard_one.save(
+        {
+            "parameters": {"model_input_version": "model-input-v1"},
+            "records": [
+                _build_row(relative_path="fixtures/train_c.json", split="train"),
+                _build_row(relative_path="fixtures/train_d.json", split="train"),
+                _build_row(
+                    relative_path="fixtures/validation_a.json", split="validation"
+                ),
+            ],
+        }
+    )
+    shard_two.save(
+        {
+            "parameters": {"model_input_version": "model-input-v1"},
+            "records": [
+                _build_row(relative_path="fixtures/train_e.json", split="train"),
+                _build_row(relative_path="fixtures/train_f.json", split="train"),
+                _build_row(
+                    relative_path="fixtures/validation_b.json", split="validation"
+                ),
             ],
         }
     )

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import random
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
@@ -82,6 +84,23 @@ class SpecialTokenIds:
             bos_token_id=typed_vocabulary.token_to_id[BOS_TOKEN],
             eos_token_id=typed_vocabulary.token_to_id[EOS_TOKEN],
             unk_token_id=typed_vocabulary.token_to_id[UNK_TOKEN],
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class LoaderIterationOptions:
+    """Seeded iteration-order controls for lazy training-time datasets."""
+
+    seed: int = 0
+    epoch: int = 0
+    shuffle_shards: bool | None = None
+    shuffle_documents: bool | None = None
+    shuffle_windows: bool | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "seed", _normalize_seed(self.seed))
+        object.__setattr__(
+            self, "epoch", _normalize_non_negative_int(self.epoch, "epoch")
         )
 
 
@@ -197,7 +216,7 @@ class LazyTokenizedDocumentDataset(IterableDataset[LoadedTokenizedDocument]):
         split: DatasetSplit | str,
         shard_ids: Sequence[str] | None = None,
         row_loader: Callable[[str | Path], TokenizedDocumentRow] | None = None,
-        storage_schema: ModelInputStorageSchema | dict[str, Any] | None = None,
+        iteration_options: LoaderIterationOptions | Mapping[str, Any] | None = None,
     ) -> None:
         self._dataset_root = Path(dataset_root)
         self._split = DatasetSplit(split)
@@ -209,12 +228,13 @@ class LazyTokenizedDocumentDataset(IterableDataset[LoadedTokenizedDocument]):
         self._row_loader = (
             load_tokenized_document_row_file if row_loader is None else row_loader
         )
-        self._storage_schema = self._load_storage_schema(storage_schema)
+        self._storage_schema = self._load_storage_schema()
+        self._iteration_options = coerce_loader_iteration_options(iteration_options)
 
     def __iter__(self) -> Iterator[LoadedTokenizedDocument]:
         """Yield tokenized document rows lazily in deterministic split/shard order."""
-        for shard_id in self.shard_ids:
-            for record_path in self._iter_shard_record_paths(shard_id):
+        for shard_id in self._ordered_shard_ids():
+            for record_path in self._ordered_shard_record_paths(shard_id):
                 row = self._row_loader(record_path)
                 if row.split is not self._split:
                     raise DatasetError(
@@ -239,22 +259,60 @@ class LazyTokenizedDocumentDataset(IterableDataset[LoadedTokenizedDocument]):
             return discover_model_input_shards(self._dataset_root, split=self._split)
         return self._shard_ids
 
-    def _iter_shard_record_paths(self, shard_id: str) -> Iterator[Path]:
+    def with_epoch(self, epoch: int) -> LazyTokenizedDocumentDataset:
+        """Return one equivalent dataset scoped to a different epoch seed."""
+        return LazyTokenizedDocumentDataset(
+            self._dataset_root,
+            split=self._split,
+            shard_ids=self._shard_ids,
+            row_loader=self._row_loader,
+            iteration_options=replace(
+                self._iteration_options,
+                epoch=_normalize_non_negative_int(epoch, "epoch"),
+            ),
+        )
+
+    def _ordered_shard_ids(self) -> tuple[str, ...]:
+        shard_ids = list(self.shard_ids)
+        if _resolve_shuffle_enabled(
+            split=self._split,
+            override=self._iteration_options.shuffle_shards,
+        ):
+            _shuffle_in_place(
+                shard_ids,
+                iteration_options=self._iteration_options,
+                split=self._split,
+                scope="shards",
+            )
+        return tuple(shard_ids)
+
+    def _ordered_shard_record_paths(self, shard_id: str) -> tuple[Path, ...]:
         shard_root = self._dataset_root / "records" / self._split.value / shard_id
         if not shard_root.exists():
-            return
-        yield from sorted(shard_root.rglob(f"*{self._storage_schema.record_suffix}"))
+            return ()
+        record_paths = sorted(
+            shard_root.rglob(f"*{self._storage_schema.record_suffix}")
+        )
+        if _resolve_shuffle_enabled(
+            split=self._split,
+            override=self._iteration_options.shuffle_documents,
+        ):
+            _shuffle_in_place(
+                record_paths,
+                iteration_options=self._iteration_options,
+                split=self._split,
+                scope="documents",
+                key=shard_id,
+            )
+        return tuple(record_paths)
 
-    def _load_storage_schema(
-        self,
-        configured_schema: ModelInputStorageSchema | dict[str, Any] | None,
-    ) -> ModelInputStorageSchema:
+    def _load_storage_schema(self) -> ModelInputStorageSchema:
         schema_path = self._dataset_root / MODEL_INPUT_STORAGE_SCHEMA_FILENAME
         if schema_path.exists():
             with schema_path.open("r", encoding="utf-8") as stream:
                 persisted_schema = json.load(stream)
             return coerce_model_input_storage_schema(persisted_schema)
-        return coerce_model_input_storage_schema(configured_schema)
+        return ModelInputStorageSchema()
 
 
 class LazyTokenWindowDataset(IterableDataset[TokenWindowExample]):
@@ -266,17 +324,31 @@ class LazyTokenWindowDataset(IterableDataset[TokenWindowExample]):
         *,
         special_token_ids: SpecialTokenIds | FrozenVocabulary | Mapping[str, Any],
         drop_empty_targets: bool = True,
+        split: DatasetSplit | str | None = None,
+        iteration_options: LoaderIterationOptions | Mapping[str, Any] | None = None,
     ) -> None:
         self._documents = documents
         self._special_token_ids = coerce_special_token_ids(special_token_ids)
         self._drop_empty_targets = bool(drop_empty_targets)
+        self._split = None if split is None else DatasetSplit(split)
+        self._iteration_options = coerce_loader_iteration_options(iteration_options)
 
     def __iter__(self) -> Iterator[TokenWindowExample]:
         """Yield reconstructed windows in persisted offset order."""
         for document in self._documents:
-            for window_index, window_start_offset in enumerate(
-                document.row.window_start_offsets
+            window_offsets = list(document.row.window_start_offsets)
+            if _resolve_shuffle_enabled(
+                split=self._effective_split(document),
+                override=self._iteration_options.shuffle_windows,
             ):
+                _shuffle_in_place(
+                    window_offsets,
+                    iteration_options=self._iteration_options,
+                    split=self._effective_split(document),
+                    scope="windows",
+                    key=f"{document.shard_id}|{document.row.relative_path}",
+                )
+            for window_index, window_start_offset in enumerate(window_offsets):
                 example = build_token_window_example(
                     document.row,
                     shard_id=document.shard_id,
@@ -287,6 +359,24 @@ class LazyTokenWindowDataset(IterableDataset[TokenWindowExample]):
                 if self._drop_empty_targets and not any(example.attention_mask):
                     continue
                 yield example
+
+    def with_epoch(self, epoch: int) -> LazyTokenWindowDataset:
+        """Return one equivalent dataset scoped to a different epoch seed."""
+        return LazyTokenWindowDataset(
+            self._documents,
+            special_token_ids=self._special_token_ids,
+            drop_empty_targets=self._drop_empty_targets,
+            split=self._split,
+            iteration_options=replace(
+                self._iteration_options,
+                epoch=_normalize_non_negative_int(epoch, "epoch"),
+            ),
+        )
+
+    def _effective_split(self, document: LoadedTokenizedDocument) -> DatasetSplit:
+        if self._split is not None:
+            return self._split
+        return document.row.split
 
 
 def build_token_window_example(
@@ -390,6 +480,23 @@ def coerce_special_token_ids(
     )
 
 
+def coerce_loader_iteration_options(
+    value: LoaderIterationOptions | Mapping[str, Any] | None,
+) -> LoaderIterationOptions:
+    """Coerce JSON-loaded iteration settings into the typed loader contract."""
+    if value is None:
+        return LoaderIterationOptions()
+    if isinstance(value, LoaderIterationOptions):
+        return value
+    return LoaderIterationOptions(
+        seed=int(value.get("seed", 0)),
+        epoch=int(value.get("epoch", 0)),
+        shuffle_shards=_coerce_optional_bool(value.get("shuffle_shards")),
+        shuffle_documents=_coerce_optional_bool(value.get("shuffle_documents")),
+        shuffle_windows=_coerce_optional_bool(value.get("shuffle_windows")),
+    )
+
+
 def _build_semantic_positions(
     *,
     raw_input_ids: tuple[int, ...],
@@ -481,13 +588,73 @@ def _normalize_attention_value(value: Any, index: int) -> int:
     return normalized
 
 
+def _normalize_seed(value: Any) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError("seed must be an integer.")
+    return value
+
+
+def _coerce_optional_bool(value: Any) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    raise ValueError("Optional shuffle overrides must be booleans when provided.")
+
+
+def _resolve_shuffle_enabled(
+    *,
+    split: DatasetSplit,
+    override: bool | None,
+) -> bool:
+    if override is not None:
+        return bool(override)
+    return split is DatasetSplit.TRAIN
+
+
+def _shuffle_in_place(
+    values: list[Any],
+    *,
+    iteration_options: LoaderIterationOptions,
+    split: DatasetSplit,
+    scope: str,
+    key: str = "",
+) -> None:
+    rng = random.Random(
+        _derived_shuffle_seed(
+            iteration_options=iteration_options,
+            split=split,
+            scope=scope,
+            key=key,
+        )
+    )
+    rng.shuffle(values)
+
+
+def _derived_shuffle_seed(
+    *,
+    iteration_options: LoaderIterationOptions,
+    split: DatasetSplit,
+    scope: str,
+    key: str,
+) -> int:
+    payload = (
+        f"{iteration_options.seed}|{iteration_options.epoch}|"
+        f"{split.value}|{scope}|{key}"
+    ).encode()
+    digest = hashlib.sha256(payload).digest()
+    return int.from_bytes(digest[:8], byteorder="big", signed=False)
+
+
 __all__ = [
     "LazyTokenWindowDataset",
     "LazyTokenizedDocumentDataset",
+    "LoaderIterationOptions",
     "LoadedTokenizedDocument",
     "SpecialTokenIds",
     "TokenWindowExample",
     "build_token_window_example",
+    "coerce_loader_iteration_options",
     "coerce_special_token_ids",
     "discover_model_input_shards",
     "load_tokenized_document_row_file",
