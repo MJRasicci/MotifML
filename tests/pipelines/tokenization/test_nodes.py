@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from motifml.ir.models import NoteEvent, Pitch
 from motifml.ir.projections.sequence import (
     NoteSequenceEvent,
@@ -38,6 +40,8 @@ from motifml.training.token_families import BOS_TOKEN, EOS_TOKEN, PAD_TOKEN
 EXPECTED_TIME_RESOLUTION = 48
 EXPECTED_TRAIN_TOKEN_COUNT = 6
 EXPECTED_REDUCED_VOCABULARY_SIZE = 7
+EXPECTED_TOP_TOKEN_COUNT = 4
+EXPECTED_DROPPED_TOKEN_COUNT = 3
 
 
 def test_tokenize_features_consumes_typed_parameters() -> None:
@@ -264,51 +268,7 @@ def test_count_training_split_tokens_is_deterministic_and_filters_to_train() -> 
 
 
 def test_reduce_vocabulary_is_deterministic_and_assigns_stable_ids() -> None:
-    shard_counts = [
-        {
-            "feature_version": "feature-v1",
-            "split_version": "split-v1",
-            "time_resolution": 96,
-            "special_token_policy": {
-                "bos": "document",
-                "eos": "document",
-                "padding_interaction": "outside_boundaries",
-                "unknown_token_mapping": "map_to_unk",
-            },
-            "counted_document_count": 1,
-            "total_token_count": 10,
-            "counted_relative_paths": ["fixtures/a.json"],
-            "token_counts": [
-                {"token": BOS_TOKEN, "count": 1},
-                {"token": EOS_TOKEN, "count": 1},
-                {"token": "NOTE_DURATION:96", "count": 3},
-                {"token": "NOTE_PITCH:C4", "count": 3},
-                {"token": "STRUCTURE:BAR", "count": 2},
-            ],
-        },
-        {
-            "feature_version": "feature-v1",
-            "split_version": "split-v1",
-            "time_resolution": 96,
-            "special_token_policy": {
-                "bos": "document",
-                "eos": "document",
-                "padding_interaction": "outside_boundaries",
-                "unknown_token_mapping": "map_to_unk",
-            },
-            "counted_document_count": 1,
-            "total_token_count": 7,
-            "counted_relative_paths": ["fixtures/b.json"],
-            "token_counts": [
-                {"token": BOS_TOKEN, "count": 1},
-                {"token": EOS_TOKEN, "count": 1},
-                {"token": "NOTE_DURATION:96", "count": 1},
-                {"token": "STRUCTURE:BAR", "count": 1},
-                {"token": "TIME_SHIFT:96", "count": 2},
-                {"token": "NOTE_PITCH:D4", "count": 1},
-            ],
-        },
-    ]
+    shard_counts = _build_reduction_shard_counts()
     parameters = VocabularyParameters(
         time_resolution=96,
         minimum_frequency=2,
@@ -360,6 +320,65 @@ def test_reduce_vocabulary_is_deterministic_and_assigns_stable_ids() -> None:
     assert first_vocabulary.vocabulary_size == EXPECTED_REDUCED_VOCABULARY_SIZE
     assert first_stats.token_family_coverage[0].family == "NOTE_DURATION"
     assert first_stats.token_family_coverage[-1].family == "STRUCTURE"
+    assert first_stats.guardrails.passed is True
+    assert first_stats.guardrails.missing_required_token_families == ()
+    assert first_stats.guardrails.top_token == "NOTE_DURATION:96"
+    assert first_stats.guardrails.top_token_count == EXPECTED_TOP_TOKEN_COUNT
+    assert first_stats.guardrails.top_token_fraction == pytest.approx(4 / 14)
+    assert (
+        first_stats.guardrails.estimated_unk_token_count == EXPECTED_DROPPED_TOKEN_COUNT
+    )
+    assert first_stats.guardrails.estimated_unk_fraction == pytest.approx(3 / 17)
+
+
+@pytest.mark.parametrize(
+    ("guardrails", "expected_message"),
+    [
+        (
+            {"minimum_vocabulary_size": 8},
+            "minimum_vocabulary_size=8",
+        ),
+        (
+            {"required_token_families": ("NOTE_DURATION", "NOTE_VELOCITY")},
+            "NOTE_VELOCITY",
+        ),
+        (
+            {"maximum_top_token_fraction": 0.2},
+            "top token concentration exceeds threshold",
+        ),
+        (
+            {"maximum_unk_fraction": 0.1},
+            "estimated <unk> rate exceeds threshold",
+        ),
+    ],
+)
+def test_reduce_vocabulary_fails_fast_for_degenerate_guardrail_conditions(
+    guardrails: dict[str, object],
+    expected_message: str,
+) -> None:
+    parameters = VocabularyParameters(
+        time_resolution=96,
+        minimum_frequency=2,
+        maximum_size=7,
+        guardrails={
+            "minimum_vocabulary_size": 7,
+            "required_token_families": (
+                "NOTE_DURATION",
+                "NOTE_PITCH",
+                "STRUCTURE",
+            ),
+            "maximum_top_token_fraction": 0.6,
+            "maximum_unk_fraction": 0.25,
+            **guardrails,
+        },
+    )
+
+    with pytest.raises(ValueError, match=expected_message):
+        reduce_vocabulary(
+            _build_reduction_shard_counts(),
+            parameters,
+            split_seed=17,
+        )
 
 
 def _build_note_event(pitch_step: str, time: ScoreTime) -> NoteSequenceEvent:
@@ -382,3 +401,51 @@ def _build_note_event(pitch_step: str, time: ScoreTime) -> NoteSequenceEvent:
         voice_lane_id="voice:1",
         onset_id=onset_id,
     )
+
+
+def _build_reduction_shard_counts() -> list[dict[str, object]]:
+    return [
+        {
+            "feature_version": "feature-v1",
+            "split_version": "split-v1",
+            "time_resolution": 96,
+            "special_token_policy": {
+                "bos": "document",
+                "eos": "document",
+                "padding_interaction": "outside_boundaries",
+                "unknown_token_mapping": "map_to_unk",
+            },
+            "counted_document_count": 1,
+            "total_token_count": 10,
+            "counted_relative_paths": ["fixtures/a.json"],
+            "token_counts": [
+                {"token": BOS_TOKEN, "count": 1},
+                {"token": EOS_TOKEN, "count": 1},
+                {"token": "NOTE_DURATION:96", "count": 3},
+                {"token": "NOTE_PITCH:C4", "count": 3},
+                {"token": "STRUCTURE:BAR", "count": 2},
+            ],
+        },
+        {
+            "feature_version": "feature-v1",
+            "split_version": "split-v1",
+            "time_resolution": 96,
+            "special_token_policy": {
+                "bos": "document",
+                "eos": "document",
+                "padding_interaction": "outside_boundaries",
+                "unknown_token_mapping": "map_to_unk",
+            },
+            "counted_document_count": 1,
+            "total_token_count": 7,
+            "counted_relative_paths": ["fixtures/b.json"],
+            "token_counts": [
+                {"token": BOS_TOKEN, "count": 1},
+                {"token": EOS_TOKEN, "count": 1},
+                {"token": "NOTE_DURATION:96", "count": 1},
+                {"token": "STRUCTURE:BAR", "count": 1},
+                {"token": "TIME_SHIFT:96", "count": 2},
+                {"token": "NOTE_PITCH:D4", "count": 1},
+            ],
+        },
+    ]

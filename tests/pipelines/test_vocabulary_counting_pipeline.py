@@ -53,3 +53,4 @@ def test_vocabulary_counting_shards_reduce_into_frozen_vocabulary(
     assert vocabulary["vocabulary_size"] == len(vocabulary["token_to_id"])
     assert vocab_stats["vocabulary_version"] == vocabulary["vocabulary_version"]
     assert vocab_stats["token_family_coverage"]
+    assert vocab_stats["guardrails"]["passed"] is True

@@ -20,6 +20,7 @@ PARAMETERS_PATH = "conf/base/parameters.yml"
 OVERRIDE_BATCH_SIZE = 16
 OVERRIDE_TOP_K = 10
 OVERRIDE_CONTEXT_LENGTH = 384
+EXPECTED_MINIMUM_VOCABULARY_SIZE = 7
 
 
 def test_parameters_yaml_defines_all_training_parameter_families() -> None:
@@ -86,6 +87,18 @@ def test_parameters_yaml_uses_the_canonical_special_token_policy_shape() -> None
         coerce_special_token_policy(parameters["model_input"]["special_token_policy"])
         == SpecialTokenPolicy()
     )
+
+
+def test_parameters_yaml_defines_vocabulary_guardrails() -> None:
+    parameters = _load_parameters()
+    guardrails = parameters["vocabulary"]["guardrails"]
+
+    assert guardrails["minimum_vocabulary_size"] == EXPECTED_MINIMUM_VOCABULARY_SIZE
+    assert guardrails["required_token_families"] == [
+        "NOTE_DURATION",
+        "NOTE_PITCH",
+        "STRUCTURE",
+    ]
 
 
 def _load_parameters() -> dict[str, object]:

@@ -101,6 +101,14 @@ vocabulary:
     bos: <bos>
     eos: <eos>
     unk: <unk>
+  guardrails:
+    minimum_vocabulary_size: 7
+    required_token_families:
+      - NOTE_DURATION
+      - NOTE_PITCH
+      - STRUCTURE
+    maximum_top_token_fraction: 0.6
+    maximum_unk_fraction: 0.25
 
 model_input:
   projection_type: sequence

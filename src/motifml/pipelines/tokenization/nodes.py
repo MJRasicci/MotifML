@@ -48,6 +48,8 @@ from motifml.pipelines.tokenization.models import (
     TokenFamilyCoverageEntry,
     TokenizationParameters,
     VocabularyArtifact,
+    VocabularyGuardrailParameters,
+    VocabularyGuardrailReport,
     VocabularyParameters,
     VocabularyStatsReport,
     coerce_shard_token_counts,
@@ -251,6 +253,11 @@ def reduce_vocabulary(
         construction_parameters=vocabulary_version_payload,
         special_token_policy=dict(merged_counts.special_token_policy),
     )
+    guardrail_report = _build_vocabulary_guardrail_report(
+        merged_counts,
+        retained_counts,
+        typed_parameters.guardrails,
+    )
     stats = VocabularyStatsReport(
         vocabulary_version=vocabulary_version,
         feature_version=merged_counts.feature_version,
@@ -261,6 +268,7 @@ def reduce_vocabulary(
         top_tokens=tuple(
             sorted(retained_counts, key=lambda item: (-item.count, item.token))[:10]
         ),
+        guardrails=guardrail_report,
         construction_parameters=vocabulary_version_payload,
     )
     metadata = VocabularyMetadata(
@@ -272,6 +280,7 @@ def reduce_vocabulary(
         construction_parameters=vocabulary_version_payload,
         special_token_policy=dict(merged_counts.special_token_policy),
     )
+    _raise_if_vocabulary_degenerate(guardrail_report)
     return vocabulary, stats, metadata
 
 
@@ -708,6 +717,60 @@ def _build_token_family_coverage(
     )
 
 
+def _build_vocabulary_guardrail_report(
+    merged_counts: ShardTokenCounts,
+    retained_counts: tuple[TokenCountEntry, ...],
+    guardrails: VocabularyGuardrailParameters,
+) -> VocabularyGuardrailReport:
+    token_family_coverage = _build_token_family_coverage(retained_counts)
+    observed_families = {entry.family for entry in token_family_coverage}
+    missing_required_families = tuple(
+        family
+        for family in guardrails.required_token_families
+        if family not in observed_families
+    )
+
+    retained_token_count = sum(entry.count for entry in retained_counts)
+    dropped_token_count = max(merged_counts.total_token_count - retained_token_count, 0)
+    estimated_unk_fraction = (
+        dropped_token_count / merged_counts.total_token_count
+        if merged_counts.total_token_count > 0
+        else 0.0
+    )
+
+    counted_tokens = tuple(
+        entry
+        for entry in sorted(retained_counts, key=lambda item: (-item.count, item.token))
+        if entry.count > 0
+    )
+    top_token = counted_tokens[0] if counted_tokens else None
+    top_token_fraction = (
+        top_token.count / retained_token_count
+        if top_token is not None and retained_token_count > 0
+        else 0.0
+    )
+    passed = (
+        len(retained_counts) >= guardrails.minimum_vocabulary_size
+        and not missing_required_families
+        and top_token_fraction <= guardrails.maximum_top_token_fraction
+        and estimated_unk_fraction <= guardrails.maximum_unk_fraction
+    )
+    return VocabularyGuardrailReport(
+        observed_vocabulary_size=len(retained_counts),
+        minimum_vocabulary_size=guardrails.minimum_vocabulary_size,
+        required_token_families=guardrails.required_token_families,
+        missing_required_token_families=missing_required_families,
+        top_token=None if top_token is None else top_token.token,
+        top_token_count=0 if top_token is None else top_token.count,
+        top_token_fraction=top_token_fraction,
+        maximum_top_token_fraction=guardrails.maximum_top_token_fraction,
+        estimated_unk_token_count=dropped_token_count,
+        estimated_unk_fraction=estimated_unk_fraction,
+        maximum_unk_fraction=guardrails.maximum_unk_fraction,
+        passed=passed,
+    )
+
+
 def _token_family(token: str) -> str:
     if token.startswith("<") and token.endswith(">"):
         return "SPECIAL"
@@ -721,6 +784,39 @@ def _vocabulary_version_payload(parameters: VocabularyParameters) -> dict[str, A
         "maximum_size": parameters.maximum_size,
         "special_tokens": dict(parameters.special_tokens or SPECIAL_TOKENS),
     }
+
+
+def _raise_if_vocabulary_degenerate(report: VocabularyGuardrailReport) -> None:
+    if report.passed:
+        return
+
+    failures: list[str] = []
+    if report.observed_vocabulary_size < report.minimum_vocabulary_size:
+        failures.append(
+            "vocabulary_size="
+            f"{report.observed_vocabulary_size} is below minimum_vocabulary_size="
+            f"{report.minimum_vocabulary_size}"
+        )
+    if report.missing_required_token_families:
+        failures.append(
+            "missing required token families: "
+            + ", ".join(report.missing_required_token_families)
+        )
+    if report.top_token_fraction > report.maximum_top_token_fraction:
+        failures.append(
+            "top token concentration exceeds threshold: "
+            f"{report.top_token!r} accounts for "
+            f"{report.top_token_fraction:.4f} of retained tokens "
+            f"(max {report.maximum_top_token_fraction:.4f})"
+        )
+    if report.estimated_unk_fraction > report.maximum_unk_fraction:
+        failures.append(
+            "estimated <unk> rate exceeds threshold: "
+            f"{report.estimated_unk_fraction:.4f} "
+            f"({report.estimated_unk_token_count} dropped tokens, "
+            f"max {report.maximum_unk_fraction:.4f})"
+        )
+    raise ValueError("Vocabulary guardrails failed: " + "; ".join(failures) + ".")
 
 
 def _special_token_policy_from_model_input(

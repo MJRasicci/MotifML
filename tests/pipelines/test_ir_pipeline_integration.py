@@ -154,6 +154,7 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
     assert ir_features["parameters"]["normalized_ir_version"]
     assert vocabulary["vocabulary_version"] == vocabulary_version["vocabulary_version"]
     assert vocab_stats["vocabulary_version"] == vocabulary["vocabulary_version"]
+    assert vocab_stats["guardrails"]["passed"] is True
     assert len(load_partitioned_record_set(output_root / "model_input")["records"]) == (
         EXPECTED_FIXTURE_COUNT
     )

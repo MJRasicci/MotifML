@@ -9,7 +9,7 @@ from typing import Any
 
 from motifml.pipelines.feature_extraction.models import ProjectionType
 from motifml.training.token_codec import coerce_frozen_vocabulary
-from motifml.training.token_families import SPECIAL_TOKENS
+from motifml.training.token_families import SPECIAL_TOKENS, TokenFamily
 
 
 class PaddingStrategy(StrEnum):
@@ -54,6 +54,9 @@ class VocabularyParameters:
     minimum_frequency: int = 1
     maximum_size: int = 65536
     special_tokens: dict[str, str] | None = None
+    guardrails: VocabularyGuardrailParameters | Mapping[str, Any] = field(
+        default_factory=lambda: VocabularyGuardrailParameters()
+    )
 
     def __post_init__(self) -> None:
         if self.time_resolution <= 0:
@@ -69,6 +72,54 @@ class VocabularyParameters:
                     _normalize_text(str(key), "special_tokens")
                 ] = _normalize_text(str(value), "special_tokens")
         object.__setattr__(self, "special_tokens", normalized_special_tokens)
+        object.__setattr__(
+            self,
+            "guardrails",
+            coerce_vocabulary_guardrail_parameters(self.guardrails),
+        )
+
+
+@dataclass(frozen=True)
+class VocabularyGuardrailParameters:
+    """Acceptance thresholds for frozen-vocabulary health checks."""
+
+    minimum_vocabulary_size: int = 7
+    required_token_families: tuple[str, ...] = (
+        TokenFamily.NOTE_DURATION.value,
+        TokenFamily.NOTE_PITCH.value,
+        TokenFamily.STRUCTURE.value,
+    )
+    maximum_top_token_fraction: float = 0.6
+    maximum_unk_fraction: float = 0.25
+
+    def __post_init__(self) -> None:
+        if self.minimum_vocabulary_size <= 0:
+            raise ValueError("minimum_vocabulary_size must be positive.")
+        normalized_families = tuple(
+            sorted(
+                {
+                    _normalize_text(str(family), "required_token_families").upper()
+                    for family in self.required_token_families
+                }
+            )
+        )
+        object.__setattr__(self, "required_token_families", normalized_families)
+        object.__setattr__(
+            self,
+            "maximum_top_token_fraction",
+            _normalize_fraction(
+                self.maximum_top_token_fraction,
+                "maximum_top_token_fraction",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "maximum_unk_fraction",
+            _normalize_fraction(
+                self.maximum_unk_fraction,
+                "maximum_unk_fraction",
+            ),
+        )
 
 
 @dataclass(frozen=True)
@@ -228,6 +279,88 @@ class TokenFamilyCoverageEntry:
 
 
 @dataclass(frozen=True)
+class VocabularyGuardrailReport:
+    """Human-reviewable summary of frozen-vocabulary acceptance checks."""
+
+    observed_vocabulary_size: int
+    minimum_vocabulary_size: int
+    required_token_families: tuple[str, ...]
+    missing_required_token_families: tuple[str, ...]
+    top_token: str | None
+    top_token_count: int
+    top_token_fraction: float
+    maximum_top_token_fraction: float
+    estimated_unk_token_count: int
+    estimated_unk_fraction: float
+    maximum_unk_fraction: float
+    passed: bool
+
+    def __post_init__(self) -> None:
+        if self.observed_vocabulary_size < 0:
+            raise ValueError("observed_vocabulary_size must be non-negative.")
+        if self.minimum_vocabulary_size <= 0:
+            raise ValueError("minimum_vocabulary_size must be positive.")
+        object.__setattr__(
+            self,
+            "required_token_families",
+            tuple(
+                sorted(
+                    _normalize_text(str(family), "required_token_families").upper()
+                    for family in self.required_token_families
+                )
+            ),
+        )
+        object.__setattr__(
+            self,
+            "missing_required_token_families",
+            tuple(
+                sorted(
+                    _normalize_text(
+                        str(family), "missing_required_token_families"
+                    ).upper()
+                    for family in self.missing_required_token_families
+                )
+            ),
+        )
+        normalized_top_token = None
+        if self.top_token is not None:
+            normalized_top_token = _normalize_text(self.top_token, "top_token")
+        object.__setattr__(self, "top_token", normalized_top_token)
+        if self.top_token_count < 0:
+            raise ValueError("top_token_count must be non-negative.")
+        if normalized_top_token is None and self.top_token_count != 0:
+            raise ValueError("top_token_count must be zero when top_token is absent.")
+        object.__setattr__(
+            self,
+            "top_token_fraction",
+            _normalize_fraction(self.top_token_fraction, "top_token_fraction"),
+        )
+        object.__setattr__(
+            self,
+            "maximum_top_token_fraction",
+            _normalize_fraction(
+                self.maximum_top_token_fraction,
+                "maximum_top_token_fraction",
+            ),
+        )
+        if self.estimated_unk_token_count < 0:
+            raise ValueError("estimated_unk_token_count must be non-negative.")
+        object.__setattr__(
+            self,
+            "estimated_unk_fraction",
+            _normalize_fraction(self.estimated_unk_fraction, "estimated_unk_fraction"),
+        )
+        object.__setattr__(
+            self,
+            "maximum_unk_fraction",
+            _normalize_fraction(
+                self.maximum_unk_fraction,
+                "maximum_unk_fraction",
+            ),
+        )
+
+
+@dataclass(frozen=True)
 class VocabularyArtifact:
     """Frozen vocabulary surface persisted for deterministic tokenization."""
 
@@ -331,6 +464,7 @@ class VocabularyStatsReport:
     vocabulary_size: int
     token_family_coverage: tuple[TokenFamilyCoverageEntry, ...]
     top_tokens: tuple[TokenCountEntry, ...]
+    guardrails: VocabularyGuardrailReport | Mapping[str, Any]
     construction_parameters: dict[str, Any]
 
     def __post_init__(self) -> None:
@@ -386,6 +520,44 @@ class VocabularyStatsReport:
         )
         object.__setattr__(
             self,
+            "guardrails",
+            (
+                self.guardrails
+                if isinstance(self.guardrails, VocabularyGuardrailReport)
+                else VocabularyGuardrailReport(
+                    observed_vocabulary_size=int(
+                        self.guardrails["observed_vocabulary_size"]
+                    ),
+                    minimum_vocabulary_size=int(
+                        self.guardrails["minimum_vocabulary_size"]
+                    ),
+                    required_token_families=tuple(
+                        self.guardrails.get("required_token_families", ())
+                    ),
+                    missing_required_token_families=tuple(
+                        self.guardrails.get("missing_required_token_families", ())
+                    ),
+                    top_token=None
+                    if self.guardrails.get("top_token") is None
+                    else str(self.guardrails["top_token"]),
+                    top_token_count=int(self.guardrails["top_token_count"]),
+                    top_token_fraction=float(self.guardrails["top_token_fraction"]),
+                    maximum_top_token_fraction=float(
+                        self.guardrails["maximum_top_token_fraction"]
+                    ),
+                    estimated_unk_token_count=int(
+                        self.guardrails["estimated_unk_token_count"]
+                    ),
+                    estimated_unk_fraction=float(
+                        self.guardrails["estimated_unk_fraction"]
+                    ),
+                    maximum_unk_fraction=float(self.guardrails["maximum_unk_fraction"]),
+                    passed=bool(self.guardrails["passed"]),
+                )
+            ),
+        )
+        object.__setattr__(
+            self,
             "construction_parameters",
             {
                 _normalize_text(str(key), "construction_parameters"): value
@@ -431,6 +603,24 @@ def coerce_vocabulary_parameters(
                 for key, token in value.get("special_tokens", {}).items()
             }
         ),
+        guardrails=value.get("guardrails", {}),
+    )
+
+
+def coerce_vocabulary_guardrail_parameters(
+    value: VocabularyGuardrailParameters | Mapping[str, Any] | None,
+) -> VocabularyGuardrailParameters:
+    """Coerce Kedro vocabulary guardrail mappings into the typed config."""
+    if value is None:
+        return VocabularyGuardrailParameters()
+    if isinstance(value, VocabularyGuardrailParameters):
+        return value
+
+    return VocabularyGuardrailParameters(
+        minimum_vocabulary_size=int(value.get("minimum_vocabulary_size", 7)),
+        required_token_families=tuple(value.get("required_token_families", ())),
+        maximum_top_token_fraction=float(value.get("maximum_top_token_fraction", 0.6)),
+        maximum_unk_fraction=float(value.get("maximum_unk_fraction", 0.25)),
     )
 
 
@@ -503,6 +693,7 @@ def coerce_vocabulary_stats_report(
         vocabulary_size=int(value["vocabulary_size"]),
         token_family_coverage=tuple(value.get("token_family_coverage", ())),
         top_tokens=tuple(value.get("top_tokens", ())),
+        guardrails=value.get("guardrails", {}),
         construction_parameters={
             str(key): item
             for key, item in value.get("construction_parameters", {}).items()
@@ -515,4 +706,11 @@ def _normalize_text(value: str, field_name: str) -> str:
     if not normalized:
         raise ValueError(f"{field_name} must be non-empty.")
 
+    return normalized
+
+
+def _normalize_fraction(value: float, field_name: str) -> float:
+    normalized = float(value)
+    if normalized < 0 or normalized > 1:
+        raise ValueError(f"{field_name} must be between 0 and 1.")
     return normalized
