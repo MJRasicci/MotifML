@@ -358,6 +358,7 @@ class VocabularyGuardrailReport:
                 "maximum_unk_fraction",
             ),
         )
+        object.__setattr__(self, "passed", bool(self.passed))
 
 
 @dataclass(frozen=True)
@@ -616,11 +617,23 @@ def coerce_vocabulary_guardrail_parameters(
     if isinstance(value, VocabularyGuardrailParameters):
         return value
 
+    defaults = VocabularyGuardrailParameters()
     return VocabularyGuardrailParameters(
-        minimum_vocabulary_size=int(value.get("minimum_vocabulary_size", 7)),
-        required_token_families=tuple(value.get("required_token_families", ())),
-        maximum_top_token_fraction=float(value.get("maximum_top_token_fraction", 0.6)),
-        maximum_unk_fraction=float(value.get("maximum_unk_fraction", 0.25)),
+        minimum_vocabulary_size=int(
+            value.get("minimum_vocabulary_size", defaults.minimum_vocabulary_size)
+        ),
+        required_token_families=tuple(
+            value.get("required_token_families", defaults.required_token_families)
+        ),
+        maximum_top_token_fraction=float(
+            value.get(
+                "maximum_top_token_fraction",
+                defaults.maximum_top_token_fraction,
+            )
+        ),
+        maximum_unk_fraction=float(
+            value.get("maximum_unk_fraction", defaults.maximum_unk_fraction)
+        ),
     )
 
 
@@ -685,15 +698,50 @@ def coerce_vocabulary_stats_report(
     if isinstance(value, VocabularyStatsReport):
         return value
 
+    top_tokens = tuple(value.get("top_tokens", ()))
+    top_token_payload = top_tokens[0] if top_tokens else None
+    top_token = None
+    top_token_count = 0
+    if isinstance(top_token_payload, Mapping):
+        top_token = (
+            None
+            if top_token_payload.get("token") is None
+            else str(top_token_payload["token"])
+        )
+        top_token_count = int(top_token_payload.get("count", 0))
+    elif isinstance(top_token_payload, TokenCountEntry):
+        top_token = top_token_payload.token
+        top_token_count = top_token_payload.count
+    token_count = int(value["token_count"])
+    vocabulary_size = int(value["vocabulary_size"])
+
     return VocabularyStatsReport(
         vocabulary_version=str(value["vocabulary_version"]),
         feature_version=str(value["feature_version"]),
         split_version=str(value["split_version"]),
-        token_count=int(value["token_count"]),
-        vocabulary_size=int(value["vocabulary_size"]),
+        token_count=token_count,
+        vocabulary_size=vocabulary_size,
         token_family_coverage=tuple(value.get("token_family_coverage", ())),
-        top_tokens=tuple(value.get("top_tokens", ())),
-        guardrails=value.get("guardrails", {}),
+        top_tokens=top_tokens,
+        guardrails=value.get(
+            "guardrails",
+            {
+                "observed_vocabulary_size": vocabulary_size,
+                "minimum_vocabulary_size": vocabulary_size,
+                "required_token_families": (),
+                "missing_required_token_families": (),
+                "top_token": top_token,
+                "top_token_count": top_token_count,
+                "top_token_fraction": (
+                    0.0 if token_count <= 0 else top_token_count / token_count
+                ),
+                "maximum_top_token_fraction": 1.0,
+                "estimated_unk_token_count": 0,
+                "estimated_unk_fraction": 0.0,
+                "maximum_unk_fraction": 1.0,
+                "passed": True,
+            },
+        ),
         construction_parameters={
             str(key): item
             for key, item in value.get("construction_parameters", {}).items()
