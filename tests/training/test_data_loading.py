@@ -5,6 +5,8 @@ from __future__ import annotations
 from itertools import islice
 from pathlib import Path
 
+import torch
+
 from motifml.datasets.tokenized_model_input_dataset import TokenizedModelInputDataset
 from motifml.training.data_loading import (
     LazyTokenizedDocumentDataset,
@@ -12,6 +14,9 @@ from motifml.training.data_loading import (
     LoadedTokenizedDocument,
     LoaderIterationOptions,
     SpecialTokenIds,
+    TokenWindowBatchCollator,
+    TokenWindowExample,
+    build_token_window_data_loader,
     build_token_window_example,
     discover_model_input_shards,
 )
@@ -20,6 +25,8 @@ from motifml.training.special_token_policy import (
     PaddingInteraction,
     SpecialTokenPolicy,
 )
+
+EXPECTED_BATCH_COUNT = 2
 
 
 def test_discover_model_input_shards_returns_sorted_split_scoped_shards(
@@ -336,6 +343,99 @@ def test_lazy_token_window_dataset_reproducibly_shuffles_train_windows_only() ->
     assert repeated_offsets == first_offsets
     assert next_epoch_offsets != first_offsets
     assert validation_offsets == [0, 2, 4, 6, 8, 10]
+
+
+def test_token_window_batch_collator_stacks_examples_into_tensors() -> None:
+    collator = TokenWindowBatchCollator(pad_token_id=0)
+
+    batch = collator(
+        (
+            TokenWindowExample(
+                split="train",
+                shard_id="shard-00000",
+                relative_path="fixtures/a.json",
+                document_id="doc-a",
+                window_index=0,
+                window_start_offset=0,
+                input_ids=(1, 2, 3, 4),
+                target_ids=(2, 3, 4, 0),
+                attention_mask=(1, 1, 1, 0),
+            ),
+            TokenWindowExample(
+                split="validation",
+                shard_id="shard-00001",
+                relative_path="fixtures/b.json",
+                document_id="doc-b",
+                window_index=1,
+                window_start_offset=4,
+                input_ids=(5, 6, 7, 8),
+                target_ids=(6, 7, 8, 0),
+                attention_mask=(1, 1, 1, 0),
+            ),
+        )
+    )
+
+    assert batch.input_ids.shape == (2, 4)
+    assert batch.target_ids.shape == (2, 4)
+    assert batch.attention_mask.dtype == torch.bool
+    assert batch.input_ids.tolist() == [[1, 2, 3, 4], [5, 6, 7, 8]]
+    assert batch.splits == ("train", "validation")
+    assert batch.window_start_offsets == (0, 4)
+
+
+def test_token_window_data_loader_only_pads_the_current_batch() -> None:
+    dataset = (
+        TokenWindowExample(
+            split="train",
+            shard_id="shard-00000",
+            relative_path="fixtures/short_a.json",
+            document_id="short-a",
+            window_index=0,
+            window_start_offset=0,
+            input_ids=(1, 2),
+            target_ids=(2, 0),
+            attention_mask=(1, 0),
+        ),
+        TokenWindowExample(
+            split="train",
+            shard_id="shard-00000",
+            relative_path="fixtures/short_b.json",
+            document_id="short-b",
+            window_index=1,
+            window_start_offset=2,
+            input_ids=(3, 4, 5),
+            target_ids=(4, 5, 0),
+            attention_mask=(1, 1, 0),
+        ),
+        TokenWindowExample(
+            split="train",
+            shard_id="shard-00001",
+            relative_path="fixtures/long.json",
+            document_id="long-doc",
+            window_index=0,
+            window_start_offset=0,
+            input_ids=(6, 7, 8, 9, 10, 11),
+            target_ids=(7, 8, 9, 10, 11, 0),
+            attention_mask=(1, 1, 1, 1, 1, 0),
+        ),
+    )
+    loader = build_token_window_data_loader(
+        dataset,
+        batch_size=2,
+        pad_token_id=0,
+    )
+
+    batches = list(loader)
+
+    assert len(batches) == EXPECTED_BATCH_COUNT
+    assert batches[0].input_ids.shape == (2, 3)
+    assert batches[0].input_ids.tolist() == [[1, 2, 0], [3, 4, 5]]
+    assert batches[0].attention_mask.tolist() == [
+        [True, False, False],
+        [True, True, False],
+    ]
+    assert batches[1].input_ids.shape == (1, 6)
+    assert batches[1].input_ids.tolist() == [[6, 7, 8, 9, 10, 11]]
 
 
 def _build_model_input_fixture(tmp_path: Path) -> Path:

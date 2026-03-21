@@ -11,8 +11,9 @@ from pathlib import Path
 from typing import Any
 
 import pyarrow.parquet as pq
+import torch
 from kedro.io import DatasetError
-from torch.utils.data import IterableDataset
+from torch.utils.data import DataLoader, IterableDataset
 
 from motifml.datasets.model_input_storage import (
     MODEL_INPUT_STORAGE_SCHEMA_FILENAME,
@@ -30,6 +31,8 @@ from motifml.training.special_token_policy import (
 )
 from motifml.training.token_codec import FrozenVocabulary, coerce_frozen_vocabulary
 from motifml.training.token_families import BOS_TOKEN, EOS_TOKEN, PAD_TOKEN, UNK_TOKEN
+
+_BATCH_RANK = 2
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,6 +168,90 @@ class TokenWindowExample:
         object.__setattr__(self, "input_ids", normalized_input_ids)
         object.__setattr__(self, "target_ids", normalized_target_ids)
         object.__setattr__(self, "attention_mask", normalized_attention_mask)
+
+
+@dataclass(frozen=True, slots=True)
+class TokenWindowBatch:
+    """One collated batch of lazy token-window examples."""
+
+    input_ids: torch.Tensor
+    target_ids: torch.Tensor
+    attention_mask: torch.Tensor
+    splits: tuple[DatasetSplit, ...]
+    shard_ids: tuple[str, ...]
+    relative_paths: tuple[str, ...]
+    document_ids: tuple[str, ...]
+    window_indices: tuple[int, ...]
+    window_start_offsets: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        if self.input_ids.ndim != _BATCH_RANK:
+            raise ValueError("input_ids must be a rank-2 tensor.")
+        if self.target_ids.shape != self.input_ids.shape:
+            raise ValueError("target_ids must match the input_ids shape.")
+        if self.attention_mask.shape != self.input_ids.shape:
+            raise ValueError("attention_mask must match the input_ids shape.")
+        batch_size = self.input_ids.shape[0]
+        if len(self.splits) != batch_size:
+            raise ValueError("splits must match the batch dimension.")
+        if len(self.shard_ids) != batch_size:
+            raise ValueError("shard_ids must match the batch dimension.")
+        if len(self.relative_paths) != batch_size:
+            raise ValueError("relative_paths must match the batch dimension.")
+        if len(self.document_ids) != batch_size:
+            raise ValueError("document_ids must match the batch dimension.")
+        if len(self.window_indices) != batch_size:
+            raise ValueError("window_indices must match the batch dimension.")
+        if len(self.window_start_offsets) != batch_size:
+            raise ValueError("window_start_offsets must match the batch dimension.")
+
+
+@dataclass(frozen=True, slots=True)
+class TokenWindowBatchCollator:
+    """Collate window examples into one bounded-memory tensor batch."""
+
+    pad_token_id: int
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "pad_token_id",
+            _normalize_non_negative_int(self.pad_token_id, "pad_token_id"),
+        )
+
+    def __call__(self, batch: Sequence[TokenWindowExample]) -> TokenWindowBatch:
+        """Pad only the current batch edges and stack examples into tensors."""
+        if not batch:
+            raise ValueError("batch must contain at least one example.")
+
+        batch_width = max(len(example.input_ids) for example in batch)
+        input_rows: list[list[int]] = []
+        target_rows: list[list[int]] = []
+        attention_rows: list[list[bool]] = []
+        for example in batch:
+            pad_count = batch_width - len(example.input_ids)
+            input_rows.append(list(example.input_ids) + [self.pad_token_id] * pad_count)
+            target_rows.append(
+                list(example.target_ids) + [self.pad_token_id] * pad_count
+            )
+            attention_rows.append(
+                [bool(mask_value) for mask_value in example.attention_mask]
+                + [False] * pad_count
+            )
+
+        return TokenWindowBatch(
+            input_ids=torch.tensor(input_rows, dtype=torch.long),
+            target_ids=torch.tensor(target_rows, dtype=torch.long),
+            attention_mask=torch.tensor(attention_rows, dtype=torch.bool),
+            splits=tuple(example.split for example in batch),
+            shard_ids=tuple(example.shard_id for example in batch),
+            relative_paths=tuple(example.relative_path for example in batch),
+            document_ids=tuple(example.document_id for example in batch),
+            window_indices=tuple(example.window_index for example in batch),
+            window_start_offsets=tuple(
+                example.window_start_offset for example in batch
+            ),
+        )
 
 
 def load_tokenized_document_row_file(
@@ -377,6 +464,27 @@ class LazyTokenWindowDataset(IterableDataset[TokenWindowExample]):
         if self._split is not None:
             return self._split
         return document.row.split
+
+
+def build_token_window_data_loader(
+    dataset: Any,
+    *,
+    batch_size: int,
+    pad_token_id: int,
+    collator: TokenWindowBatchCollator | None = None,
+) -> DataLoader[Any]:
+    """Build one bounded-memory DataLoader over token-window examples."""
+    normalized_batch_size = _normalize_positive_int(batch_size, "batch_size")
+    effective_collator = (
+        TokenWindowBatchCollator(pad_token_id=pad_token_id)
+        if collator is None
+        else collator
+    )
+    return DataLoader(
+        dataset,
+        batch_size=normalized_batch_size,
+        collate_fn=effective_collator,
+    )
 
 
 def build_token_window_example(
@@ -594,6 +702,14 @@ def _normalize_seed(value: Any) -> int:
     return value
 
 
+def _normalize_positive_int(value: Any, field_name: str) -> int:
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{field_name} must be a positive integer.")
+    if value <= 0:
+        raise ValueError(f"{field_name} must be a positive integer.")
+    return value
+
+
 def _coerce_optional_bool(value: Any) -> bool | None:
     if value is None:
         return None
@@ -652,7 +768,10 @@ __all__ = [
     "LoaderIterationOptions",
     "LoadedTokenizedDocument",
     "SpecialTokenIds",
+    "TokenWindowBatch",
+    "TokenWindowBatchCollator",
     "TokenWindowExample",
+    "build_token_window_data_loader",
     "build_token_window_example",
     "coerce_loader_iteration_options",
     "coerce_special_token_ids",
