@@ -636,6 +636,109 @@ def test_tokenize_features_with_vocabulary_round_trips_one_fixture_backed_docume
     )
 
 
+def test_tokenize_features_with_vocabulary_emits_one_window_for_short_documents() -> (
+    None
+):
+    feature_set = IrFeatureSet(
+        parameters=FeatureExtractionParameters(
+            projection_type="sequence",
+            feature_version="feature-v1",
+            sequence_schema_version="sequence-schema-v1",
+            normalized_ir_version="normalized-v1",
+        ),
+        records=(
+            IrFeatureRecord(
+                relative_path="fixtures/short.json",
+                projection_type="sequence",
+                projection=SequenceProjection(
+                    mode=SequenceProjectionMode.NOTES_ONLY,
+                    events=(_build_note_event("C", ScoreTime(0, 1)),),
+                ),
+            ),
+        ),
+    )
+
+    model_input = tokenize_features_with_vocabulary(
+        feature_set,
+        split_manifest=(
+            SplitManifestEntry(
+                document_id="short-doc",
+                relative_path="fixtures/short.json",
+                split=DatasetSplit.VALIDATION,
+                group_key="short-doc",
+                split_version="split-v1",
+            ),
+        ),
+        sequence_schema=SequenceSchemaContract(),
+        vocabulary={
+            "vocabulary_version": "vocab-v1",
+            "feature_version": "feature-v1",
+            "split_version": "split-v1",
+            "token_count": 4,
+            "vocabulary_size": 6,
+            "token_to_id": {
+                "<pad>": 0,
+                "<bos>": 1,
+                "<eos>": 2,
+                "<unk>": 3,
+                "NOTE_DURATION:96": 4,
+                "NOTE_PITCH:C4": 5,
+            },
+            "token_counts": [
+                {"token": "<pad>", "count": 0},
+                {"token": "<bos>", "count": 1},
+                {"token": "<eos>", "count": 1},
+                {"token": "<unk>", "count": 0},
+                {"token": "NOTE_DURATION:96", "count": 1},
+                {"token": "NOTE_PITCH:C4", "count": 1},
+            ],
+            "construction_parameters": {
+                "time_resolution": 96,
+                "minimum_frequency": 1,
+                "maximum_size": 65536,
+                "special_tokens": {
+                    "pad": "<pad>",
+                    "bos": "<bos>",
+                    "eos": "<eos>",
+                    "unk": "<unk>",
+                },
+            },
+            "special_token_policy": {
+                "policy_name": "baseline_special_tokens",
+                "policy_mode": "baseline_v1",
+                "bos": "document",
+                "eos": "document",
+                "padding_interaction": "outside_boundaries",
+                "unknown_token_mapping": "map_to_unk",
+            },
+        },
+        model_input_parameters={
+            "projection_type": "sequence",
+            "sequence_mode": "baseline_v1",
+            "context_length": 16,
+            "stride": 8,
+            "padding_strategy": "right",
+            "special_token_policy": {
+                "bos": "document",
+                "eos": "document",
+                "padding_interaction": "outside_boundaries",
+                "unknown_token_mapping": "map_to_unk",
+            },
+            "storage": {
+                "backend": "parquet",
+                "schema_version": "parquet-v1",
+            },
+        },
+    )
+
+    record = model_input["records"][0]
+    assert record.split is DatasetSplit.VALIDATION
+    assert record.token_ids == (1, 5, 4, 2)
+    assert record.window_start_offsets == (0,)
+    assert record.token_ids[0] == 1
+    assert record.token_ids[-1] == EXPECTED_EOS_TOKEN_ID
+
+
 def test_tokenize_features_with_vocabulary_rejects_mismatched_sequence_mode() -> None:
     feature_set = IrFeatureSet(
         parameters=FeatureExtractionParameters(
