@@ -19,10 +19,13 @@ The repository currently covers the symbolic data-engineering side of the projec
   experiments
 - baseline decoder-only Transformer training with Kedro-managed checkpoints and
   reporting artifacts
+- baseline checkpoint evaluation with quantitative metrics, decoded structural checks,
+  and qualitative sample reports
 
-Generation and model evaluation pipelines are not yet implemented in this repository.
-The Kedro stage layout now uses ``06_models`` for baseline training checkpoints while
-``07_model_output`` remains reserved for later evaluation and generation work.
+Generation pipelines are not yet implemented in this repository. The Kedro stage layout
+now uses ``06_models`` for baseline training checkpoints, ``07_model_output`` for
+persisted decoded evaluation samples, and ``08_reporting`` for metrics and Markdown
+review artifacts.
 
 End-to-End Data Flow
 --------------------
@@ -57,6 +60,10 @@ flow:
      -> data/06_models/training/baseline/model_config.json + training_config.json + run_metadata.json
      -> data/08_reporting/training/training_history.json
      -> data/08_reporting/training/training_run_metadata.json
+     -> data/07_model_output/evaluation/qualitative_samples.json
+     -> data/08_reporting/training/metrics.json
+     -> data/08_reporting/training/qualitative_report.md
+     -> data/08_reporting/training/evaluation_run_metadata.json
 
 The raw corpus is sourced from files under ``data/00_corpus/`` together with the Motif
 CLI binary at ``tools/motif-cli``. ``MotifJsonCorpusDataset`` fingerprints the source
@@ -93,6 +100,9 @@ and reducer variants:
   ``params:model_input``, and ``params:data_split``
 - ``training`` consumes lazy ``05_model_input`` runtime handles, trains the baseline
   decoder-only Transformer, and persists checkpoints plus run-reporting artifacts
+- ``evaluation`` reloads the best baseline checkpoint, streams validation or test
+  windows lazily from ``05_model_input``, and persists metrics plus decoded review
+  artifacts
 - ``baseline_training`` composes the default preprocessing stages with ``training`` so
   maintainers have one explicit command path for end-to-end baseline runs from
   ``data/00_corpus`` through ``06_models`` and ``08_reporting``
@@ -165,6 +175,13 @@ Current Pipeline Responsibilities
    model checkpoints plus training history and run metadata. The canonical
    single-command run path is ``uv run kedro run --pipeline=baseline_training``.
 
+``evaluation``
+   Reloads the best persisted baseline checkpoint, computes quantitative next-token
+   metrics and trivial-baseline comparisons over configured splits, evaluates decoded
+   structural checks on deterministic prompt/continuation samples, and writes decoded
+   sample tables under ``07_model_output`` plus metrics, Markdown summaries, and frozen
+   evaluation run metadata under ``08_reporting``.
+
 Configuration Surfaces
 ----------------------
 
@@ -190,6 +207,8 @@ Examples of currently configured parameters include:
   for model-input persistence
 - model architecture, seed, device selection, optimizer settings, gradient clipping,
   epoch count, and learning-rate scheduling for baseline training
+- evaluation device, split selection, top-k metrics, decode length, and qualitative
+  sample extraction settings for baseline evaluation
 
 Code Organization
 -----------------
@@ -237,6 +256,8 @@ The current codebase is designed to support symbolic-ML research in a discipline
   experiments
 - the training layer provides one explicit end-to-end baseline run path without
   expanding ``__default__`` into a heavy modeling command
+- the evaluation layer reuses those persisted contracts to produce inspectable decoded
+  outputs and report artifacts without introducing notebook-local logic
 
 See :doc:`/guides/contributing` for project-wide contribution guidance,
 :doc:`/guides/ir_engineering` for IR-specific engineering notes,

@@ -296,6 +296,22 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "type": "motifml.datasets.json_dataset.JsonDataset",
             "filepath": str(output_root / "training_run_metadata.json"),
         },
+        "evaluation_samples": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "evaluation" / "qualitative_samples.json"),
+        },
+        "evaluation_metrics": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "metrics.json"),
+        },
+        "qualitative_report": {
+            "type": "motifml.datasets.text_dataset.TextDataset",
+            "filepath": str(output_root / "qualitative_report.md"),
+        },
+        "evaluation_run_metadata": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "evaluation_run_metadata.json"),
+        },
     }
 
     (conf_base / "catalog.yml").write_text(
@@ -328,6 +344,11 @@ def run_session(
 def load_json(path: Path) -> Any:
     """Load JSON content from disk."""
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_text(path: Path) -> str:
+    """Load one UTF-8 text artifact from disk."""
+    return path.read_text(encoding="utf-8")
 
 
 def load_partition_index(path: Path) -> list[dict[str, Any]]:

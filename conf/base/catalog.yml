@@ -246,3 +246,19 @@ training_history:
 training_run_metadata:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/training/training_run_metadata.json
+
+evaluation_samples:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/07_model_output/evaluation/qualitative_samples.json
+
+evaluation_metrics:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/training/metrics.json
+
+qualitative_report:
+  type: motifml.datasets.text_dataset.TextDataset
+  filepath: data/08_reporting/training/qualitative_report.md
+
+evaluation_run_metadata:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/training/evaluation_run_metadata.json

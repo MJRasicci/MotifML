@@ -8,6 +8,7 @@ from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
 from motifml.pipelines.dataset_splitting.pipeline import (
     create_pipeline as create_dataset_splitting,
 )
+from motifml.pipelines.evaluation.pipeline import create_pipeline as create_evaluation
 from motifml.pipelines.feature_extraction.pipeline import (
     create_pipeline as create_feature_extraction,
 )
@@ -67,6 +68,7 @@ def register_pipelines() -> dict[str, Pipeline]:
     partitioned_reduce = create_reduce_pipeline()
     model_input_reduce = create_model_input_reduce_pipeline()
     training = create_training()
+    evaluation = create_evaluation()
 
     staged_ir_build = pipeline(
         [
@@ -162,6 +164,7 @@ def register_pipelines() -> dict[str, Pipeline]:
         "tokenization": tokenization,
         "vocabulary_counting_shard": vocabulary_counting,
         "training": training,
+        "evaluation": evaluation,
         "baseline_training": baseline_training,
         "ir_build_shard": ir_build_shard,
         "ir_validation_shard": ir_validation_shard,

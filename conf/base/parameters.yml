@@ -150,12 +150,17 @@ training:
     warmup_steps: 100
 
 evaluation:
+  device: cpu
   batch_size: 8
   top_k: 5
   decode_max_tokens: 256
   splits:
     - validation
     - test
+  qualitative:
+    samples_per_split: 2
+    prompt_token_count: 32
+    summary_token_limit: 24
 
 execution:
   shard_id: __all__

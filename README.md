@@ -6,7 +6,7 @@ deterministic IR corpora and downstream ML-ready datasets.
 The repository currently covers raw-corpus ingestion, canonical IR build and validation,
 fixture-backed regression artifacts, deterministic split planning, and baseline
 normalization, feature-extraction, tokenization, and baseline decoder-only Transformer
-training stages for downstream experiments.
+training and evaluation stages for downstream experiments.
 
 ## Current Scope
 
@@ -22,8 +22,10 @@ training stages for downstream experiments.
 - package baseline model-input artifacts under Kedro
 - train the baseline decoder-only Transformer through Kedro-managed checkpoints and
   reporting
+- evaluate the best baseline checkpoint with quantitative metrics, structural checks,
+  and qualitative decoded samples
 
-Generation and evaluation pipelines are not implemented yet.
+Generation pipelines are not implemented yet.
 
 ## Repository Layout
 
@@ -87,6 +89,16 @@ uv run kedro run --pipeline=baseline_training
 The default pipeline intentionally stops at `05_model_input`; heavy training work lives
 behind the explicit `baseline_training` pipeline so maintainers can opt into it
 deliberately.
+
+Run baseline evaluation after training artifacts exist:
+
+```bash
+uv run kedro run --pipeline=evaluation
+```
+
+The evaluation pipeline reuses the persisted `05_model_input`, frozen vocabulary, and
+best checkpoint from `baseline_training`, then writes decoded sample tables under
+`07_model_output` plus metrics and Markdown review artifacts under `08_reporting`.
 
 Launch inspection tools when needed:
 

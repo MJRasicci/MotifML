@@ -16,6 +16,7 @@ EXPECTED_TOKENIZATION_NODE_COUNT = 3
 EXPECTED_VOCABULARY_COUNTING_NODE_COUNT = 1
 EXPECTED_MODEL_INPUT_REDUCE_NODE_COUNT = 2
 EXPECTED_TRAINING_NODE_COUNT = 1
+EXPECTED_EVALUATION_NODE_COUNT = 1
 EXPECTED_BASELINE_TRAINING_NODE_COUNT = 31
 EXPECTED_DEFAULT_NODE_ORDER = [
     "build_raw_corpus_manifest",
@@ -74,6 +75,7 @@ def test_register_pipelines_exposes_project_pipelines():
     assert "tokenization" in pipelines
     assert "vocabulary_counting_shard" in pipelines
     assert "training" in pipelines
+    assert "evaluation" in pipelines
     assert "baseline_training" in pipelines
     assert "tokenization_shard" in pipelines
     assert "partitioned_reduce" in pipelines
@@ -103,6 +105,7 @@ def test_register_pipelines_exposes_project_pipelines():
         == EXPECTED_MODEL_INPUT_REDUCE_NODE_COUNT
     )
     assert len(pipelines["training"].nodes) == EXPECTED_TRAINING_NODE_COUNT
+    assert len(pipelines["evaluation"].nodes) == EXPECTED_EVALUATION_NODE_COUNT
     assert (
         len(pipelines["baseline_training"].nodes)
         == EXPECTED_BASELINE_TRAINING_NODE_COUNT
@@ -205,6 +208,19 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "training_artifacts",
         "training_history",
         "training_run_metadata",
+    }
+    assert pipelines["evaluation"].inputs() == {
+        "training_artifacts",
+        "model_input_runtime",
+        "vocabulary",
+        "params:evaluation",
+        "params:seed",
+    }
+    assert pipelines["evaluation"].outputs() == {
+        "evaluation_samples",
+        "evaluation_metrics",
+        "qualitative_report",
+        "evaluation_run_metadata",
     }
     assert "model_input_runtime" in pipelines["baseline_training"].inputs()
     assert pipelines["baseline_training"].all_outputs() >= {

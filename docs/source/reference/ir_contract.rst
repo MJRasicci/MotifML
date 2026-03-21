@@ -236,7 +236,7 @@ Not Yet Implemented
 The following remain outside the implemented canonical IR surface:
 
 - reverse export from IR back to Motif JSON
-- generation and evaluation pipelines
+- generation pipelines
 - a playback-unrolled representation as the canonical source of truth
 - dense harmonic, recurrence, or analytical graphs in the base document
 - mandatory phrase segmentation as a validity requirement

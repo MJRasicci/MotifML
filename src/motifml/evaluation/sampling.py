@@ -190,6 +190,7 @@ def build_prompt_continuation_samples(  # noqa: PLR0913
         prompt_length = min(
             normalized_prompt_token_count,
             max(len(row.token_ids) - 1, 1),
+            context_length,
         )
         if prompt_length >= len(row.token_ids):
             continue
