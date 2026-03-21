@@ -15,6 +15,19 @@ normalization:
     - task_agnostic_domain_truth
     - no_model_specific_flattening
     - no_model_specific_windowing
+  forbidden_model_fields:
+    - attention_mask
+    - input_ids
+    - model_input_version
+    - padding_strategy
+    - split
+    - split_version
+    - target_ids
+    - token_count
+    - token_ids
+    - training_run_id
+    - vocabulary_version
+    - window_start_offsets
 
 ir_validation:
   rule_severities:

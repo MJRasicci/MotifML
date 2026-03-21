@@ -154,5 +154,34 @@ def test_kedro_session_emits_stable_normalized_ir_version_for_unchanged_inputs(
     assert first_version == second_version
 
 
+def test_normalization_stage_persists_training_safe_documents(tmp_path: Path):
+    conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
+
+    run_session(conf_source, ["ir_build"])
+    run_session(conf_source, ["normalization"])
+
+    forbidden_model_fields = {
+        "attention_mask",
+        "input_ids",
+        "model_input_version",
+        "padding_strategy",
+        "split",
+        "split_version",
+        "target_ids",
+        "token_count",
+        "token_ids",
+        "training_run_id",
+        "vocabulary_version",
+        "window_start_offsets",
+    }
+
+    for document_path in sorted(
+        (output_root / "normalized_documents").rglob("*.ir.json")
+    ):
+        document_text = document_path.read_text(encoding="utf-8")
+        for field_name in forbidden_model_fields:
+            assert f'"{field_name}"' not in document_text
+
+
 def _default_stage_order() -> list[str]:
     return [node.name for node in register_pipelines()["__default__"].nodes]

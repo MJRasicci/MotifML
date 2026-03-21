@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from typing import Any
 
 from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
+from motifml.ir.serialization import serialize_document
 from motifml.pipelines.normalization.models import (
     NormalizationParameters,
     NormalizedIrVersionMetadata,
@@ -34,6 +36,7 @@ def build_normalized_ir_version(
 ) -> NormalizedIrVersionMetadata:
     """Build the persisted normalized-IR version metadata artifact."""
     typed_parameters = coerce_normalization_parameters(parameters)
+    validate_normalized_ir_contract(documents, typed_parameters)
     upstream_schema_versions = sorted(
         {record.document.metadata.ir_schema_version for record in documents}
     )
@@ -60,6 +63,25 @@ def build_normalized_ir_version(
         upstream_ir_schema_version=upstream_ir_schema_version,
         task_agnostic_guarantees=typed_parameters.task_agnostic_guarantees,
     )
+
+
+def validate_normalized_ir_contract(
+    documents: list[MotifIrDocumentRecord],
+    parameters: NormalizationParameters | Mapping[str, Any],
+) -> None:
+    """Fail fast if normalized IR artifacts leak training-specific fields."""
+    typed_parameters = coerce_normalization_parameters(parameters)
+    forbidden_fields = frozenset(typed_parameters.forbidden_model_fields)
+
+    for record in documents:
+        serialized_payload = json.loads(serialize_document(record.document))
+        for field_path, field_name in _iter_field_paths(serialized_payload):
+            if field_name in forbidden_fields:
+                raise ValueError(
+                    "Normalized IR contract violation for "
+                    f"'{record.relative_path}': forbidden field '{field_name}' at "
+                    f"'{field_path}'."
+                )
 
 
 def merge_normalized_ir_version_fragments(
@@ -102,3 +124,25 @@ def build_normalized_ir_version_key(
             "task_agnostic_guarantees": parameters.task_agnostic_guarantees,
         },
     )
+
+
+def _iter_field_paths(
+    value: object,
+    *,
+    path: str = "$",
+) -> list[tuple[str, str]]:
+    matches: list[tuple[str, str]] = []
+    if isinstance(value, dict):
+        for key, nested_value in value.items():
+            field_name = str(key)
+            current_path = f"{path}.{field_name}"
+            matches.append((current_path, field_name))
+            matches.extend(_iter_field_paths(nested_value, path=current_path))
+        return matches
+
+    if isinstance(value, list):
+        for index, nested_value in enumerate(value):
+            current_path = f"{path}[{index}]"
+            matches.extend(_iter_field_paths(nested_value, path=current_path))
+
+    return matches

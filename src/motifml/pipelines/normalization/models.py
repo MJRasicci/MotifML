@@ -23,6 +23,20 @@ class NormalizationParameters:
         "no_model_specific_flattening",
         "no_model_specific_windowing",
     )
+    forbidden_model_fields: tuple[str, ...] = (
+        "attention_mask",
+        "input_ids",
+        "model_input_version",
+        "padding_strategy",
+        "split",
+        "split_version",
+        "target_ids",
+        "token_count",
+        "token_ids",
+        "training_run_id",
+        "vocabulary_version",
+        "window_start_offsets",
+    )
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -66,6 +80,15 @@ class NormalizationParameters:
                 "task_agnostic_guarantees must contain at least one guarantee."
             )
         object.__setattr__(self, "task_agnostic_guarantees", guarantees)
+        forbidden_fields = tuple(
+            _normalize_text(value, "forbidden_model_fields")
+            for value in self.forbidden_model_fields
+        )
+        if not forbidden_fields:
+            raise ValueError(
+                "forbidden_model_fields must contain at least one forbidden field."
+            )
+        object.__setattr__(self, "forbidden_model_fields", forbidden_fields)
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,6 +178,25 @@ def coerce_normalization_parameters(
                     "task_agnostic_domain_truth",
                     "no_model_specific_flattening",
                     "no_model_specific_windowing",
+                ),
+            )
+        ),
+        forbidden_model_fields=tuple(
+            value.get(
+                "forbidden_model_fields",
+                (
+                    "attention_mask",
+                    "input_ids",
+                    "model_input_version",
+                    "padding_strategy",
+                    "split",
+                    "split_version",
+                    "target_ids",
+                    "token_count",
+                    "token_ids",
+                    "training_run_id",
+                    "vocabulary_version",
+                    "window_start_offsets",
                 ),
             )
         ),

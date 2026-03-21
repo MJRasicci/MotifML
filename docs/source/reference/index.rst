@@ -7,3 +7,4 @@ Use these pages for technical contracts and subsystem reference material.
    :maxdepth: 2
 
    ir_contract
+   normalized_ir_contract

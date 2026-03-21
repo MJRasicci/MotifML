@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
 from motifml.ir.models import IrDocumentMetadata, MotifMlIrDocument
 from motifml.pipelines.normalization.models import NormalizationParameters
@@ -9,6 +11,7 @@ from motifml.pipelines.normalization.nodes import (
     build_normalized_ir_version,
     merge_normalized_ir_version_fragments,
     normalize_ir_corpus,
+    validate_normalized_ir_contract,
 )
 
 
@@ -55,6 +58,20 @@ def test_merge_normalized_ir_version_fragments_requires_identical_shards() -> No
     )
 
     assert merged == fragment
+
+
+def test_validate_normalized_ir_contract_rejects_model_specific_fields(
+    monkeypatch,
+) -> None:
+    record = _build_record("examples/demo.json")
+
+    monkeypatch.setattr(
+        "motifml.pipelines.normalization.nodes.serialize_document",
+        lambda document: '{"metadata":{"ir_schema_version":"1.0.0"},"token_ids":[1,2,3]}',
+    )
+
+    with pytest.raises(ValueError, match="token_ids"):
+        validate_normalized_ir_contract([record], NormalizationParameters())
 
 
 def _build_record(relative_path: str) -> MotifIrDocumentRecord:

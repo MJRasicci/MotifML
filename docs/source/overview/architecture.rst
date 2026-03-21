@@ -62,7 +62,9 @@ composition:
 - ``ir_validation`` runs rule-based structural checks over persisted IR documents and
   produces corpus-level reporting
 - ``normalization`` is currently a deterministic passthrough baseline from canonical IR
-  to ``03_primary`` normalized IR
+  to ``03_primary`` normalized IR, but it now also persists explicit
+  ``normalized_ir_version`` metadata and validates that training-specific fields have
+  not leaked into the normalized artifact surface
 - ``feature_extraction`` projects normalized IR into sequence, graph, or hierarchical
   feature views according to ``params:feature_extraction``
 - ``tokenization`` converts projected features into a deterministic baseline
@@ -90,7 +92,8 @@ Current Pipeline Responsibilities
 
 ``normalization``
    Exists as a stable pipeline boundary for future normalization work. In the current
-   repository state it preserves the canonical IR unchanged.
+   repository state it preserves the canonical IR unchanged while enforcing the
+   task-agnostic ``03_primary`` contract and emitting ``normalized_ir_version``.
 
 ``feature_extraction``
    Selects one of three projection families:
@@ -113,7 +116,8 @@ The main project surfaces are:
 
 - ``conf/base/catalog.yml`` for dataset locations and the raw-corpus auto-build contract
 - ``conf/base/parameters.yml`` for IR build metadata, validation severities, feature
-  projection settings, and tokenization parameters
+  projection settings, tokenization parameters, normalization contract settings, and the
+  shared training-phase parameter families
 - ``conf/local/`` for machine-specific or sensitive overrides that should not be
   committed
 
@@ -173,4 +177,5 @@ The current codebase is designed to support symbolic-ML research in a discipline
 See :doc:`/guides/contributing` for project-wide contribution guidance,
 :doc:`/guides/ir_engineering` for IR-specific engineering notes,
 :doc:`/guides/inspection_artifacts` for tracked inspection surfaces, and
-:doc:`/reference/ir_contract` for the current IR contract.
+:doc:`/reference/ir_contract` plus :doc:`/reference/normalized_ir_contract` for the
+implemented IR and normalized-IR contracts.
