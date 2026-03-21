@@ -12,12 +12,14 @@ if REPO_ROOT.as_posix() not in sys.path:
     sys.path.insert(0, REPO_ROOT.as_posix())
 
 from tests.pipelines.ir_test_support import (  # noqa: E402
-    MOTIF_JSON_FIXTURE_ROOT,
     run_session,
     write_test_conf,
 )
+from tests.pipelines.training_test_support import (  # noqa: E402
+    TRAINING_FIXTURE_ROOT,
+    materialize_training_fixture_corpus,
+)
 
-TRAINING_FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "training"
 OUTPUT_FILE_NAMES = ("split_manifest.json", "split_stats.json")
 
 
@@ -25,7 +27,8 @@ def main() -> None:
     """Regenerate the tracked split manifest and split stats fixtures."""
     with TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
-        conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
+        raw_root = materialize_training_fixture_corpus(tmp_path / "raw_training")
+        conf_source, output_root = write_test_conf(tmp_path, raw_root)
         run_session(conf_source, ["ir_build"])
         run_session(conf_source, ["normalization"])
         run_session(conf_source, ["dataset_splitting"])

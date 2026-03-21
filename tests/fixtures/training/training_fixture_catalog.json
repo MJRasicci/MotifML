@@ -1,0 +1,53 @@
+{
+  "fixture_corpus_name": "baseline_training_v1",
+  "description": "Approved tiny training fixture slice for deterministic split planning, tokenization, lazy loading, and CPU smoke training.",
+  "training_objectives": [
+    "split determinism",
+    "vocabulary determinism",
+    "tokenization validation",
+    "loader behavior",
+    "CPU smoke training"
+  ],
+  "fixtures": [
+    {
+      "fixture_id": "ensemble_polyphony_controls",
+      "raw_motif_json_path": "motif_json/ensemble_polyphony_controls.json",
+      "description": "Multi-part polyphony with structure boundaries and authored control events.",
+      "training_proves": [
+        "split determinism",
+        "tokenization validation",
+        "loader behavior"
+      ]
+    },
+    {
+      "fixture_id": "guitar_techniques_tuplets",
+      "raw_motif_json_path": "motif_json/guitar_techniques_tuplets.json",
+      "description": "Tuplets and guitar techniques that create a richer training-token surface.",
+      "training_proves": [
+        "vocabulary determinism",
+        "tokenization validation",
+        "CPU smoke training"
+      ]
+    },
+    {
+      "fixture_id": "single_track_monophonic_pickup",
+      "raw_motif_json_path": "motif_json/single_track_monophonic_pickup.json",
+      "description": "A short pickup phrase with rests and ties for short-document window behavior.",
+      "training_proves": [
+        "vocabulary determinism",
+        "loader behavior",
+        "CPU smoke training"
+      ]
+    },
+    {
+      "fixture_id": "voice_reentry",
+      "raw_motif_json_path": "motif_json/voice_reentry.json",
+      "description": "Voice-lane dropout and reentry that stress sequence ordering and replay.",
+      "training_proves": [
+        "split determinism",
+        "loader behavior",
+        "CPU smoke training"
+      ]
+    }
+  ]
+}

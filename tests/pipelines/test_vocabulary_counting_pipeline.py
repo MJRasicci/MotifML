@@ -6,18 +6,19 @@ from pathlib import Path
 
 from motifml.sharding import shard_ids_from_entries
 from tests.pipelines.ir_test_support import (
-    MOTIF_JSON_FIXTURE_ROOT,
     load_json,
     load_partition_index,
     run_session,
     write_test_conf,
 )
+from tests.pipelines.training_test_support import materialize_training_fixture_corpus
 
 
 def test_vocabulary_counting_shards_reduce_into_frozen_vocabulary(
     tmp_path: Path,
 ) -> None:
-    conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
+    raw_root = materialize_training_fixture_corpus(tmp_path / "raw_training")
+    conf_source, output_root = write_test_conf(tmp_path, raw_root)
 
     run_session(conf_source, ["ingestion"])
     partition_index = load_partition_index(output_root / "raw_partition_index.json")

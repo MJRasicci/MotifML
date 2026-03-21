@@ -5,20 +5,21 @@ from __future__ import annotations
 from pathlib import Path
 
 from tests.pipelines.ir_test_support import (
-    MOTIF_JSON_FIXTURE_ROOT,
     load_json,
     run_session,
     write_test_conf,
 )
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
-TRAINING_FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "training"
+from tests.pipelines.training_test_support import (
+    TRAINING_FIXTURE_ROOT,
+    materialize_training_fixture_corpus,
+)
 
 
 def test_dataset_splitting_outputs_match_tracked_training_fixtures(
     tmp_path: Path,
 ) -> None:
-    conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
+    raw_root = materialize_training_fixture_corpus(tmp_path / "raw_training")
+    conf_source, output_root = write_test_conf(tmp_path, raw_root)
 
     run_session(conf_source, ["ir_build"])
     run_session(conf_source, ["normalization"])

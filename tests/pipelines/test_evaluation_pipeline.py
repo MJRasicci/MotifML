@@ -5,19 +5,23 @@ from __future__ import annotations
 from pathlib import Path
 
 from tests.pipelines.ir_test_support import (
-    MOTIF_JSON_FIXTURE_ROOT,
     load_json,
     load_text,
     run_session,
     write_test_conf,
+)
+from tests.pipelines.training_test_support import (
+    baseline_evaluation_runtime_overrides,
+    materialize_training_fixture_corpus,
 )
 
 
 def test_evaluation_pipeline_persists_metrics_samples_and_report(
     tmp_path: Path,
 ) -> None:
-    conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
-    runtime_overrides = _baseline_evaluation_runtime_overrides()
+    raw_root = materialize_training_fixture_corpus(tmp_path / "raw_training")
+    conf_source, output_root = write_test_conf(tmp_path, raw_root)
+    runtime_overrides = baseline_evaluation_runtime_overrides()
 
     run_session(conf_source, ["baseline_training"], runtime_params=runtime_overrides)
     run_session(conf_source, ["evaluation"], runtime_params=runtime_overrides)
@@ -49,77 +53,3 @@ def test_evaluation_pipeline_persists_metrics_samples_and_report(
     assert "# Baseline Evaluation Report" in report
     assert "## Validation" in report
     assert "Generated Continuation" in report
-
-
-def _baseline_evaluation_runtime_overrides() -> dict[str, object]:
-    return {
-        "data_split": {
-            "ratios": {
-                "train": 0.5,
-                "validation": 0.25,
-                "test": 0.25,
-            },
-            "hash_seed": 17,
-            "grouping_strategy": "document_id",
-            "grouping_key_fallback": "relative_path",
-        },
-        "model_input": {
-            "projection_type": "sequence",
-            "sequence_mode": "baseline_v1",
-            "context_length": 64,
-            "stride": 32,
-            "padding_strategy": "right",
-            "special_token_policy": {
-                "bos": "document",
-                "eos": "document",
-                "padding_interaction": "outside_boundaries",
-                "unknown_token_mapping": "map_to_unk",
-            },
-            "storage": {
-                "backend": "parquet",
-                "schema_version": "parquet-v1",
-            },
-            "reporting": {
-                "worst_document_limit": 10,
-                "oversized_token_count_threshold": 8192,
-            },
-        },
-        "model": {
-            "architecture": "decoder_only_transformer",
-            "embedding_dim": 32,
-            "hidden_size": 64,
-            "num_layers": 1,
-            "num_heads": 4,
-            "dropout": 0.0,
-            "positional_encoding": "learned",
-        },
-        "training": {
-            "device": "cpu",
-            "batch_size": 2,
-            "num_epochs": 1,
-            "learning_rate": 0.001,
-            "weight_decay": 0.0,
-            "gradient_clip_norm": 1.0,
-            "optimizer": "adamw",
-            "lr_scheduler": {
-                "name": "constant",
-                "warmup_steps": 0,
-            },
-        },
-        "evaluation": {
-            "device": "cpu",
-            "batch_size": 2,
-            "top_k": 3,
-            "decode_max_tokens": 4,
-            "splits": ["validation"],
-            "qualitative": {
-                "samples_per_split": 1,
-                "prompt_token_count": 4,
-                "summary_token_limit": 3,
-            },
-            "guardrails": {
-                "maximum_split_unk_rate": 0.5,
-                "maximum_generated_unk_rate": 0.5,
-            },
-        },
-    }
