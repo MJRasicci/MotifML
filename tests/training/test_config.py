@@ -7,6 +7,10 @@ from copy import deepcopy
 import pytest
 import yaml
 
+from motifml.datasets.model_input_storage import (
+    MODEL_INPUT_STORAGE_BACKEND,
+    MODEL_INPUT_STORAGE_SCHEMA_VERSION,
+)
 from motifml.training.config import (
     build_parameter_snapshots,
     freeze_parameter_snapshot,
@@ -99,6 +103,14 @@ def test_parameters_yaml_defines_vocabulary_guardrails() -> None:
         "NOTE_PITCH",
         "STRUCTURE",
     ]
+
+
+def test_parameters_yaml_uses_the_frozen_model_input_storage_contract() -> None:
+    parameters = _load_parameters()
+    storage = parameters["model_input"]["storage"]
+
+    assert storage["backend"] == MODEL_INPUT_STORAGE_BACKEND
+    assert storage["schema_version"] == MODEL_INPUT_STORAGE_SCHEMA_VERSION
 
 
 def _load_parameters() -> dict[str, object]:

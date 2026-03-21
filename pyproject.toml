@@ -14,6 +14,7 @@ dependencies = [
     "notebook",
     "kedro>=0.19",
     "kedro-viz>=9",
+    "pyarrow>=20,<21",
     "pyyaml>=6.0.3",
     "rich>=14.3.3",
     "torch>=2.10.0",

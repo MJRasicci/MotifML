@@ -2,6 +2,16 @@
 
 from motifml.datasets.json_dataset import JsonDataset
 from motifml.datasets.json_directory_dataset import JsonDirectoryDataset
+from motifml.datasets.model_input_storage import (
+    MODEL_INPUT_PARAMETERS_FILENAME,
+    MODEL_INPUT_PARTITION_FIELDS,
+    MODEL_INPUT_RECORD_SUFFIX,
+    MODEL_INPUT_STORAGE_BACKEND,
+    MODEL_INPUT_STORAGE_SCHEMA_FILENAME,
+    MODEL_INPUT_STORAGE_SCHEMA_VERSION,
+    ModelInputStorageSchema,
+    coerce_model_input_storage_schema,
+)
 from motifml.datasets.motif_ir_corpus_dataset import MotifIrCorpusDataset
 from motifml.datasets.motif_ir_shard_dataset import MotifIrShardDataset
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonCorpusDataset
@@ -11,9 +21,17 @@ from motifml.datasets.partitioned_record_set_dataset import PartitionedRecordSet
 __all__ = [
     "JsonDataset",
     "JsonDirectoryDataset",
+    "MODEL_INPUT_PARAMETERS_FILENAME",
+    "MODEL_INPUT_PARTITION_FIELDS",
+    "MODEL_INPUT_RECORD_SUFFIX",
+    "MODEL_INPUT_STORAGE_BACKEND",
+    "MODEL_INPUT_STORAGE_SCHEMA_FILENAME",
+    "MODEL_INPUT_STORAGE_SCHEMA_VERSION",
+    "ModelInputStorageSchema",
     "MotifIrCorpusDataset",
     "MotifIrShardDataset",
     "MotifJsonCorpusDataset",
     "MotifJsonShardDataset",
     "PartitionedRecordSetDataset",
+    "coerce_model_input_storage_schema",
 ]
