@@ -44,6 +44,15 @@ def _stage_raw_corpus_for_ir_build(
     return documents
 
 
+def _stage_model_input_runtime_for_training(
+    model_input_version: object,
+    model_input_runtime: object,
+) -> object:
+    """Gate baseline training on completed ``05_model_input`` persistence."""
+    del model_input_version
+    return model_input_runtime
+
+
 def register_pipelines() -> dict[str, Pipeline]:
     """Register the project's pipelines."""
     ingestion = create_ingestion()
@@ -114,6 +123,32 @@ def register_pipelines() -> dict[str, Pipeline]:
         + ir_validation_shard
         + feature_extraction_shard
     )
+    default_pipeline = (
+        ingestion
+        + staged_ir_build
+        + ir_validation
+        + normalization
+        + dataset_splitting
+        + feature_extraction
+        + tokenization
+    )
+    baseline_training = (
+        default_pipeline
+        + pipeline(
+            [
+                node(
+                    func=_stage_model_input_runtime_for_training,
+                    inputs=["model_input_version", "model_input_runtime"],
+                    outputs="prepared_model_input_runtime",
+                    name="stage_model_input_runtime_for_training",
+                )
+            ]
+        )
+        + pipeline(
+            training,
+            inputs={"model_input_runtime": "prepared_model_input_runtime"},
+        )
+    )
 
     return {
         "ingestion": ingestion,
@@ -127,6 +162,7 @@ def register_pipelines() -> dict[str, Pipeline]:
         "tokenization": tokenization,
         "vocabulary_counting_shard": vocabulary_counting,
         "training": training,
+        "baseline_training": baseline_training,
         "ir_build_shard": ir_build_shard,
         "ir_validation_shard": ir_validation_shard,
         "normalization_shard": normalization_shard,
@@ -136,13 +172,5 @@ def register_pipelines() -> dict[str, Pipeline]:
         "shard_reduce": partitioned_reduce,
         "model_input_reduce": model_input_reduce,
         "shard_processing": shard_processing,
-        "__default__": (
-            ingestion
-            + staged_ir_build
-            + ir_validation
-            + normalization
-            + dataset_splitting
-            + feature_extraction
-            + tokenization
-        ),
+        "__default__": default_pipeline,
     }

@@ -17,11 +17,12 @@ The repository currently covers the symbolic data-engineering side of the projec
 - deterministic score-level split planning for downstream experiments
 - baseline normalization, feature-extraction, and tokenization stages for downstream ML
   experiments
+- baseline decoder-only Transformer training with Kedro-managed checkpoints and
+  reporting artifacts
 
-Training, generation, checkpoint management, and model evaluation pipelines are not yet
-implemented in this repository. The Kedro stage layout reserves ``06_models`` and
-``07_model_output`` for that later work, but the current codebase stops at
-``05_model_input`` plus reporting under ``08_reporting``.
+Generation and model evaluation pipelines are not yet implemented in this repository.
+The Kedro stage layout now uses ``06_models`` for baseline training checkpoints while
+``07_model_output`` remains reserved for later evaluation and generation work.
 
 End-to-End Data Flow
 --------------------
@@ -51,6 +52,11 @@ flow:
      -> data/05_model_input/ir/records/<split>/<shard_id>/**/*.model_input.parquet
      -> data/05_model_input/ir/model_input_version.json
      -> data/08_reporting/training/model_input_stats.json
+     -> data/06_models/training/baseline/checkpoint_manifest.json + best_checkpoint.json
+     -> data/06_models/training/baseline/checkpoints/*.pt
+     -> data/06_models/training/baseline/model_config.json + training_config.json + run_metadata.json
+     -> data/08_reporting/training/training_history.json
+     -> data/08_reporting/training/training_run_metadata.json
 
 The raw corpus is sourced from files under ``data/00_corpus/`` together with the Motif
 CLI binary at ``tools/motif-cli``. ``MotifJsonCorpusDataset`` fingerprints the source
@@ -85,14 +91,20 @@ and reducer variants:
   persists Parquet-backed tokenized document rows plus ``model_input`` reporting and
   version metadata according to ``params:sequence_schema``, ``params:vocabulary``,
   ``params:model_input``, and ``params:data_split``
+- ``training`` consumes lazy ``05_model_input`` runtime handles, trains the baseline
+  decoder-only Transformer, and persists checkpoints plus run-reporting artifacts
+- ``baseline_training`` composes the default preprocessing stages with ``training`` so
+  maintainers have one explicit command path for end-to-end baseline runs from
+  ``data/00_corpus`` through ``06_models`` and ``08_reporting``
 - ``tokenization_shard`` persists shard-local Parquet-backed tokenized rows after the
   shared frozen vocabulary has been reduced
 - ``model_input_reduce`` merges shard-local ``model_input_version`` fragments and
   aggregate ``model_input_stats`` reporting into the corpus-level reporting surface
 
-The default pipeline composes those stages into a single DAG. A small staging node
-ensures that IR build depends on the completed ingestion summary without mutating the raw
-corpus dataset.
+The default pipeline intentionally stops before training so routine preprocessing runs do
+not absorb expensive modeling work implicitly. Small staging nodes ensure that IR build
+depends on the completed ingestion summary and that ``baseline_training`` does not begin
+until the shared ``05_model_input`` artifacts have been persisted.
 
 Current Pipeline Responsibilities
 ---------------------------------
@@ -147,6 +159,12 @@ Current Pipeline Responsibilities
    while shard-local execution preserves concrete shard ids under the same physical
    layout so one dataset contract serves both execution modes.
 
+``training``
+   Streams split-scoped token windows lazily from persisted ``05_model_input`` rows,
+   builds the baseline decoder-only Transformer from frozen Kedro parameters, and writes
+   model checkpoints plus training history and run metadata. The canonical
+   single-command run path is ``uv run kedro run --pipeline=baseline_training``.
+
 Configuration Surfaces
 ----------------------
 
@@ -170,6 +188,8 @@ Examples of currently configured parameters include:
 - vocabulary thresholds plus special-token policy settings for tokenization
 - context length, stride, padding strategy, reporting thresholds, and storage settings
   for model-input persistence
+- model architecture, seed, device selection, optimizer settings, gradient clipping,
+  epoch count, and learning-rate scheduling for baseline training
 
 Code Organization
 -----------------
@@ -215,6 +235,8 @@ The current codebase is designed to support symbolic-ML research in a discipline
   IR
 - the tokenization layer provides a reproducible baseline model-input contract for early
   experiments
+- the training layer provides one explicit end-to-end baseline run path without
+  expanding ``__default__`` into a heavy modeling command
 
 See :doc:`/guides/contributing` for project-wide contribution guidance,
 :doc:`/guides/ir_engineering` for IR-specific engineering notes,

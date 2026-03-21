@@ -5,7 +5,8 @@ deterministic IR corpora and downstream ML-ready datasets.
 
 The repository currently covers raw-corpus ingestion, canonical IR build and validation,
 fixture-backed regression artifacts, deterministic split planning, and baseline
-normalization, feature-extraction, and tokenization stages for downstream experiments.
+normalization, feature-extraction, tokenization, and baseline decoder-only Transformer
+training stages for downstream experiments.
 
 ## Current Scope
 
@@ -19,8 +20,10 @@ normalization, feature-extraction, and tokenization stages for downstream experi
   summaries
 - project IR documents into sequence, graph, and hierarchical feature views
 - package baseline model-input artifacts under Kedro
+- train the baseline decoder-only Transformer through Kedro-managed checkpoints and
+  reporting
 
-Training, generation, and evaluation pipelines are not implemented yet.
+Generation and evaluation pipelines are not implemented yet.
 
 ## Repository Layout
 
@@ -69,11 +72,21 @@ Build and summarize the raw Motif JSON corpus:
 uv run kedro run --pipeline=ingestion
 ```
 
-Run the full default pipeline:
+Run the full default preprocessing pipeline through tokenization:
 
 ```bash
 uv run kedro run --async
 ```
+
+Run the canonical single-command baseline training path:
+
+```bash
+uv run kedro run --pipeline=baseline_training
+```
+
+The default pipeline intentionally stops at `05_model_input`; heavy training work lives
+behind the explicit `baseline_training` pipeline so maintainers can opt into it
+deliberately.
 
 Launch inspection tools when needed:
 

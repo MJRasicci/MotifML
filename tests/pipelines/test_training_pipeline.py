@@ -15,7 +15,35 @@ from tests.pipelines.ir_test_support import (
 
 def test_training_pipeline_persists_cpu_baseline_artifacts(tmp_path: Path) -> None:
     conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
-    runtime_overrides = {
+
+    run_session(
+        conf_source,
+        ["__default__"],
+        runtime_params=_baseline_training_runtime_overrides(),
+    )
+    run_session(
+        conf_source,
+        ["training"],
+        runtime_params=_baseline_training_runtime_overrides(),
+    )
+
+    _assert_persisted_training_artifacts(output_root)
+
+
+def test_baseline_training_pipeline_runs_in_one_command(tmp_path: Path) -> None:
+    conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
+
+    run_session(
+        conf_source,
+        ["baseline_training"],
+        runtime_params=_baseline_training_runtime_overrides(),
+    )
+
+    _assert_persisted_training_artifacts(output_root)
+
+
+def _baseline_training_runtime_overrides() -> dict[str, object]:
+    return {
         "data_split": {
             "ratios": {
                 "train": 0.5,
@@ -71,9 +99,8 @@ def test_training_pipeline_persists_cpu_baseline_artifacts(tmp_path: Path) -> No
         },
     }
 
-    run_session(conf_source, ["__default__"], runtime_params=runtime_overrides)
-    run_session(conf_source, ["training"], runtime_params=runtime_overrides)
 
+def _assert_persisted_training_artifacts(output_root: Path) -> None:
     history = load_json(output_root / "training_history.json")
     run_metadata = load_json(output_root / "training_run_metadata.json")
     training_artifacts = TrainingCheckpointDataset(
