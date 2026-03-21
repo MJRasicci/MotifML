@@ -12,6 +12,7 @@ dependencies = [
     "ipython>=8.10",
     "jupyterlab>=3.0",
     "notebook",
+    "numpy>=1.26",
     "kedro>=0.19",
     "kedro-viz>=9",
     "pyarrow>=20,<21",
