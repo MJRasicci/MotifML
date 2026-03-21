@@ -49,7 +49,7 @@ def test_project_hooks_write_node_and_dataset_timings(tmp_path: Path) -> None:
     )
     hooks = ProjectHooks()
     run_params = {
-        "pipeline_name": "__default__",
+        "pipeline_names": ["__default__"],
         "runner": "SequentialRunner",
         "is_async": False,
     }
@@ -80,6 +80,8 @@ def test_project_hooks_write_node_and_dataset_timings(tmp_path: Path) -> None:
     payload = json.loads(report_path.read_text(encoding="utf-8"))
 
     assert payload["run"]["partial"] is False
+    assert payload["run"]["pipeline_name"] == "__default__"
+    assert payload["run"]["pipeline_names"] == ["__default__"]
     assert len(payload["node_timings"]) == 1
     assert payload["node_timings"][0]["node_name"] == "echo_node"
     assert payload["node_timings"][0]["stage"] == "tokenization"
@@ -118,7 +120,7 @@ def test_before_pipeline_run_wraps_configured_datasets_with_cache(
 
     hooks.before_pipeline_run(
         {
-            "pipeline_name": "__default__",
+            "pipeline_names": ["__default__"],
             "runner": "SequentialRunner",
             "is_async": False,
         },
@@ -163,7 +165,7 @@ def test_after_node_run_releases_wrapped_cache_after_last_consumer(
     )
     hooks = ProjectHooks()
     run_params = {
-        "pipeline_name": "__default__",
+        "pipeline_names": ["__default__"],
         "runner": "SequentialRunner",
         "is_async": False,
     }
@@ -237,7 +239,7 @@ def test_project_hooks_write_kedro_viz_stats_for_directory_datasets(
         tags={"ingestion"},
     )
     run_params = {
-        "pipeline_name": "__default__",
+        "pipeline_names": ["__default__"],
         "runner": "SequentialRunner",
         "is_async": False,
     }
@@ -299,7 +301,7 @@ def test_project_hooks_write_kedro_viz_stats_for_record_sets(
         tags={"feature_extraction"},
     )
     run_params = {
-        "pipeline_name": "__default__",
+        "pipeline_names": ["__default__"],
         "runner": "SequentialRunner",
         "is_async": False,
     }

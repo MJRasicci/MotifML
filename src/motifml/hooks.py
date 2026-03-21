@@ -337,7 +337,8 @@ class _PerformanceRunState:
         return {
             "run": {
                 "run_id": self.run_params.get("run_id"),
-                "pipeline_name": self.run_params.get("pipeline_name", "__default__"),
+                "pipeline_name": _resolve_pipeline_name(self.run_params),
+                "pipeline_names": _resolve_pipeline_names(self.run_params),
                 "runner": self.run_params.get("runner"),
                 "is_async": bool(self.run_params.get("is_async", False)),
                 "started_at_utc": self.started_at_utc.isoformat(),
@@ -635,6 +636,29 @@ def _safe_ratio(numerator: float, denominator: float) -> float:
     if denominator <= 0:
         return 0.0
     return numerator / denominator
+
+
+def _resolve_pipeline_names(run_params: Mapping[str, Any]) -> list[str]:
+    pipeline_names = run_params.get("pipeline_names")
+    if isinstance(pipeline_names, list):
+        return [str(name) for name in pipeline_names]
+    if isinstance(pipeline_names, tuple):
+        return [str(name) for name in pipeline_names]
+
+    pipeline_name = run_params.get("pipeline_name")
+    if pipeline_name:
+        return [str(pipeline_name)]
+
+    return ["__default__"]
+
+
+def _resolve_pipeline_name(run_params: Mapping[str, Any]) -> str:
+    pipeline_names = _resolve_pipeline_names(run_params)
+    if not pipeline_names:
+        return "__default__"
+    if len(pipeline_names) == 1:
+        return pipeline_names[0]
+    return ",".join(pipeline_names)
 
 
 def _build_kedro_viz_dataset_stats(data: Any) -> dict[str, int]:

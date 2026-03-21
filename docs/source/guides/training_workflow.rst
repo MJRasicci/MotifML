@@ -14,9 +14,9 @@ maintainers can choose the scope they need:
 .. code-block:: bash
 
    uv run kedro run --async
-   uv run kedro run --pipeline=baseline_training
-   uv run kedro run --pipeline=evaluation
-   uv run kedro run --pipeline=baseline_training_evaluation
+   uv run kedro run --pipelines=baseline_training
+   uv run kedro run --pipelines=evaluation
+   uv run kedro run --pipelines=baseline_training_evaluation
 
 Use these command paths intentionally:
 
@@ -52,7 +52,7 @@ example:
 
 .. code-block:: bash
 
-   uv run kedro run --pipeline=baseline_training_evaluation \
+   uv run kedro run --pipelines=baseline_training_evaluation \
      --params training.device=cuda,training.num_epochs=20,evaluation.qualitative.samples_per_split=8
 
 Artifact Review Surfaces

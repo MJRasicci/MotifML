@@ -119,7 +119,7 @@ not absorb expensive modeling work implicitly. Small staging nodes ensure that I
 depends on the completed ingestion summary and that ``baseline_training`` does not begin
 until the shared ``05_model_input`` artifacts have been persisted. The canonical
 single-command full review path is now
-``uv run kedro run --pipeline=baseline_training_evaluation``.
+``uv run kedro run --pipelines=baseline_training_evaluation``.
 
 Current Pipeline Responsibilities
 ---------------------------------
@@ -179,7 +179,7 @@ Current Pipeline Responsibilities
    builds the baseline decoder-only Transformer from frozen Kedro parameters, and writes
    model checkpoints plus training history and run metadata. The canonical
    single-command training-only run path is
-   ``uv run kedro run --pipeline=baseline_training``.
+   ``uv run kedro run --pipelines=baseline_training``.
    Corpus-wide materialization of tokenized documents or token windows is considered a
    regression against this contract.
 
@@ -193,7 +193,7 @@ Current Pipeline Responsibilities
 ``baseline_training_evaluation``
    Provides the canonical single-command end-to-end baseline run path from raw corpus
    inputs through evaluation outputs:
-   ``uv run kedro run --pipeline=baseline_training_evaluation``.
+   ``uv run kedro run --pipelines=baseline_training_evaluation``.
 
 Configuration Surfaces
 ----------------------

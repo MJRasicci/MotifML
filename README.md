@@ -71,7 +71,7 @@ Add your source corpus anywhere under `data/00_corpus/` and place the
 Build and summarize the raw Motif JSON corpus:
 
 ```bash
-uv run kedro run --pipeline=ingestion
+uv run kedro run --pipelines=ingestion
 ```
 
 Run the full default preprocessing pipeline through tokenization:
@@ -83,7 +83,7 @@ uv run kedro run --async
 Run the canonical single-command baseline training path:
 
 ```bash
-uv run kedro run --pipeline=baseline_training
+uv run kedro run --pipelines=baseline_training
 ```
 
 The default pipeline intentionally stops at `05_model_input`; heavy training work lives
@@ -93,7 +93,7 @@ deliberately.
 Run the canonical single-command end-to-end baseline review path:
 
 ```bash
-uv run kedro run --pipeline=baseline_training_evaluation
+uv run kedro run --pipelines=baseline_training_evaluation
 ```
 
 This path runs the baseline from raw corpus inputs through evaluation outputs and is the
@@ -103,7 +103,7 @@ fastest way to refresh the full `05_model_input` + `06_models` + `07_model_outpu
 Run baseline evaluation after training artifacts exist:
 
 ```bash
-uv run kedro run --pipeline=evaluation
+uv run kedro run --pipelines=evaluation
 ```
 
 The evaluation pipeline reuses the persisted `05_model_input`, frozen vocabulary, and

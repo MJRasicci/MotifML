@@ -130,7 +130,7 @@ def _run_kedro_pipeline(  # noqa: PLR0913
     stdout: object | None = None,
     stderr: object | None = None,
 ) -> None:
-    command = [sys.executable, "-m", "kedro", "run", f"--pipeline={pipeline_name}"]
+    command = [sys.executable, "-m", "kedro", "run", f"--pipelines={pipeline_name}"]
     if conf_source is not None:
         command.append(f"--conf-source={conf_source}")
     if runtime_param is not None:

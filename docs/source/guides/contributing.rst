@@ -124,7 +124,7 @@ The canonical one-command full baseline review path is:
 
 .. code-block:: bash
 
-   uv run kedro run --pipeline=baseline_training_evaluation
+   uv run kedro run --pipelines=baseline_training_evaluation
 
 Documentation Expectations
 --------------------------
