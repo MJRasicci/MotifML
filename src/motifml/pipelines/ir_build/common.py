@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from fractions import Fraction
 from pathlib import Path
 from typing import Any
 
@@ -78,6 +79,9 @@ UNSUPPORTED_ONSET_TECHNIQUE_FIELDS = (
     "slashed",
     "tremolo",
 )
+_SNAPPED_SCORE_TIME_MIN_SOURCE_DENOMINATOR = 100_000
+_SNAPPED_SCORE_TIME_MAX_DENOMINATOR = 2_880
+_SNAPPED_SCORE_TIME_MAX_ERROR = Fraction(1, 1_000_000)
 IR_DOCUMENT_OUTPUT_ROOT = Path("data/02_intermediate/ir/documents")
 
 
@@ -588,6 +592,7 @@ def _coerce_score_time(
             except ValueError as exc:
                 message = str(exc)
             else:
+                score_time = _snap_decimal_approximated_score_time(score_time)
                 if require_positive and score_time.numerator <= 0:
                     message = "ScoreTime durations must be positive."
                 elif not require_positive and score_time.numerator < 0:
@@ -608,6 +613,30 @@ def _coerce_score_time(
         return None
 
     return score_time
+
+
+def _snap_decimal_approximated_score_time(score_time: ScoreTime) -> ScoreTime:
+    """Collapse large decimal-style denominators back to nearby exact fractions.
+
+    Some upstream raw corpus exports serialize offsets like ``0.333333`` as
+    ``333333/1000000``. Those values are intended to represent simple musical
+    fractions such as ``1/3`` and become pathological if we preserve the decimal
+    approximation all the way into tokenization.
+    """
+    if score_time.denominator < _SNAPPED_SCORE_TIME_MIN_SOURCE_DENOMINATOR:
+        return score_time
+
+    source_fraction = Fraction(score_time.numerator, score_time.denominator)
+    snapped_fraction = source_fraction.limit_denominator(
+        _SNAPPED_SCORE_TIME_MAX_DENOMINATOR
+    )
+    if abs(source_fraction - snapped_fraction) > _SNAPPED_SCORE_TIME_MAX_ERROR:
+        return score_time
+
+    return ScoreTime(
+        numerator=snapped_fraction.numerator,
+        denominator=snapped_fraction.denominator,
+    )
 
 
 def _coerce_optional_bool(

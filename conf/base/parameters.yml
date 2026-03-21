@@ -54,7 +54,7 @@ tokenization:
   vocabulary_strategy: projection_native
   max_sequence_length: 8
   padding_strategy: right
-  time_resolution: 96
+  time_resolution: 2882880
 
 seed: 17
 
@@ -93,7 +93,7 @@ sequence_schema:
       - ottava
 
 vocabulary:
-  time_resolution: 96
+  time_resolution: 2882880
   minimum_frequency: 1
   maximum_size: 65536
   special_tokens:
