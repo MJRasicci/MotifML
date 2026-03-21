@@ -66,7 +66,10 @@ def register_pipelines() -> dict[str, Pipeline]:
     normalization_shard = pipeline(
         normalization,
         inputs={"motif_ir_corpus": "motif_ir_corpus_shard"},
-        outputs={"normalized_ir_corpus": "normalized_ir_corpus_shard"},
+        outputs={
+            "normalized_ir_corpus": "normalized_ir_corpus_shard",
+            "normalized_ir_version": "normalized_ir_version_shard",
+        },
     )
     ir_validation_shard = pipeline(
         ir_validation,

@@ -164,11 +164,27 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "type": "motifml.datasets.motif_ir_corpus_dataset.MotifIrCorpusDataset",
             "filepath": str(output_root / "normalized_documents"),
         },
+        "normalized_ir_version": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "normalized_ir_version.json"),
+        },
         "normalized_ir_corpus_shard": {
             "type": "motifml.datasets.motif_ir_shard_dataset.MotifIrShardDataset",
             "filepath": str(output_root / "normalized_documents"),
             "partition_index_filepath": str(output_root / "raw_partition_index.json"),
             "shard_id": "${runtime_params:execution.shard_id,__all__}",
+        },
+        "normalized_ir_version_shard": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(
+                output_root
+                / "normalized_ir_versions"
+                / "${runtime_params:execution.shard_id,__all__}.json"
+            ),
+        },
+        "normalized_ir_version_shard_collection": {
+            "type": "motifml.datasets.json_directory_dataset.JsonDirectoryDataset",
+            "filepath": str(output_root / "normalized_ir_versions"),
         },
         "ir_features": {
             "type": "motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset",

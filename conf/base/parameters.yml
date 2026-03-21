@@ -3,6 +3,19 @@ ir_build_metadata:
   corpus_build_version: "ir-build-v1"
   build_timestamp: "2026-03-19T00:00:00-04:00"
 
+normalization:
+  contract_name: motifml.normalized_ir
+  contract_version: "1.0.0"
+  serialized_document_format: motifml.ir.document
+  normalization_strategy: passthrough_v1
+  allow_optional_overlays: true
+  allow_optional_views: true
+  task_agnostic_guarantees:
+    - stable_source_relative_identity
+    - task_agnostic_domain_truth
+    - no_model_specific_flattening
+    - no_model_specific_windowing
+
 ir_validation:
   rule_severities:
     onset_ownership: error

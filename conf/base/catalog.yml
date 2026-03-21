@@ -83,11 +83,23 @@ normalized_ir_corpus:
   type: motifml.datasets.motif_ir_corpus_dataset.MotifIrCorpusDataset
   filepath: data/03_primary/ir/documents
 
+normalized_ir_version:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/03_primary/ir/normalized_ir_version.json
+
 normalized_ir_corpus_shard:
   type: motifml.datasets.motif_ir_shard_dataset.MotifIrShardDataset
   filepath: data/03_primary/ir/documents
   partition_index_filepath: data/02_intermediate/ingestion/raw_partition_index.json
   shard_id: "${runtime_params:execution.shard_id,__all__}"
+
+normalized_ir_version_shard:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/03_primary/ir/versions/shards/${runtime_params:execution.shard_id,__all__}.json
+
+normalized_ir_version_shard_collection:
+  type: motifml.datasets.json_directory_dataset.JsonDirectoryDataset
+  filepath: data/03_primary/ir/versions/shards
 
 ingested_raw_motif_json_corpus:
   type: MemoryDataset

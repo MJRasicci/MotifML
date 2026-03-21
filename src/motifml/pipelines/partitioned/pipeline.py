@@ -10,6 +10,7 @@ from motifml.pipelines.ir_validation.nodes import (
     merge_ir_validation_report_fragments,
     report_ir_scale_metrics,
 )
+from motifml.pipelines.normalization.nodes import merge_normalized_ir_version_fragments
 
 
 def create_reduce_pipeline(**kwargs: object) -> Pipeline:
@@ -41,6 +42,12 @@ def create_reduce_pipeline(**kwargs: object) -> Pipeline:
                 inputs="ir_corpus_summary_model",
                 outputs="motif_ir_summary",
                 name="report_ir_scale_metrics",
+            ),
+            node(
+                func=merge_normalized_ir_version_fragments,
+                inputs="normalized_ir_version_shard_collection",
+                outputs="normalized_ir_version",
+                name="merge_normalized_ir_version_fragments",
             ),
         ],
         tags=["partitioned", "reduce"],

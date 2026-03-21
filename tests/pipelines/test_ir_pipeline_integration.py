@@ -37,6 +37,7 @@ EXPECTED_DEFAULT_STAGE_ORDER = [
     "build_ir_manifest",
     "normalize_ir_corpus",
     "validate_ir_documents",
+    "build_normalized_ir_version",
     "extract_features",
     "publish_ir_validation_report",
     "summarize_ir_corpus",
@@ -84,6 +85,9 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
         EXPECTED_FIXTURE_COUNT
     )
     assert sorted((output_root / "normalized_documents").rglob("*.ir.json"))
+    assert load_json(output_root / "normalized_ir_version.json")[
+        "normalized_ir_version"
+    ]
     assert _default_stage_order() == EXPECTED_DEFAULT_STAGE_ORDER
 
 
@@ -114,7 +118,13 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
     assert summary["document_count"] == EXPECTED_FIXTURE_COUNT
     assert sorted((output_root / "documents").rglob("*.ir.json"))
     assert sorted((output_root / "normalized_documents").rglob("*.ir.json"))
+    assert load_json(output_root / "normalized_ir_version.json")[
+        "normalized_ir_version"
+    ]
     assert len(sorted((output_root / "ir_manifests").glob("*.json"))) == len(shard_ids)
+    assert len(sorted((output_root / "normalized_ir_versions").glob("*.json"))) == len(
+        shard_ids
+    )
     assert len(sorted((output_root / "validation_shards").glob("*.json"))) == len(
         shard_ids
     )
@@ -127,6 +137,21 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
     assert len(load_partitioned_record_set(output_root / "model_input")["records"]) == (
         EXPECTED_FIXTURE_COUNT
     )
+
+
+def test_kedro_session_emits_stable_normalized_ir_version_for_unchanged_inputs(
+    tmp_path: Path,
+):
+    conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
+
+    run_session(conf_source, ["ir_build"])
+    run_session(conf_source, ["normalization"])
+    first_version = load_json(output_root / "normalized_ir_version.json")
+
+    run_session(conf_source, ["normalization"])
+    second_version = load_json(output_root / "normalized_ir_version.json")
+
+    assert first_version == second_version
 
 
 def _default_stage_order() -> list[str]:
