@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 import motifml.pipelines.feature_extraction.nodes as feature_extraction_nodes
 from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
 from motifml.ir.ids import point_control_id, span_control_id
@@ -29,10 +31,12 @@ from motifml.ir.models import (
 from motifml.ir.projections.graph import GraphAdjacency, GraphProjection
 from motifml.ir.projections.hierarchical import HierarchicalProjection
 from motifml.ir.projections.sequence import (
+    NoteSequenceEvent,
     PointControlSequenceEvent,
     SequenceProjection,
     SequenceProjectionMode,
     SpanControlSequenceEvent,
+    StructureMarkerKind,
     StructureMarkerSequenceEvent,
 )
 from motifml.ir.time import ScoreTime
@@ -370,6 +374,130 @@ def test_extract_features_feature_version_changes_when_sequence_schema_changes()
     assert first.parameters.feature_version != second.parameters.feature_version
 
 
+def test_extract_features_rejects_out_of_order_sequence_events(monkeypatch) -> None:
+    original_project_sequence = feature_extraction_nodes.project_sequence
+
+    def fake_project_sequence(document, config):
+        projection = original_project_sequence(document, config)
+        return SequenceProjection(
+            mode=projection.mode,
+            events=tuple(reversed(projection.events)),
+        )
+
+    monkeypatch.setattr(
+        feature_extraction_nodes,
+        "project_sequence",
+        fake_project_sequence,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Sequence projection contract violation",
+    ):
+        extract_features(
+            [_build_record(include_controls=True)],
+            _build_normalized_ir_version_metadata(),
+            {
+                "projection_type": "sequence",
+                "sequence_mode": BASELINE_SEQUENCE_MODE,
+            },
+            SequenceSchemaContract(),
+        )
+
+
+def test_extract_features_preserves_multi_voice_note_interleaving() -> None:
+    features = extract_features(
+        [_build_multi_voice_record()],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        {
+            "structure_markers": {"enabled": False},
+            "controls": {
+                "include_point_controls": False,
+                "include_span_controls": False,
+            },
+        },
+    )
+
+    projection = features.records[0].projection
+
+    assert all(isinstance(event, NoteSequenceEvent) for event in projection.events)
+    assert [event.time for event in projection.events] == [
+        ScoreTime(0, 1),
+        ScoreTime(1, 8),
+        ScoreTime(1, 4),
+    ]
+    assert [event.voice_lane_id for event in projection.events] == [
+        "voice:staff:part:track-b:0:0:0",
+        "voice:staff:part:track-b:0:0:1",
+        "voice:staff:part:track-b:0:0:0",
+    ]
+
+
+def test_extract_features_places_structure_markers_before_controls_and_notes() -> None:
+    features = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(),
+    )
+
+    projection = features.records[0].projection
+    time_zero_events = [
+        event for event in projection.events if event.time == ScoreTime(0, 1)
+    ]
+
+    assert [type(event) for event in time_zero_events[:5]] == [
+        StructureMarkerSequenceEvent,
+        StructureMarkerSequenceEvent,
+        StructureMarkerSequenceEvent,
+        StructureMarkerSequenceEvent,
+        StructureMarkerSequenceEvent,
+    ]
+    assert [event.marker_kind for event in time_zero_events[:5]] == [
+        StructureMarkerKind.PART,
+        StructureMarkerKind.STAFF,
+        StructureMarkerKind.BAR,
+        StructureMarkerKind.VOICE_LANE,
+        StructureMarkerKind.ONSET_GROUP,
+    ]
+    assert isinstance(time_zero_events[5], PointControlSequenceEvent)
+    assert isinstance(time_zero_events[6], SpanControlSequenceEvent)
+    assert isinstance(time_zero_events[7], NoteSequenceEvent)
+
+
+def test_extract_features_orders_control_events_before_notes() -> None:
+    features = extract_features(
+        [_build_record(include_controls=True)],
+        _build_normalized_ir_version_metadata(),
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        SequenceSchemaContract(),
+    )
+
+    projection = features.records[0].projection
+    non_marker_events = [
+        event
+        for event in projection.events
+        if event.time == ScoreTime(0, 1)
+        and not isinstance(event, StructureMarkerSequenceEvent)
+    ]
+
+    assert [type(event) for event in non_marker_events] == [
+        PointControlSequenceEvent,
+        SpanControlSequenceEvent,
+        NoteSequenceEvent,
+    ]
+
+
 def _build_normalized_ir_version_metadata(
     normalized_ir_version: str = "normalized-v1",
 ) -> NormalizedIrVersionMetadata:
@@ -383,6 +511,128 @@ def _build_normalized_ir_version_metadata(
         task_agnostic_guarantees=(
             "stable_source_relative_identity",
             "task_agnostic_domain_truth",
+        ),
+    )
+
+
+def _build_multi_voice_record() -> MotifIrDocumentRecord:
+    part_id = "part:track-b"
+    staff_id = "staff:part:track-b:0"
+    bar_id = "bar:0"
+    voice_lane_id_0 = "voice:staff:part:track-b:0:0:0"
+    voice_lane_id_1 = "voice:staff:part:track-b:0:0:1"
+    onset_id_0 = "onset:voice:staff:part:track-b:0:0:0:0"
+    onset_id_1 = "onset:voice:staff:part:track-b:0:0:0:1"
+    onset_id_2 = "onset:voice:staff:part:track-b:0:0:1:0"
+
+    return MotifIrDocumentRecord(
+        relative_path="fixtures/multi_voice.json",
+        document=MotifMlIrDocument(
+            metadata=IrDocumentMetadata(
+                ir_schema_version="1.0.0",
+                corpus_build_version="build-1",
+                generator_version="0.1.0",
+                source_document_hash="multi-voice",
+            ),
+            parts=(
+                Part(
+                    part_id=part_id,
+                    instrument_family=1,
+                    instrument_kind=2,
+                    role=3,
+                    transposition=Transposition(),
+                    staff_ids=(staff_id,),
+                ),
+            ),
+            staves=(Staff(staff_id=staff_id, part_id=part_id, staff_index=0),),
+            bars=(
+                Bar(
+                    bar_id=bar_id,
+                    bar_index=0,
+                    start=ScoreTime(0, 1),
+                    duration=ScoreTime(1, 1),
+                    time_signature=TimeSignature(4, 4),
+                ),
+            ),
+            voice_lanes=(
+                VoiceLane(
+                    voice_lane_id=voice_lane_id_0,
+                    voice_lane_chain_id="voice-chain:part:track-b:staff:part:track-b:0:0",
+                    part_id=part_id,
+                    staff_id=staff_id,
+                    bar_id=bar_id,
+                    voice_index=0,
+                ),
+                VoiceLane(
+                    voice_lane_id=voice_lane_id_1,
+                    voice_lane_chain_id="voice-chain:part:track-b:staff:part:track-b:0:1",
+                    part_id=part_id,
+                    staff_id=staff_id,
+                    bar_id=bar_id,
+                    voice_index=1,
+                ),
+            ),
+            onset_groups=(
+                OnsetGroup(
+                    onset_id=onset_id_0,
+                    voice_lane_id=voice_lane_id_0,
+                    bar_id=bar_id,
+                    time=ScoreTime(0, 1),
+                    duration_notated=ScoreTime(1, 4),
+                    is_rest=False,
+                    attack_order_in_voice=0,
+                ),
+                OnsetGroup(
+                    onset_id=onset_id_1,
+                    voice_lane_id=voice_lane_id_0,
+                    bar_id=bar_id,
+                    time=ScoreTime(1, 4),
+                    duration_notated=ScoreTime(1, 4),
+                    is_rest=False,
+                    attack_order_in_voice=1,
+                ),
+                OnsetGroup(
+                    onset_id=onset_id_2,
+                    voice_lane_id=voice_lane_id_1,
+                    bar_id=bar_id,
+                    time=ScoreTime(1, 8),
+                    duration_notated=ScoreTime(1, 8),
+                    is_rest=False,
+                    attack_order_in_voice=0,
+                ),
+            ),
+            note_events=(
+                NoteEvent(
+                    note_id="note:onset:voice:staff:part:track-b:0:0:0:0:0",
+                    onset_id=onset_id_0,
+                    part_id=part_id,
+                    staff_id=staff_id,
+                    time=ScoreTime(0, 1),
+                    attack_duration=ScoreTime(1, 4),
+                    sounding_duration=ScoreTime(1, 4),
+                    pitch=Pitch(step="C", octave=4),
+                ),
+                NoteEvent(
+                    note_id="note:onset:voice:staff:part:track-b:0:0:1:0:0",
+                    onset_id=onset_id_2,
+                    part_id=part_id,
+                    staff_id=staff_id,
+                    time=ScoreTime(1, 8),
+                    attack_duration=ScoreTime(1, 8),
+                    sounding_duration=ScoreTime(1, 8),
+                    pitch=Pitch(step="D", octave=4),
+                ),
+                NoteEvent(
+                    note_id="note:onset:voice:staff:part:track-b:0:0:0:1:0",
+                    onset_id=onset_id_1,
+                    part_id=part_id,
+                    staff_id=staff_id,
+                    time=ScoreTime(1, 4),
+                    attack_duration=ScoreTime(1, 4),
+                    sounding_duration=ScoreTime(1, 4),
+                    pitch=Pitch(step="E", octave=4),
+                ),
+            ),
         ),
     )
 

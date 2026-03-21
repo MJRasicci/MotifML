@@ -188,5 +188,29 @@ def test_normalization_stage_persists_training_safe_documents(tmp_path: Path):
             assert f'"{field_name}"' not in document_text
 
 
+def test_feature_extraction_persists_stable_feature_artifacts_for_unchanged_inputs(
+    tmp_path: Path,
+):
+    conf_source, output_root = write_test_conf(tmp_path, MOTIF_JSON_FIXTURE_ROOT)
+
+    run_session(conf_source, ["ir_build"])
+    run_session(conf_source, ["normalization"])
+    run_session(conf_source, ["feature_extraction"])
+    first_bytes = _load_partitioned_json_bytes(output_root / "ir_features")
+
+    run_session(conf_source, ["feature_extraction"])
+    second_bytes = _load_partitioned_json_bytes(output_root / "ir_features")
+
+    assert first_bytes == second_bytes
+
+
 def _default_stage_order() -> list[str]:
     return [node.name for node in register_pipelines()["__default__"].nodes]
+
+
+def _load_partitioned_json_bytes(path: Path) -> dict[str, bytes]:
+    return {
+        item.relative_to(path).as_posix(): item.read_bytes()
+        for item in sorted(path.rglob("*.json"))
+        if item.is_file()
+    }

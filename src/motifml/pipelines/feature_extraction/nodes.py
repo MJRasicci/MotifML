@@ -11,6 +11,7 @@ from motifml.ir.projections.hierarchical import project_hierarchical
 from motifml.ir.projections.sequence import (
     NoteSequenceEvent,
     PointControlSequenceEvent,
+    SequenceEvent,
     SequenceProjection,
     SequenceProjectionConfig,
     SequenceProjectionMode,
@@ -103,7 +104,9 @@ def _project_document(
                 mode=_sequence_projection_mode(parameters, sequence_schema)
             ),
         )
-        return _apply_sequence_schema(projection, sequence_schema)
+        return _validate_sequence_projection_contract(
+            _apply_sequence_schema(projection, sequence_schema)
+        )
 
     if parameters.projection_type is ProjectionType.GRAPH:
         return project_graph(
@@ -228,6 +231,33 @@ def _apply_sequence_schema(
         if _sequence_event_is_enabled(event, sequence_schema)
     )
     return type(projection)(mode=projection.mode, events=filtered_events)
+
+
+def _validate_sequence_projection_contract(
+    projection: SequenceProjection,
+) -> SequenceProjection:
+    _validate_sequence_event_order(projection.events)
+    return projection
+
+
+def _validate_sequence_event_order(events: tuple[SequenceEvent, ...]) -> None:
+    expected_events = tuple(sorted(events, key=_sequence_event_sort_key))
+    if events == expected_events:
+        return
+
+    for index, (actual, expected) in enumerate(
+        zip(events, expected_events, strict=True)
+    ):
+        if actual != expected:
+            raise ValueError(
+                "Sequence projection contract violation at event index "
+                f"{index}: expected {type(expected).__name__} before "
+                f"{type(actual).__name__} according to the canonical ordering."
+            )
+
+
+def _sequence_event_sort_key(event: SequenceEvent) -> tuple[object, ...]:
+    return event.sort_key()
 
 
 def _sequence_event_is_enabled(
