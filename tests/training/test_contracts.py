@@ -9,10 +9,15 @@ from motifml.training.contracts import (
     EvaluationRunMetadata,
     ModelInputMetadata,
     SplitManifestEntry,
+    SplitStatsEntry,
+    SplitStatsReport,
     TrainingRunMetadata,
     VocabularyMetadata,
     deserialize_metadata_artifact,
+    deserialize_split_manifest,
     serialize_metadata_artifact,
+    serialize_split_manifest,
+    sort_split_manifest_entries,
 )
 
 
@@ -30,6 +35,89 @@ def test_split_manifest_entry_round_trips_through_json() -> None:
 
     assert payload["split"] == "train"
     assert restored == entry
+
+
+def test_split_manifest_helpers_sort_entries_in_stable_relative_path_order() -> None:
+    entries = [
+        SplitManifestEntry(
+            document_id="Doc-B",
+            relative_path="fixtures/B.json",
+            split="validation",
+            group_key="group-b",
+            split_version="split-v1",
+        ),
+        SplitManifestEntry(
+            document_id="doc-a",
+            relative_path="fixtures/a.json",
+            split="train",
+            group_key="group-a",
+            split_version="split-v1",
+        ),
+    ]
+
+    serialized = serialize_split_manifest(entries)
+    restored = deserialize_split_manifest(serialized)
+
+    assert [entry.relative_path for entry in sort_split_manifest_entries(entries)] == [
+        "fixtures/a.json",
+        "fixtures/B.json",
+    ]
+    assert [entry["relative_path"] for entry in serialized] == [
+        "fixtures/a.json",
+        "fixtures/B.json",
+    ]
+    assert [entry.relative_path for entry in restored] == [
+        "fixtures/a.json",
+        "fixtures/B.json",
+    ]
+
+
+def test_split_stats_report_round_trips_and_sorts_split_entries() -> None:
+    report = SplitStatsReport(
+        split_version="split-v1",
+        total_document_count=10,
+        total_group_count=9,
+        splits=(
+            SplitStatsEntry(
+                split=DatasetSplit.TEST,
+                document_count=1,
+                group_count=1,
+                token_count=None,
+            ),
+            SplitStatsEntry(
+                split=DatasetSplit.TRAIN,
+                document_count=8,
+                group_count=7,
+                token_count=1024,
+            ),
+            SplitStatsEntry(
+                split=DatasetSplit.VALIDATION,
+                document_count=1,
+                group_count=1,
+                token_count=128,
+            ),
+        ),
+    )
+
+    payload = report.to_json_dict()
+    restored = SplitStatsReport.from_json_dict(payload)
+
+    assert [entry["split"] for entry in payload["splits"]] == [
+        "train",
+        "validation",
+        "test",
+    ]
+    assert restored == report
+
+
+def test_split_stats_entry_rejects_negative_counts() -> None:
+    with pytest.raises(ValueError, match="group_count"):
+        SplitStatsEntry(
+            split="train",
+            document_count=1,
+            group_count=-1,
+            token_count=None,
+        )
 
 
 def test_vocabulary_metadata_validates_non_negative_counts() -> None:

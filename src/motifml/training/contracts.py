@@ -64,6 +64,95 @@ class SplitManifestEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class SplitStatsEntry:
+    """Aggregate counts for one experiment split."""
+
+    split: DatasetSplit
+    document_count: int
+    group_count: int
+    token_count: int | None = None
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "split", DatasetSplit(self.split))
+        _require_non_negative_int(self.document_count, "document_count")
+        _require_non_negative_int(self.group_count, "group_count")
+        if self.token_count is not None:
+            _require_non_negative_int(self.token_count, "token_count")
+
+    def to_json_dict(self) -> dict[str, Any]:
+        """Serialize one split-stats entry for JSON persistence."""
+        return _serialize_dataclass(self)
+
+    @classmethod
+    def from_json_dict(cls, payload: Mapping[str, Any]) -> SplitStatsEntry:
+        """Deserialize one split-stats entry from JSON."""
+        token_count = payload.get("token_count")
+        return cls(
+            split=DatasetSplit(str(payload["split"])),
+            document_count=int(payload["document_count"]),
+            group_count=int(payload["group_count"]),
+            token_count=None if token_count is None else int(token_count),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class SplitStatsReport:
+    """Aggregate reporting surface for a deterministic split manifest."""
+
+    split_version: str
+    total_document_count: int
+    total_group_count: int
+    splits: tuple[SplitStatsEntry, ...]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "split_version",
+            _normalize_text(self.split_version, "split_version"),
+        )
+        _require_non_negative_int(self.total_document_count, "total_document_count")
+        _require_non_negative_int(self.total_group_count, "total_group_count")
+        normalized_splits = tuple(
+            sort_split_stats_entries(
+                SplitStatsEntry(
+                    split=entry["split"],
+                    document_count=entry["document_count"],
+                    group_count=entry["group_count"],
+                    token_count=entry.get("token_count"),
+                )
+                if isinstance(entry, Mapping)
+                else SplitStatsEntry(
+                    split=entry.split,
+                    document_count=entry.document_count,
+                    group_count=entry.group_count,
+                    token_count=entry.token_count,
+                )
+                for entry in self.splits
+            )
+        )
+        if not normalized_splits:
+            raise ValueError("splits must contain at least one split summary.")
+        object.__setattr__(self, "splits", normalized_splits)
+
+    def to_json_dict(self) -> dict[str, Any]:
+        """Serialize the split-stats report for JSON persistence."""
+        return _serialize_dataclass(self)
+
+    @classmethod
+    def from_json_dict(cls, payload: Mapping[str, Any]) -> SplitStatsReport:
+        """Deserialize one split-stats report from JSON."""
+        return cls(
+            split_version=str(payload["split_version"]),
+            total_document_count=int(payload["total_document_count"]),
+            total_group_count=int(payload["total_group_count"]),
+            splits=tuple(
+                SplitStatsEntry.from_json_dict(entry)
+                for entry in payload.get("splits", ())
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class VocabularyMetadata:
     """Summary metadata for a frozen vocabulary artifact."""
 
@@ -386,6 +475,8 @@ class EvaluationRunMetadata:
 
 TrainingMetadataArtifact = (
     SplitManifestEntry
+    | SplitStatsEntry
+    | SplitStatsReport
     | VocabularyMetadata
     | ModelInputMetadata
     | TrainingRunMetadata
@@ -414,6 +505,53 @@ def deserialize_metadata_artifact(
 
 def _serialize_dataclass(value: TrainingMetadataArtifact) -> dict[str, Any]:
     return to_json_compatible(value)
+
+
+def coerce_split_manifest_entries(
+    value: Sequence[SplitManifestEntry] | Sequence[Mapping[str, Any]] | object,
+) -> tuple[SplitManifestEntry, ...]:
+    """Normalize split-manifest entries into deterministic relative-path order."""
+    if not isinstance(value, Sequence) or isinstance(value, str):
+        raise ValueError("split manifest data must be a sequence.")
+
+    entries: list[SplitManifestEntry] = []
+    for entry in value:
+        if isinstance(entry, SplitManifestEntry):
+            entries.append(entry)
+            continue
+        if not isinstance(entry, Mapping):
+            raise ValueError("split manifest entries must be mappings.")
+        entries.append(SplitManifestEntry.from_json_dict(entry))
+
+    return sort_split_manifest_entries(entries)
+
+
+def sort_split_manifest_entries(
+    entries: Sequence[SplitManifestEntry],
+) -> tuple[SplitManifestEntry, ...]:
+    """Return split-manifest entries in the canonical persisted order."""
+    return tuple(sorted(entries, key=_split_manifest_sort_key))
+
+
+def serialize_split_manifest(
+    entries: Sequence[SplitManifestEntry] | Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Serialize a split manifest in canonical persisted order."""
+    return [entry.to_json_dict() for entry in coerce_split_manifest_entries(entries)]
+
+
+def deserialize_split_manifest(
+    payload: Sequence[SplitManifestEntry] | Sequence[Mapping[str, Any]] | object,
+) -> tuple[SplitManifestEntry, ...]:
+    """Deserialize a split manifest and normalize it into canonical order."""
+    return coerce_split_manifest_entries(payload)
+
+
+def sort_split_stats_entries(
+    entries: Sequence[SplitStatsEntry],
+) -> tuple[SplitStatsEntry, ...]:
+    """Return split-stat entries in the canonical split order."""
+    return tuple(sorted(entries, key=_split_stats_sort_key))
 
 
 def _normalize_text(value: str, field_name: str) -> str:
@@ -470,13 +608,45 @@ def _require_positive_int(value: int, field_name: str) -> None:
         raise ValueError(f"{field_name} must be positive.")
 
 
+def _split_manifest_sort_key(
+    entry: SplitManifestEntry,
+) -> tuple[str, str, int, str, str]:
+    return (
+        entry.relative_path.casefold(),
+        entry.document_id.casefold(),
+        _split_order(entry.split),
+        entry.group_key.casefold(),
+        entry.split_version.casefold(),
+    )
+
+
+def _split_stats_sort_key(entry: SplitStatsEntry) -> tuple[int, int, int]:
+    token_count = -1 if entry.token_count is None else entry.token_count
+    return (_split_order(entry.split), entry.document_count, token_count)
+
+
+def _split_order(split: DatasetSplit) -> int:
+    return {
+        DatasetSplit.TRAIN: 0,
+        DatasetSplit.VALIDATION: 1,
+        DatasetSplit.TEST: 2,
+    }[DatasetSplit(split)]
+
+
 __all__ = [
+    "SplitStatsEntry",
+    "SplitStatsReport",
     "DatasetSplit",
     "EvaluationRunMetadata",
     "ModelInputMetadata",
     "SplitManifestEntry",
     "TrainingRunMetadata",
     "VocabularyMetadata",
+    "coerce_split_manifest_entries",
     "deserialize_metadata_artifact",
+    "deserialize_split_manifest",
     "serialize_metadata_artifact",
+    "serialize_split_manifest",
+    "sort_split_manifest_entries",
+    "sort_split_stats_entries",
 ]
