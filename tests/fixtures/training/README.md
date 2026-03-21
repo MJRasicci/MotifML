@@ -71,7 +71,17 @@ Generated artifact families in this directory:
 - `model_input/parameters.json`, `model_input/model_input_version.json`, and
   `model_input/storage_schema.json` for the frozen `05_model_input` contract metadata
 - `representative_rows/` for human-reviewable tokenized document-row snapshots
-- a normalized tiny-run smoke bundle for baseline training/evaluation regression
+- `smoke_bundle/` for the normalized tiny baseline training/evaluation reference run
+
+The smoke bundle currently tracks:
+
+- `frozen_config.json`
+- `training_history.json`
+- `training_run_metadata.json`
+- `evaluation_run_metadata.json`
+- `metrics.json`
+- `evaluation/qualitative_samples.json`
+- `qualitative_report.md`
 
 The tracked generated artifacts are owned by repository tools and should be regenerated
 intentionally rather than hand-edited.

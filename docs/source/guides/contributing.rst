@@ -110,11 +110,12 @@ Project-wide checks commonly include:
 Run narrower checks when they provide faster signal, but keep the final change set
 adequately verified for its scope.
 
-Tracked split-planning fixtures can be regenerated intentionally with:
+Tracked training fixtures and the tiny smoke bundle can be regenerated intentionally
+with:
 
 .. code-block:: bash
 
-   uv run python tools/regenerate_training_split_fixtures.py
+   uv run python tools/regenerate_training_fixtures.py
 
 Documentation Expectations
 --------------------------

@@ -1,0 +1,52 @@
+{
+  "evaluation_run_id": "ef214e8abe56997860e7c3be52a8dd34d040c46b479f3007b3ce9d8a416cd611",
+  "training_run_id": "59323acfe5cf05e02422f121c0601765b98b8155b047cf12ca35ff7d4eb25308",
+  "samples": {
+    "validation": [
+      {
+        "split": "validation",
+        "relative_path": "ensemble_polyphony_controls.json",
+        "document_id": "ensemble_polyphony_controls.json",
+        "prompt_token_ids": [
+          1,
+          12,
+          12,
+          13
+        ],
+        "reference_continuation_token_ids": [
+          13,
+          13,
+          7,
+          8
+        ],
+        "generated_continuation_token_ids": [
+          10,
+          14,
+          10,
+          14
+        ],
+        "prompt_tokens": [
+          "<bos>",
+          "STRUCTURE:PART",
+          "STRUCTURE:PART",
+          "STRUCTURE:STAFF"
+        ],
+        "reference_continuation_tokens": [
+          "STRUCTURE:STAFF",
+          "STRUCTURE:STAFF",
+          "STRUCTURE:BAR",
+          "STRUCTURE:VOICE_LANE"
+        ],
+        "generated_continuation_tokens": [
+          "NOTE_DURATION:96",
+          "TIME_SHIFT:32",
+          "NOTE_DURATION:96",
+          "TIME_SHIFT:32"
+        ],
+        "prompt_summary": "<bos> STRUCTURE:PART STRUCTURE:PART ... (+1 more)",
+        "reference_summary": "STRUCTURE:STAFF STRUCTURE:STAFF STRUCTURE:BAR ... (+1 more)",
+        "generated_summary": "NOTE_DURATION:96 TIME_SHIFT:32 NOTE_DURATION:96 ... (+1 more)"
+      }
+    ]
+  }
+}

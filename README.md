@@ -121,10 +121,10 @@ Regenerate the tracked inspection bundles:
 uv run python tools/generate_ir_inspection_bundles.py
 ```
 
-Regenerate the tracked split-planning fixtures:
+Regenerate the tracked training fixtures and smoke bundle:
 
 ```bash
-uv run python tools/regenerate_training_split_fixtures.py
+uv run python tools/regenerate_training_fixtures.py
 ```
 
 The core project documentation is organized as:

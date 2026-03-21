@@ -1,0 +1,14 @@
+{
+  "epochs": [
+    {
+      "epoch_index": 0,
+      "train_loss": 3.2868707180023193,
+      "validation_loss": 3.133404016494751,
+      "learning_rate": 0.001,
+      "train_token_count": 41,
+      "validation_token_count": 73
+    }
+  ],
+  "best_epoch_index": 0,
+  "best_validation_loss": 3.133404016494751
+}

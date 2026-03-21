@@ -1,4 +1,4 @@
-"""Regenerate tracked training-preparation regression fixtures."""
+"""Regenerate tracked training-preparation and smoke regression fixtures."""
 
 from __future__ import annotations
 
@@ -18,8 +18,10 @@ from motifml.datasets.tokenized_model_input_dataset import (  # noqa: E402
 )
 from tests.pipelines.ir_test_support import run_session, write_test_conf  # noqa: E402
 from tests.pipelines.training_test_support import (  # noqa: E402
+    SMOKE_BUNDLE_ROOT,
     TRAINING_FIXTURE_ROOT,
-    baseline_training_runtime_overrides,
+    baseline_evaluation_runtime_overrides,
+    build_normalized_smoke_bundle,
     materialize_training_fixture_corpus,
 )
 
@@ -38,17 +40,18 @@ REPRESENTATIVE_ROW_ROOT = TRAINING_FIXTURE_ROOT / "representative_rows"
 
 
 def main() -> None:
-    """Regenerate the tracked split, vocabulary, and model-input fixture outputs."""
+    """Regenerate the tracked training-prep artifacts and smoke bundle."""
     regenerated_paths: list[Path] = []
     with TemporaryDirectory() as tmp_dir:
         tmp_path = Path(tmp_dir)
         raw_root = materialize_training_fixture_corpus(tmp_path / "raw_training")
         conf_source, output_root = write_test_conf(tmp_path, raw_root)
+        runtime_overrides = baseline_evaluation_runtime_overrides()
 
         run_session(
             conf_source,
-            ["__default__"],
-            runtime_params=baseline_training_runtime_overrides(),
+            ["baseline_training"],
+            runtime_params=runtime_overrides,
         )
 
         TRAINING_FIXTURE_ROOT.mkdir(parents=True, exist_ok=True)
@@ -67,6 +70,25 @@ def main() -> None:
         for row in rows:
             target_path = _representative_row_path(row)
             _write_json(target_path, row)
+            regenerated_paths.append(target_path)
+
+        run_session(
+            conf_source,
+            ["evaluation"],
+            runtime_params=runtime_overrides,
+        )
+        smoke_bundle = build_normalized_smoke_bundle(
+            output_root,
+            runtime_overrides=runtime_overrides,
+        )
+        if SMOKE_BUNDLE_ROOT.exists():
+            shutil.rmtree(SMOKE_BUNDLE_ROOT)
+        for relative_path, payload in smoke_bundle.items():
+            target_path = SMOKE_BUNDLE_ROOT / relative_path
+            if isinstance(payload, str):
+                _write_text(target_path, payload)
+            else:
+                _write_json(target_path, payload)
             regenerated_paths.append(target_path)
 
     sys.stdout.write(
@@ -97,6 +119,14 @@ def _write_json(path: Path, payload: Any) -> None:
         check_circular=False,
     )
     serialized_bytes = f"{serialized_text}\n".encode()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists() and path.read_bytes() == serialized_bytes:
+        return
+    path.write_bytes(serialized_bytes)
+
+
+def _write_text(path: Path, payload: str) -> None:
+    serialized_bytes = payload.encode("utf-8")
     path.parent.mkdir(parents=True, exist_ok=True)
     if path.exists() and path.read_bytes() == serialized_bytes:
         return

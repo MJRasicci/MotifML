@@ -1,0 +1,107 @@
+{
+  "evaluation_run_id": "ef214e8abe56997860e7c3be52a8dd34d040c46b479f3007b3ce9d8a416cd611",
+  "training_run_id": "59323acfe5cf05e02422f121c0601765b98b8155b047cf12ca35ff7d4eb25308",
+  "best_checkpoint": {
+    "epoch_index": 0,
+    "validation_loss": 3.133404016494751,
+    "checkpoint_name": "epoch-0000.pt",
+    "saved_at": "<normalized>"
+  },
+  "splits": {
+    "validation": {
+      "quantitative": {
+        "token_count": 73,
+        "top_k": 3,
+        "cross_entropy_loss": 3.1334040393568063,
+        "perplexity": 22.951976145487947,
+        "accuracy": 0.0410958904109589,
+        "top_k_accuracy": 0.1917808219178082
+      },
+      "baseline_comparison": {
+        "baseline_metrics": {
+          "baseline_name": "frequency_next_token_v1",
+          "token_count": 73,
+          "top_k": 3,
+          "cross_entropy_loss": 2.9354344561709405,
+          "perplexity": 18.8296820299251,
+          "accuracy": 0.273972602739726,
+          "top_k_accuracy": 0.3287671232876712
+        },
+        "comparison": {
+          "baseline_name": "frequency_next_token_v1",
+          "token_count": 73,
+          "top_k": 3,
+          "metrics": {
+            "cross_entropy_loss": {
+              "model": 3.1334040393568063,
+              "baseline": 2.9354344561709405,
+              "delta": -0.19796958318586588,
+              "higher_is_better": false,
+              "improved": false
+            },
+            "perplexity": {
+              "model": 22.951976145487947,
+              "baseline": 18.8296820299251,
+              "delta": -4.122294115562848,
+              "higher_is_better": false,
+              "improved": false
+            },
+            "accuracy": {
+              "model": 0.0410958904109589,
+              "baseline": 0.273972602739726,
+              "delta": -0.2328767123287671,
+              "higher_is_better": true,
+              "improved": false
+            },
+            "top_k_accuracy": {
+              "model": 0.1917808219178082,
+              "baseline": 0.3287671232876712,
+              "delta": -0.136986301369863,
+              "higher_is_better": true,
+              "improved": false
+            }
+          }
+        }
+      },
+      "unknown_token_usage": {
+        "token_count": 75,
+        "unk_token_count": 26,
+        "unk_rate": 0.3466666666666667,
+        "maximum_unk_rate": 0.5,
+        "passed": true
+      },
+      "generated_unknown_token_usage": {
+        "token_count": 4,
+        "unk_token_count": 0,
+        "unk_rate": 0.0,
+        "maximum_unk_rate": 0.5,
+        "passed": true
+      },
+      "structural": {
+        "sequence_count": 1,
+        "transition_count": 3,
+        "valid_transition_count": 2,
+        "valid_transition_rate": 0.6666666666666666,
+        "boundary_order_pass_count": 1,
+        "boundary_order_pass_rate": 1.0,
+        "reference_pitch_min": null,
+        "reference_pitch_max": null,
+        "generated_pitch_min": null,
+        "generated_pitch_max": null,
+        "out_of_range_pitch_fraction": 0.0,
+        "duration_distribution_total_variation": 1.0,
+        "generated_unk_token_count": 0,
+        "generated_unk_rate": 0.0,
+        "failures": [
+          {
+            "sequence_id": "validation:ensemble_polyphony_controls.json:ensemble_polyphony_controls.json:generated",
+            "check_name": "transition",
+            "token_index": 2,
+            "token": "NOTE_DURATION:96",
+            "message": "Token transition violates the baseline sequence grammar: 'TIME_SHIFT:32' -> 'NOTE_DURATION:96'."
+          }
+        ]
+      }
+    }
+  }
+}

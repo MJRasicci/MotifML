@@ -8,11 +8,18 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from tests.pipelines.ir_test_support import materialize_raw_fixture_subset
+from tests.pipelines.ir_test_support import (
+    load_json,
+    load_text,
+    materialize_raw_fixture_subset,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TRAINING_FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "training"
 TRAINING_FIXTURE_CATALOG_PATH = TRAINING_FIXTURE_ROOT / "training_fixture_catalog.json"
+SMOKE_BUNDLE_ROOT = TRAINING_FIXTURE_ROOT / "smoke_bundle"
+NORMALIZED_TIMESTAMP = "<normalized>"
+FLOAT_COMPARISON_TOLERANCE = 1e-6
 
 
 @lru_cache(maxsize=1)
@@ -123,11 +130,111 @@ def baseline_evaluation_runtime_overrides() -> dict[str, Any]:
     return overrides
 
 
+def build_normalized_smoke_bundle(
+    output_root: Path,
+    *,
+    runtime_overrides: dict[str, Any],
+) -> dict[str, Any]:
+    """Collect one normalized training/evaluation smoke bundle from pipeline outputs."""
+    training_run_metadata = _normalize_timestamp_field(
+        load_json(output_root / "training_run_metadata.json"),
+        "started_at",
+    )
+    evaluation_run_metadata = _normalize_timestamp_field(
+        load_json(output_root / "evaluation_run_metadata.json"),
+        "started_at",
+    )
+    metrics = _normalize_metrics_payload(load_json(output_root / "metrics.json"))
+
+    return {
+        "frozen_config.json": {
+            "seed": training_run_metadata["seed"],
+            "data_split": copy.deepcopy(runtime_overrides["data_split"]),
+            "model_input": copy.deepcopy(runtime_overrides["model_input"]),
+            "model": copy.deepcopy(training_run_metadata["model_parameters"]),
+            "training": copy.deepcopy(runtime_overrides["training"]),
+            "evaluation": copy.deepcopy(
+                evaluation_run_metadata["evaluation_parameters"]
+            ),
+        },
+        "training_history.json": load_json(output_root / "training_history.json"),
+        "training_run_metadata.json": training_run_metadata,
+        "evaluation_run_metadata.json": evaluation_run_metadata,
+        "metrics.json": metrics,
+        "evaluation/qualitative_samples.json": load_json(
+            output_root / "evaluation" / "qualitative_samples.json"
+        ),
+        "qualitative_report.md": load_text(output_root / "qualitative_report.md"),
+    }
+
+
+def load_tracked_smoke_bundle() -> dict[str, Any]:
+    """Load the tracked normalized smoke bundle from disk."""
+    return {
+        "frozen_config.json": load_json(SMOKE_BUNDLE_ROOT / "frozen_config.json"),
+        "training_history.json": load_json(SMOKE_BUNDLE_ROOT / "training_history.json"),
+        "training_run_metadata.json": load_json(
+            SMOKE_BUNDLE_ROOT / "training_run_metadata.json"
+        ),
+        "evaluation_run_metadata.json": load_json(
+            SMOKE_BUNDLE_ROOT / "evaluation_run_metadata.json"
+        ),
+        "metrics.json": load_json(SMOKE_BUNDLE_ROOT / "metrics.json"),
+        "evaluation/qualitative_samples.json": load_json(
+            SMOKE_BUNDLE_ROOT / "evaluation" / "qualitative_samples.json"
+        ),
+        "qualitative_report.md": load_text(SMOKE_BUNDLE_ROOT / "qualitative_report.md"),
+    }
+
+
+def assert_nested_close(actual: Any, expected: Any) -> None:
+    """Compare nested JSON-compatible values using tolerant float assertions."""
+    if isinstance(expected, dict):
+        assert isinstance(actual, dict)
+        assert set(actual) == set(expected)
+        for key in expected:
+            assert_nested_close(actual[key], expected[key])
+        return
+    if isinstance(expected, list):
+        assert isinstance(actual, list)
+        assert len(actual) == len(expected)
+        for actual_item, expected_item in zip(actual, expected, strict=True):
+            assert_nested_close(actual_item, expected_item)
+        return
+    if isinstance(expected, float):
+        assert isinstance(actual, int | float)
+        assert abs(float(actual) - expected) <= FLOAT_COMPARISON_TOLERANCE
+        return
+    assert actual == expected
+
+
+def _normalize_timestamp_field(
+    payload: dict[str, Any], field_name: str
+) -> dict[str, Any]:
+    normalized = copy.deepcopy(payload)
+    if field_name in normalized:
+        normalized[field_name] = NORMALIZED_TIMESTAMP
+    return normalized
+
+
+def _normalize_metrics_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    normalized = copy.deepcopy(payload)
+    best_checkpoint = normalized.get("best_checkpoint")
+    if isinstance(best_checkpoint, dict) and "saved_at" in best_checkpoint:
+        best_checkpoint["saved_at"] = NORMALIZED_TIMESTAMP
+    return normalized
+
+
 __all__ = [
+    "NORMALIZED_TIMESTAMP",
+    "SMOKE_BUNDLE_ROOT",
+    "assert_nested_close",
+    "build_normalized_smoke_bundle",
     "TRAINING_FIXTURE_CATALOG_PATH",
     "TRAINING_FIXTURE_ROOT",
     "baseline_evaluation_runtime_overrides",
     "baseline_training_runtime_overrides",
+    "load_tracked_smoke_bundle",
     "load_training_fixture_catalog",
     "materialize_training_fixture_corpus",
     "training_fixture_entries",
