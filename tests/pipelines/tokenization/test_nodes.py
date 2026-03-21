@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+from collections import Counter
+from pathlib import Path
+
 import pytest
 
+from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
 from motifml.ir.models import NoteEvent, Pitch
 from motifml.ir.projections.sequence import (
     NoteSequenceEvent,
@@ -12,12 +16,14 @@ from motifml.ir.projections.sequence import (
     StructureMarkerKind,
     StructureMarkerSequenceEvent,
 )
+from motifml.ir.serialization import deserialize_document
 from motifml.ir.time import ScoreTime
 from motifml.pipelines.feature_extraction.models import (
     FeatureExtractionParameters,
     IrFeatureRecord,
     IrFeatureSet,
 )
+from motifml.pipelines.feature_extraction.nodes import extract_features
 from motifml.pipelines.tokenization.models import (
     PaddingStrategy,
     TokenizationParameters,
@@ -36,15 +42,28 @@ from motifml.training.contracts import (
     SplitManifestEntry,
     VocabularyMetadata,
 )
-from motifml.training.model_input import TokenizedDocumentRow
+from motifml.training.model_input import (
+    TokenizedDocumentRow,
+    build_window_start_offsets,
+)
 from motifml.training.sequence_schema import SequenceSchemaContract
+from motifml.training.token_codec import (
+    decode_token_ids_to_strings,
+    encode_projected_events_to_tokens,
+)
 from motifml.training.token_families import BOS_TOKEN, EOS_TOKEN, PAD_TOKEN
+
+FIXTURE_ROOT = Path(__file__).resolve().parents[2] / "fixtures"
+REPRESENTATIVE_DOCUMENT_FIXTURE = (
+    FIXTURE_ROOT / "ir" / "representative_document.ir.json"
+)
 
 EXPECTED_TIME_RESOLUTION = 48
 EXPECTED_TRAIN_TOKEN_COUNT = 6
 EXPECTED_REDUCED_VOCABULARY_SIZE = 7
 EXPECTED_TOP_TOKEN_COUNT = 4
 EXPECTED_DROPPED_TOKEN_COUNT = 3
+EXPECTED_EOS_TOKEN_ID = 2
 
 
 def test_tokenize_features_consumes_typed_parameters() -> None:
@@ -478,8 +497,8 @@ def test_tokenize_features_with_vocabulary_emits_token_ids_for_one_document() ->
         model_input_parameters={
             "projection_type": "sequence",
             "sequence_mode": "baseline_v1",
-            "context_length": 256,
-            "stride": 128,
+            "context_length": 4,
+            "stride": 3,
             "padding_strategy": "right",
             "special_token_policy": {
                 "bos": "document",
@@ -511,7 +530,110 @@ def test_tokenize_features_with_vocabulary_emits_token_ids_for_one_document() ->
     assert record.model_input_version == model_input["parameters"].model_input_version
     assert record.token_ids == (1, 4, 6, 5, 8, 7, 5, 2)
     assert record.token_count == len(record.token_ids)
-    assert record.window_start_offsets == ()
+    assert record.window_start_offsets == (0, 3, 4)
+    assert record.token_ids[record.window_start_offsets[0]] == 1
+    assert record.token_ids[-1] == EXPECTED_EOS_TOKEN_ID
+
+
+def test_tokenize_features_with_vocabulary_round_trips_one_fixture_backed_document() -> (
+    None
+):
+    document = deserialize_document(
+        REPRESENTATIVE_DOCUMENT_FIXTURE.read_text(encoding="utf-8")
+    )
+    sequence_schema = SequenceSchemaContract()
+    feature_set = extract_features(
+        normalized_ir_corpus=[
+            MotifIrDocumentRecord(
+                relative_path="fixtures/representative_document.json",
+                document=document,
+            )
+        ],
+        normalized_ir_version={
+            "normalized_ir_version": "normalized-v1",
+            "contract_name": "motifml.normalized_ir",
+            "contract_version": "1.0.0",
+            "serialized_document_format": "motifml.ir.document",
+            "normalization_strategy": "passthrough_v1",
+            "upstream_ir_schema_version": document.metadata.ir_schema_version,
+            "task_agnostic_guarantees": (
+                "stable_source_relative_identity",
+                "task_agnostic_domain_truth",
+                "no_model_specific_flattening",
+                "no_model_specific_windowing",
+            ),
+        },
+        parameters=FeatureExtractionParameters(
+            projection_type="sequence",
+            sequence_mode="baseline_v1",
+        ),
+        sequence_schema=sequence_schema,
+    )
+    projection = feature_set.records[0].projection
+    assert isinstance(projection, SequenceProjection)
+    token_strings = encode_projected_events_to_tokens(
+        projection.events,
+        time_resolution=96,
+        note_payload_fields=sequence_schema.note_payload_fields,
+        special_token_policy={
+            "bos": "document",
+            "eos": "document",
+            "padding_interaction": "outside_boundaries",
+            "unknown_token_mapping": "map_to_unk",
+        },
+    )
+    assert feature_set.parameters.feature_version is not None
+    vocabulary = _build_vocabulary_artifact(
+        token_strings,
+        feature_version=feature_set.parameters.feature_version,
+    )
+
+    model_input = tokenize_features_with_vocabulary(
+        feature_set,
+        split_manifest=(
+            SplitManifestEntry(
+                document_id="fixture-doc",
+                relative_path="fixtures/representative_document.json",
+                split=DatasetSplit.TRAIN,
+                group_key="fixture-doc",
+                split_version="split-v1",
+            ),
+        ),
+        sequence_schema=sequence_schema,
+        vocabulary=vocabulary,
+        model_input_parameters={
+            "projection_type": "sequence",
+            "sequence_mode": "baseline_v1",
+            "context_length": 256,
+            "stride": 128,
+            "padding_strategy": "right",
+            "special_token_policy": {
+                "bos": "document",
+                "eos": "document",
+                "padding_interaction": "outside_boundaries",
+                "unknown_token_mapping": "map_to_unk",
+            },
+            "storage": {
+                "backend": "parquet",
+                "schema_version": "parquet-v1",
+            },
+        },
+    )
+
+    record = model_input["records"][0]
+    assert decode_token_ids_to_strings(record.token_ids, vocabulary=vocabulary) == (
+        token_strings
+    )
+    assert record.token_count == len(token_strings)
+    assert record.window_start_offsets == build_window_start_offsets(
+        record.token_ids,
+        context_length=256,
+        stride=128,
+    )
+    assert (
+        model_input["parameters"].feature_version
+        == feature_set.parameters.feature_version
+    )
 
 
 def _build_note_event(pitch_step: str, time: ScoreTime) -> NoteSequenceEvent:
@@ -582,3 +704,52 @@ def _build_reduction_shard_counts() -> list[dict[str, object]]:
             ],
         },
     ]
+
+
+def _build_vocabulary_artifact(
+    token_strings: tuple[str, ...],
+    *,
+    feature_version: str,
+) -> dict[str, object]:
+    counts = Counter(token_strings)
+    ordered_tokens = [
+        "<pad>",
+        "<bos>",
+        "<eos>",
+        "<unk>",
+        *sorted(
+            token
+            for token in counts
+            if token not in {"<pad>", "<bos>", "<eos>", "<unk>"}
+        ),
+    ]
+    return {
+        "vocabulary_version": "fixture-vocab-v1",
+        "feature_version": feature_version,
+        "split_version": "split-v1",
+        "token_count": sum(counts.values()),
+        "vocabulary_size": len(ordered_tokens),
+        "token_to_id": {token: index for index, token in enumerate(ordered_tokens)},
+        "token_counts": [
+            {"token": token, "count": counts.get(token, 0)} for token in ordered_tokens
+        ],
+        "construction_parameters": {
+            "time_resolution": 96,
+            "minimum_frequency": 1,
+            "maximum_size": 65536,
+            "special_tokens": {
+                "pad": "<pad>",
+                "bos": "<bos>",
+                "eos": "<eos>",
+                "unk": "<unk>",
+            },
+        },
+        "special_token_policy": {
+            "policy_name": "baseline_special_tokens",
+            "policy_mode": "baseline_v1",
+            "bos": "document",
+            "eos": "document",
+            "padding_interaction": "outside_boundaries",
+            "unknown_token_mapping": "map_to_unk",
+        },
+    }

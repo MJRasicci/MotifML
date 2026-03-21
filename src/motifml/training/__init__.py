@@ -17,6 +17,7 @@ from motifml.training.contracts import (
 )
 from motifml.training.model_input import (
     TokenizedDocumentRow,
+    build_window_start_offsets,
     coerce_tokenized_document_row,
     coerce_tokenized_document_rows,
     sort_tokenized_document_rows,
@@ -104,6 +105,7 @@ __all__ = [
     "UNK_TOKEN",
     "UnknownTokenMapping",
     "VocabularyMetadata",
+    "build_window_start_offsets",
     "build_parameter_snapshots",
     "build_contract_version",
     "build_control_point_token",

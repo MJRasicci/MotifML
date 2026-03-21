@@ -217,6 +217,31 @@ def sort_tokenized_document_rows(
     return tuple(sorted(coerce_tokenized_document_rows(rows), key=_row_sort_key))
 
 
+def build_window_start_offsets(
+    token_ids: Sequence[int],
+    *,
+    context_length: int,
+    stride: int,
+) -> tuple[int, ...]:
+    """Build deterministic fixed-length window starts for one tokenized document."""
+    if isinstance(token_ids, str | bytes):
+        raise ValueError("token_ids must be a sequence of token ids.")
+    _require_positive_int(context_length, "context_length")
+    _require_positive_int(stride, "stride")
+
+    token_count = len(token_ids)
+    if token_count <= 0:
+        return ()
+    if token_count <= context_length:
+        return (0,)
+
+    offsets = tuple(range(0, token_count - context_length + 1, stride))
+    final_offset = token_count - context_length
+    if offsets[-1] == final_offset:
+        return offsets
+    return offsets + (final_offset,)
+
+
 def _normalize_text(value: str, field_name: str) -> str:
     normalized = str(value).strip()
     if not normalized:
@@ -317,6 +342,7 @@ def _split_order(split: DatasetSplit) -> int:
 
 
 __all__ = [
+    "build_window_start_offsets",
     "TokenizedDocumentRow",
     "coerce_tokenized_document_row",
     "coerce_tokenized_document_rows",

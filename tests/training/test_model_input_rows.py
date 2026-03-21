@@ -6,6 +6,7 @@ import pytest
 
 from motifml.training.model_input import (
     TokenizedDocumentRow,
+    build_window_start_offsets,
     sort_tokenized_document_rows,
 )
 from motifml.training.special_token_policy import SpecialTokenPolicy
@@ -147,3 +148,23 @@ def test_sort_tokenized_document_rows_orders_records_by_split_then_path() -> Non
         "fixtures/a.json",
         "fixtures/b.json",
     ]
+
+
+def test_build_window_start_offsets_covers_document_tail_deterministically() -> None:
+    offsets = build_window_start_offsets(
+        (0, 1, 2, 3, 4, 5, 6, 7, 8),
+        context_length=4,
+        stride=3,
+    )
+
+    assert offsets == (0, 3, 5)
+
+
+def test_build_window_start_offsets_emits_one_window_for_short_documents() -> None:
+    offsets = build_window_start_offsets(
+        (0, 1, 2),
+        context_length=8,
+        stride=4,
+    )
+
+    assert offsets == (0,)

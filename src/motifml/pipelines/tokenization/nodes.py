@@ -65,7 +65,10 @@ from motifml.training.contracts import (
     VocabularyMetadata,
     coerce_split_manifest_entries,
 )
-from motifml.training.model_input import TokenizedDocumentRow
+from motifml.training.model_input import (
+    TokenizedDocumentRow,
+    build_window_start_offsets,
+)
 from motifml.training.sequence_schema import (
     SequenceSchemaContract,
     coerce_sequence_schema_contract,
@@ -208,6 +211,17 @@ def tokenize_features_with_vocabulary(
         )
     if typed_vocabulary.split_version != split_version:
         raise ValueError("vocabulary.split_version must match split_manifest.")
+    if str(model_input_parameters["projection_type"]) != ProjectionType.SEQUENCE.value:
+        raise ValueError(
+            "model_input.projection_type must be 'sequence' for tokenization."
+        )
+    if (
+        str(model_input_parameters["sequence_mode"])
+        != feature_set.parameters.sequence_mode
+    ):
+        raise ValueError(
+            "model_input.sequence_mode must match ir_features.parameters.sequence_mode."
+        )
 
     storage_parameters = _storage_parameters_from_model_input(model_input_parameters)
     storage_schema = coerce_model_input_storage_schema(storage_parameters)
@@ -234,6 +248,8 @@ def tokenize_features_with_vocabulary(
     )
 
     records: list[TokenizedDocumentRow] = []
+    context_length = int(model_input_parameters["context_length"])
+    stride = int(model_input_parameters["stride"])
     time_resolution = int(typed_vocabulary.construction_parameters["time_resolution"])
     for record in feature_set.records:
         split_entry = split_by_path.get(record.relative_path)
@@ -277,9 +293,13 @@ def tokenize_features_with_vocabulary(
                 storage_schema_version=storage_schema.storage_schema_version,
                 token_count=len(token_ids),
                 token_ids=token_ids,
-                window_start_offsets=(),
-                context_length=int(model_input_parameters["context_length"]),
-                stride=int(model_input_parameters["stride"]),
+                window_start_offsets=build_window_start_offsets(
+                    token_ids,
+                    context_length=context_length,
+                    stride=stride,
+                ),
+                context_length=context_length,
+                stride=stride,
                 padding_strategy=str(model_input_parameters["padding_strategy"]),
                 special_token_policy=typed_special_token_policy.to_version_payload(),
             )
