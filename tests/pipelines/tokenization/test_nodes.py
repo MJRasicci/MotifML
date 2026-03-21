@@ -636,6 +636,192 @@ def test_tokenize_features_with_vocabulary_round_trips_one_fixture_backed_docume
     )
 
 
+def test_tokenize_features_with_vocabulary_rejects_mismatched_sequence_mode() -> None:
+    feature_set = IrFeatureSet(
+        parameters=FeatureExtractionParameters(
+            projection_type="sequence",
+            sequence_mode="baseline_v1",
+            feature_version="feature-v1",
+            sequence_schema_version="sequence-schema-v1",
+            normalized_ir_version="normalized-v1",
+        ),
+        records=(
+            IrFeatureRecord(
+                relative_path="fixtures/example.json",
+                projection_type="sequence",
+                projection=SequenceProjection(
+                    mode=SequenceProjectionMode.NOTES_ONLY,
+                    events=(),
+                ),
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="sequence_mode must match"):
+        tokenize_features_with_vocabulary(
+            feature_set,
+            split_manifest=(
+                SplitManifestEntry(
+                    document_id="doc-1",
+                    relative_path="fixtures/example.json",
+                    split=DatasetSplit.TRAIN,
+                    group_key="doc-1",
+                    split_version="split-v1",
+                ),
+            ),
+            sequence_schema=SequenceSchemaContract(),
+            vocabulary={
+                "vocabulary_version": "vocab-v1",
+                "feature_version": "feature-v1",
+                "split_version": "split-v1",
+                "token_count": 2,
+                "vocabulary_size": 4,
+                "token_to_id": {
+                    "<pad>": 0,
+                    "<bos>": 1,
+                    "<eos>": 2,
+                    "<unk>": 3,
+                },
+                "token_counts": [
+                    {"token": "<pad>", "count": 0},
+                    {"token": "<bos>", "count": 1},
+                    {"token": "<eos>", "count": 1},
+                    {"token": "<unk>", "count": 0},
+                ],
+                "construction_parameters": {
+                    "time_resolution": 96,
+                    "minimum_frequency": 1,
+                    "maximum_size": 65536,
+                    "special_tokens": {
+                        "pad": "<pad>",
+                        "bos": "<bos>",
+                        "eos": "<eos>",
+                        "unk": "<unk>",
+                    },
+                },
+                "special_token_policy": {
+                    "policy_name": "baseline_special_tokens",
+                    "policy_mode": "baseline_v1",
+                    "bos": "document",
+                    "eos": "document",
+                    "padding_interaction": "outside_boundaries",
+                    "unknown_token_mapping": "map_to_unk",
+                },
+            },
+            model_input_parameters={
+                "projection_type": "sequence",
+                "sequence_mode": "notes_only",
+                "context_length": 8,
+                "stride": 4,
+                "padding_strategy": "right",
+                "special_token_policy": {
+                    "bos": "document",
+                    "eos": "document",
+                    "padding_interaction": "outside_boundaries",
+                    "unknown_token_mapping": "map_to_unk",
+                },
+                "storage": {
+                    "backend": "parquet",
+                    "schema_version": "parquet-v1",
+                },
+            },
+        )
+
+
+def test_tokenize_features_with_vocabulary_rejects_non_sequence_projection_type() -> (
+    None
+):
+    feature_set = IrFeatureSet(
+        parameters=FeatureExtractionParameters(
+            projection_type="sequence",
+            sequence_mode="baseline_v1",
+            feature_version="feature-v1",
+            sequence_schema_version="sequence-schema-v1",
+            normalized_ir_version="normalized-v1",
+        ),
+        records=(
+            IrFeatureRecord(
+                relative_path="fixtures/example.json",
+                projection_type="sequence",
+                projection=SequenceProjection(
+                    mode=SequenceProjectionMode.NOTES_ONLY,
+                    events=(),
+                ),
+            ),
+        ),
+    )
+
+    with pytest.raises(ValueError, match="projection_type must be 'sequence'"):
+        tokenize_features_with_vocabulary(
+            feature_set,
+            split_manifest=(
+                SplitManifestEntry(
+                    document_id="doc-1",
+                    relative_path="fixtures/example.json",
+                    split=DatasetSplit.TRAIN,
+                    group_key="doc-1",
+                    split_version="split-v1",
+                ),
+            ),
+            sequence_schema=SequenceSchemaContract(),
+            vocabulary={
+                "vocabulary_version": "vocab-v1",
+                "feature_version": "feature-v1",
+                "split_version": "split-v1",
+                "token_count": 2,
+                "vocabulary_size": 4,
+                "token_to_id": {
+                    "<pad>": 0,
+                    "<bos>": 1,
+                    "<eos>": 2,
+                    "<unk>": 3,
+                },
+                "token_counts": [
+                    {"token": "<pad>", "count": 0},
+                    {"token": "<bos>", "count": 1},
+                    {"token": "<eos>", "count": 1},
+                    {"token": "<unk>", "count": 0},
+                ],
+                "construction_parameters": {
+                    "time_resolution": 96,
+                    "minimum_frequency": 1,
+                    "maximum_size": 65536,
+                    "special_tokens": {
+                        "pad": "<pad>",
+                        "bos": "<bos>",
+                        "eos": "<eos>",
+                        "unk": "<unk>",
+                    },
+                },
+                "special_token_policy": {
+                    "policy_name": "baseline_special_tokens",
+                    "policy_mode": "baseline_v1",
+                    "bos": "document",
+                    "eos": "document",
+                    "padding_interaction": "outside_boundaries",
+                    "unknown_token_mapping": "map_to_unk",
+                },
+            },
+            model_input_parameters={
+                "projection_type": "graph",
+                "sequence_mode": "baseline_v1",
+                "context_length": 8,
+                "stride": 4,
+                "padding_strategy": "right",
+                "special_token_policy": {
+                    "bos": "document",
+                    "eos": "document",
+                    "padding_interaction": "outside_boundaries",
+                    "unknown_token_mapping": "map_to_unk",
+                },
+                "storage": {
+                    "backend": "parquet",
+                    "schema_version": "parquet-v1",
+                },
+            },
+        )
+
+
 def _build_note_event(pitch_step: str, time: ScoreTime) -> NoteSequenceEvent:
     onset_id = f"onset:{pitch_step.lower()}:1"
     return NoteSequenceEvent(
