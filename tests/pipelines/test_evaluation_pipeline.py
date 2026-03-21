@@ -26,6 +26,26 @@ def test_evaluation_pipeline_persists_metrics_samples_and_report(
     run_session(conf_source, ["baseline_training"], runtime_params=runtime_overrides)
     run_session(conf_source, ["evaluation"], runtime_params=runtime_overrides)
 
+    _assert_persisted_evaluation_artifacts(output_root)
+
+
+def test_baseline_training_evaluation_pipeline_runs_in_one_command(
+    tmp_path: Path,
+) -> None:
+    raw_root = materialize_training_fixture_corpus(tmp_path / "raw_training")
+    conf_source, output_root = write_test_conf(tmp_path, raw_root)
+    runtime_overrides = baseline_evaluation_runtime_overrides()
+
+    run_session(
+        conf_source,
+        ["baseline_training_evaluation"],
+        runtime_params=runtime_overrides,
+    )
+
+    _assert_persisted_evaluation_artifacts(output_root)
+
+
+def _assert_persisted_evaluation_artifacts(output_root: Path) -> None:
     metrics = load_json(output_root / "metrics.json")
     samples = load_json(output_root / "evaluation" / "qualitative_samples.json")
     run_metadata = load_json(output_root / "evaluation_run_metadata.json")

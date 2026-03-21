@@ -5,7 +5,6 @@ from __future__ import annotations
 from tests.analysis.notebook_test_support import (
     NOTEBOOK_ROOT,
     TRAINING_FIXTURE_ROOT,
-    build_model_input_runtime_fixture,
     execute_notebook,
     markdown_outputs,
 )
@@ -33,13 +32,14 @@ def test_model_input_inspection_notebook_executes_from_tracked_snapshots(
     assert any("ensemble_polyphony_controls.json" in output for output in markdown)
 
 
-def test_model_input_inspection_notebook_executes_from_runtime_dataset(
+def test_model_input_inspection_notebook_executes_from_runtime_artifact_root(
     monkeypatch,
-    tmp_path,
+    training_runtime_artifact_root,
 ) -> None:
-    model_input_root = build_model_input_runtime_fixture(tmp_path)
-    monkeypatch.setenv("MOTIFML_TRAINING_FIXTURE_ROOT", str(TRAINING_FIXTURE_ROOT))
-    monkeypatch.setenv("MOTIFML_MODEL_INPUT_ROOT", str(model_input_root))
+    monkeypatch.setenv(
+        "MOTIFML_TRAINING_ARTIFACT_ROOT",
+        str(training_runtime_artifact_root),
+    )
     monkeypatch.setenv(
         "MOTIFML_MODEL_INPUT_DOCUMENT",
         "single_track_monophonic_pickup.json",
@@ -48,6 +48,7 @@ def test_model_input_inspection_notebook_executes_from_runtime_dataset(
     executed = execute_notebook(NOTEBOOK_PATH)
     markdown = markdown_outputs(executed)
 
+    assert any("Runtime Kedro Outputs" in output for output in markdown)
     assert any("Runtime Dataset" in output for output in markdown)
     assert any("single_track_monophonic_pickup.json" in output for output in markdown)
     assert any("Storage Schema" in output for output in markdown)

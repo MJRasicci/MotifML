@@ -151,6 +151,7 @@ def register_pipelines() -> dict[str, Pipeline]:
             inputs={"model_input_runtime": "prepared_model_input_runtime"},
         )
     )
+    baseline_training_evaluation = baseline_training + evaluation
 
     return {
         "ingestion": ingestion,
@@ -166,6 +167,7 @@ def register_pipelines() -> dict[str, Pipeline]:
         "training": training,
         "evaluation": evaluation,
         "baseline_training": baseline_training,
+        "baseline_training_evaluation": baseline_training_evaluation,
         "ir_build_shard": ir_build_shard,
         "ir_validation_shard": ir_validation_shard,
         "normalization_shard": normalization_shard,

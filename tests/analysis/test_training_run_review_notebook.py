@@ -31,3 +31,23 @@ def test_training_run_review_notebook_executes(monkeypatch) -> None:
     assert any("Report Match: `True`" in output for output in markdown)
     assert any("ensemble_polyphony_controls.json" in output for output in markdown)
     assert len(plotly) >= EXPECTED_MINIMUM_PLOTLY_FIGURES
+
+
+def test_training_run_review_notebook_executes_from_runtime_artifact_root(
+    monkeypatch,
+    training_runtime_artifact_root,
+) -> None:
+    monkeypatch.setenv(
+        "MOTIFML_TRAINING_ARTIFACT_ROOT",
+        str(training_runtime_artifact_root),
+    )
+
+    executed = execute_notebook(NOTEBOOK_PATH)
+    markdown = markdown_outputs(executed)
+    plotly = plotly_outputs(executed)
+
+    assert any("Runtime Kedro Outputs" in output for output in markdown)
+    assert any("Training Curves" in output for output in markdown)
+    assert any("Evaluation Curves" in output for output in markdown)
+    assert any("Report Match: `True`" in output for output in markdown)
+    assert len(plotly) >= EXPECTED_MINIMUM_PLOTLY_FIGURES

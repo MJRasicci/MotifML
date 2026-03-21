@@ -9,6 +9,11 @@ import nbformat
 from nbclient import NotebookClient
 
 from motifml.datasets.tokenized_model_input_dataset import TokenizedModelInputDataset
+from tests.pipelines.ir_test_support import run_session, write_test_conf
+from tests.pipelines.training_test_support import (
+    baseline_evaluation_runtime_overrides,
+    materialize_training_fixture_corpus,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 NOTEBOOK_ROOT = REPO_ROOT / "notebooks"
@@ -102,6 +107,18 @@ def build_model_input_runtime_fixture(tmp_path: Path) -> Path:
     return model_input_root
 
 
+def build_training_runtime_artifact_root(tmp_path: Path) -> Path:
+    """Run the tiny baseline end to end and return the temporary artifact root."""
+    raw_root = materialize_training_fixture_corpus(tmp_path / "raw_training")
+    conf_source, output_root = write_test_conf(tmp_path, raw_root)
+    run_session(
+        conf_source,
+        ["baseline_training_evaluation"],
+        runtime_params=baseline_evaluation_runtime_overrides(),
+    )
+    return output_root
+
+
 def _load_json(path: Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -112,6 +129,7 @@ __all__ = [
     "REPO_ROOT",
     "TRAINING_FIXTURE_ROOT",
     "build_model_input_runtime_fixture",
+    "build_training_runtime_artifact_root",
     "execute_notebook",
     "markdown_outputs",
     "plotly_outputs",

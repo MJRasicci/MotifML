@@ -18,6 +18,7 @@ EXPECTED_MODEL_INPUT_REDUCE_NODE_COUNT = 2
 EXPECTED_TRAINING_NODE_COUNT = 1
 EXPECTED_EVALUATION_NODE_COUNT = 1
 EXPECTED_BASELINE_TRAINING_NODE_COUNT = 32
+EXPECTED_BASELINE_TRAINING_EVALUATION_NODE_COUNT = 33
 EXPECTED_DEFAULT_NODE_ORDER = [
     "build_raw_corpus_manifest",
     "build_raw_partition_index",
@@ -55,6 +56,10 @@ EXPECTED_BASELINE_TRAINING_NODE_ORDER = [
     "stage_model_input_runtime_for_training",
     "train_decoder_only_transformer",
 ]
+EXPECTED_BASELINE_TRAINING_EVALUATION_NODE_ORDER = [
+    *EXPECTED_BASELINE_TRAINING_NODE_ORDER,
+    "evaluate_decoder_only_transformer",
+]
 
 
 def test_register_pipelines_exposes_project_pipelines():
@@ -78,6 +83,7 @@ def test_register_pipelines_exposes_project_pipelines():
     assert "training" in pipelines
     assert "evaluation" in pipelines
     assert "baseline_training" in pipelines
+    assert "baseline_training_evaluation" in pipelines
     assert "tokenization_shard" in pipelines
     assert "partitioned_reduce" in pipelines
     assert "shard_reduce" in pipelines
@@ -111,6 +117,10 @@ def test_register_pipelines_exposes_project_pipelines():
         len(pipelines["baseline_training"].nodes)
         == EXPECTED_BASELINE_TRAINING_NODE_COUNT
     )
+    assert (
+        len(pipelines["baseline_training_evaluation"].nodes)
+        == EXPECTED_BASELINE_TRAINING_EVALUATION_NODE_COUNT
+    )
 
 
 def test_register_pipelines_builds_the_default_pipeline_in_stage_order():
@@ -129,6 +139,15 @@ def test_register_pipelines_builds_the_baseline_training_pipeline_in_stage_order
     assert [
         node.name for node in pipelines["baseline_training"].nodes
     ] == EXPECTED_BASELINE_TRAINING_NODE_ORDER
+
+
+def test_register_pipelines_builds_the_baseline_training_evaluation_pipeline_in_stage_order():
+    bootstrap_project(Path(__file__).resolve().parents[1])
+    pipelines = register_pipelines()
+
+    assert [
+        node.name for node in pipelines["baseline_training_evaluation"].nodes
+    ] == EXPECTED_BASELINE_TRAINING_EVALUATION_NODE_ORDER
 
 
 def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
@@ -231,6 +250,12 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "training_artifacts",
         "training_history",
         "training_run_metadata",
+    }
+    assert pipelines["baseline_training_evaluation"].all_outputs() >= {
+        "evaluation_samples",
+        "evaluation_metrics",
+        "qualitative_report",
+        "evaluation_run_metadata",
     }
 
     assert pipelines["ingestion"].all_outputs() >= {

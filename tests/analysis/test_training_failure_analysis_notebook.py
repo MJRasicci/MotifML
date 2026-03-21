@@ -29,3 +29,21 @@ def test_training_failure_analysis_notebook_executes(monkeypatch) -> None:
     assert any("Document Pathologies" in output for output in markdown)
     assert any("transition" in output for output in markdown)
     assert any("ensemble_polyphony_controls.json" in output for output in markdown)
+
+
+def test_training_failure_analysis_notebook_executes_from_runtime_artifact_root(
+    monkeypatch,
+    training_runtime_artifact_root,
+) -> None:
+    monkeypatch.setenv(
+        "MOTIFML_TRAINING_ARTIFACT_ROOT",
+        str(training_runtime_artifact_root),
+    )
+
+    executed = execute_notebook(NOTEBOOK_PATH)
+    markdown = markdown_outputs(executed)
+
+    assert any("Runtime Kedro Outputs" in output for output in markdown)
+    assert any("Reviewed Split: `validation`" in output for output in markdown)
+    assert any("Document Pathologies" in output for output in markdown)
+    assert any("transition" in output for output in markdown)
