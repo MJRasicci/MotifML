@@ -138,7 +138,7 @@ model:
   positional_encoding: learned
 
 training:
-  device: cpu
+  device: auto
   batch_size: 8
   num_epochs: 5
   learning_rate: 0.0005
@@ -150,7 +150,7 @@ training:
     warmup_steps: 100
 
 evaluation:
-  device: cpu
+  device: auto
   batch_size: 8
   top_k: 5
   decode_max_tokens: 256
