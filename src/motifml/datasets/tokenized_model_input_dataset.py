@@ -22,6 +22,7 @@ from motifml.training.model_input import (
     TokenizedDocumentRow,
     coerce_tokenized_document_row,
     coerce_tokenized_document_rows,
+    sort_tokenized_document_rows,
 )
 
 _MINIMUM_RECORD_PARTITION_PARTS = 3
@@ -92,10 +93,7 @@ class TokenizedModelInputDataset(AbstractDataset[Any, Any]):
             self._filepath / MODEL_INPUT_STORAGE_SCHEMA_FILENAME,
             storage_schema.to_json_dict(),
         )
-        for row in sorted(
-            rows,
-            key=lambda item: (item.split.value, item.relative_path.casefold()),
-        ):
+        for row in sort_tokenized_document_rows(rows):
             if self._split is not None and row.split is not self._split:
                 raise DatasetError(
                     "Row split does not match the dataset split filter: "
@@ -168,10 +166,7 @@ class TokenizedModelInputDataset(AbstractDataset[Any, Any]):
                 )
             loaded_rows.append(row)
 
-        loaded_rows.sort(
-            key=lambda item: (item.split.value, item.relative_path.casefold())
-        )
-        return tuple(loaded_rows)
+        return sort_tokenized_document_rows(loaded_rows)
 
     def _load_storage_schema(self) -> ModelInputStorageSchema:
         schema_path = self._filepath / MODEL_INPUT_STORAGE_SCHEMA_FILENAME

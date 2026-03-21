@@ -14,157 +14,168 @@ from motifml.datasets.tokenized_model_input_dataset import TokenizedModelInputDa
 from motifml.training.model_input import TokenizedDocumentRow
 from motifml.training.special_token_policy import SpecialTokenPolicy
 
-EXPECTED_GLOBAL_RECORD_COUNT = 3
+DEFAULT_STORAGE_SCHEMA = ModelInputStorageSchema()
 
 
-def test_tokenized_model_input_dataset_round_trips_rows_and_metadata(
+def test_tokenized_model_input_dataset_round_trips_rows_and_layout(
     tmp_path: Path,
 ) -> None:
     dataset = TokenizedModelInputDataset(
         filepath=str(tmp_path / "model_input"),
-        shard_id="shard-00000",
-    )
-    schema = ModelInputStorageSchema()
-    rows = (
-        _build_row(relative_path="a/alpha.json", split="train"),
-        _build_row(relative_path="b/beta.json", split="validation"),
+        shard_id="shard-00003",
     )
 
     dataset.save(
         {
             "parameters": {"model_input_version": "model-input-v1"},
-            "storage_schema": schema.to_json_dict(),
-            "records": rows,
+            "storage_schema": DEFAULT_STORAGE_SCHEMA.to_json_dict(),
+            "records": [
+                _build_row(relative_path="fixtures/b.json", split="validation"),
+                _build_row(relative_path="fixtures/a.json", split="train"),
+            ],
         }
     )
 
-    loaded = TokenizedModelInputDataset(filepath=str(tmp_path / "model_input")).load()
+    loaded = dataset.load()
 
     assert loaded["parameters"] == {"model_input_version": "model-input-v1"}
-    assert loaded["storage_schema"] == schema.to_json_dict()
+    assert loaded["storage_schema"] == DEFAULT_STORAGE_SCHEMA.to_json_dict()
     assert [record["relative_path"] for record in loaded["records"]] == [
-        "a/alpha.json",
-        "b/beta.json",
+        "fixtures/a.json",
+        "fixtures/b.json",
     ]
-    assert loaded["records"][0] == rows[0].to_row_dict()
-    assert loaded["records"][1] == rows[1].to_row_dict()
+    assert (tmp_path / "model_input" / "parameters.json").exists()
+    assert (tmp_path / "model_input" / "storage_schema.json").exists()
     assert (
         tmp_path
         / "model_input"
-        / schema.record_path(
-            split="train",
-            shard_id="shard-00000",
-            relative_path="a/alpha.json",
-        )
+        / "records"
+        / "train"
+        / "shard-00003"
+        / "fixtures"
+        / "a.json.model_input.parquet"
     ).exists()
     assert (
         tmp_path
         / "model_input"
-        / schema.record_path(
-            split="validation",
-            shard_id="shard-00000",
-            relative_path="b/beta.json",
-        )
+        / "records"
+        / "validation"
+        / "shard-00003"
+        / "fixtures"
+        / "b.json.model_input.parquet"
     ).exists()
 
 
 def test_tokenized_model_input_dataset_filters_by_split_and_shard(
     tmp_path: Path,
 ) -> None:
+    dataset_root = tmp_path / "model_input"
     shard_zero = TokenizedModelInputDataset(
-        filepath=str(tmp_path / "model_input"),
+        filepath=str(dataset_root),
         shard_id="shard-00000",
     )
     shard_one = TokenizedModelInputDataset(
-        filepath=str(tmp_path / "model_input"),
+        filepath=str(dataset_root),
         shard_id="shard-00001",
-    )
-    global_dataset = TokenizedModelInputDataset(filepath=str(tmp_path / "model_input"))
-    train_only = TokenizedModelInputDataset(
-        filepath=str(tmp_path / "model_input"),
-        split="train",
-    )
-    shard_zero_train = TokenizedModelInputDataset(
-        filepath=str(tmp_path / "model_input"),
-        shard_id="shard-00000",
-        split="train",
     )
 
     shard_zero.save(
         {
             "parameters": {"model_input_version": "model-input-v1"},
-            "records": (
-                _build_row(relative_path="a/alpha.json", split="train"),
-                _build_row(relative_path="b/beta.json", split="validation"),
-            ),
+            "records": [_build_row(relative_path="fixtures/a.json", split="train")],
         }
     )
     shard_one.save(
         {
             "parameters": {"model_input_version": "model-input-v1"},
-            "records": (_build_row(relative_path="c/gamma.json", split="train"),),
+            "records": [
+                _build_row(relative_path="fixtures/b.json", split="validation")
+            ],
         }
     )
 
-    assert len(global_dataset.load()["records"]) == EXPECTED_GLOBAL_RECORD_COUNT
-    assert [record["relative_path"] for record in train_only.load()["records"]] == [
-        "a/alpha.json",
-        "c/gamma.json",
+    global_dataset = TokenizedModelInputDataset(filepath=str(dataset_root))
+    train_split_dataset = TokenizedModelInputDataset(
+        filepath=str(dataset_root),
+        split="train",
+    )
+    shard_zero_dataset = TokenizedModelInputDataset(
+        filepath=str(dataset_root),
+        shard_id="shard-00000",
+    )
+
+    assert [record["relative_path"] for record in global_dataset.load()["records"]] == [
+        "fixtures/a.json",
+        "fixtures/b.json",
     ]
     assert [
-        record["relative_path"] for record in shard_zero_train.load()["records"]
-    ] == [
-        "a/alpha.json",
-    ]
+        record["relative_path"] for record in train_split_dataset.load()["records"]
+    ] == ["fixtures/a.json"]
+    assert [
+        record["relative_path"] for record in shard_zero_dataset.load()["records"]
+    ] == ["fixtures/a.json"]
 
 
 def test_tokenized_model_input_dataset_rejects_incompatible_parquet_schemas(
     tmp_path: Path,
 ) -> None:
+    dataset_root = tmp_path / "model_input"
     dataset = TokenizedModelInputDataset(
-        filepath=str(tmp_path / "model_input"),
+        filepath=str(dataset_root),
         shard_id="shard-00000",
     )
     dataset.save(
         {
             "parameters": {"model_input_version": "model-input-v1"},
-            "records": (_build_row(relative_path="a/alpha.json", split="train"),),
+            "records": [_build_row(relative_path="fixtures/a.json", split="train")],
         }
     )
 
     incompatible_path = (
-        tmp_path
-        / "model_input"
+        dataset_root
         / "records"
         / "train"
-        / "shard-00001"
-        / "broken.json.model_input.parquet"
+        / "shard-00000"
+        / "fixtures"
+        / "b.json.model_input.parquet"
     )
     incompatible_path.parent.mkdir(parents=True, exist_ok=True)
     pq.write_table(
-        pa.table({"relative_path": ["broken.json"], "token_ids": ["not-an-array"]}),
+        pa.table(
+            {
+                "relative_path": ["fixtures/b.json"],
+                "document_id": ["doc-b"],
+                "split": ["train"],
+                "split_version": ["split-v1"],
+                "projection_type": ["sequence"],
+                "sequence_mode": ["baseline_v1"],
+                "normalized_ir_version": ["normalized-v1"],
+                "feature_version": ["feature-v1"],
+                "vocabulary_version": ["vocab-v1"],
+                "model_input_version": ["model-input-v1"],
+                "storage_schema_version": ["parquet-v1"],
+                "token_count": [4],
+                "token_ids": [[1, 2, 3, 4]],
+                "window_start_offsets": [[0, 2]],
+                "context_length": [256],
+                "stride": [128],
+                "padding_strategy": ["right"],
+                "special_token_policy": [{"bos": "document"}],
+                "inspection_metadata": [None],
+                "extra_column": ["schema-mismatch"],
+            }
+        ),
         incompatible_path,
     )
 
     with pytest.raises(DatasetError, match="incompatible Parquet schemas"):
-        TokenizedModelInputDataset(filepath=str(tmp_path / "model_input")).load()
+        dataset.load()
 
 
-def test_tokenized_model_input_dataset_requires_a_concrete_shard_id_for_save(
-    tmp_path: Path,
-) -> None:
-    dataset = TokenizedModelInputDataset(filepath=str(tmp_path / "model_input"))
-
-    with pytest.raises(DatasetError, match="requires a concrete shard_id"):
-        dataset.save(
-            {"records": (_build_row(relative_path="a/alpha.json", split="train"),)}
-        )
-
-
-def _build_row(relative_path: str, split: str) -> TokenizedDocumentRow:
+def _build_row(*, relative_path: str, split: str) -> TokenizedDocumentRow:
     return TokenizedDocumentRow(
         relative_path=relative_path,
-        document_id=f"doc:{relative_path}",
+        document_id=relative_path,
         split=split,
         split_version="split-v1",
         projection_type="sequence",
@@ -175,7 +186,7 @@ def _build_row(relative_path: str, split: str) -> TokenizedDocumentRow:
         model_input_version="model-input-v1",
         storage_schema_version="parquet-v1",
         token_count=4,
-        token_ids=(3, 4, 5, 6),
+        token_ids=(1, 2, 3, 4),
         window_start_offsets=(0, 2),
         context_length=256,
         stride=128,

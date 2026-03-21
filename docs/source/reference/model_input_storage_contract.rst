@@ -2,8 +2,10 @@ Model Input Storage Contract
 ============================
 
 This page freezes the v1 binary storage decision for tokenized ``05_model_input``
-artifacts. The Parquet-backed dataset implementation lands separately, but downstream
-work now targets one stable backend, schema version, and physical layout.
+artifacts. The Parquet-backed dataset implementation now lives in
+``motifml.datasets.tokenized_model_input_dataset.TokenizedModelInputDataset``, while the
+tokenization pipeline wiring lands separately. Downstream work now targets one stable
+backend, schema version, and physical layout.
 
 Backend Choice
 --------------
@@ -19,7 +21,8 @@ The v1 storage schema version is ``parquet-v1``. That value is carried in:
 
 - ``conf/base/parameters.yml`` under ``model_input.storage.schema_version``
 - persisted model-input metadata via ``storage_schema_version``
-- the standalone ``storage_schema.json`` metadata surface planned for ``05_model_input``
+- the standalone ``storage_schema.json`` metadata surface persisted alongside Parquet
+  rows
 
 Physical Layout
 ---------------
@@ -57,5 +60,5 @@ canonical record-path builder:
 - record suffix: ``.model_input.parquet``
 - partition fields: ``split``, ``shard_id``
 
-Those helpers are intentionally separate from the eventual Kedro dataset class so record
-models, dataset persistence, and reporting can all reuse one storage-layout contract.
+Those helpers remain separate from the Kedro dataset class so record models, dataset
+persistence, and reporting can all reuse one storage-layout contract.
