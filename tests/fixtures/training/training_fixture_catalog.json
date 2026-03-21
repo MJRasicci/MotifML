@@ -1,6 +1,7 @@
 {
   "fixture_corpus_name": "baseline_training_v1",
   "description": "Approved tiny training fixture slice for deterministic split planning, tokenization, lazy loading, and CPU smoke training.",
+  "regeneration_command": "uv run python tools/regenerate_training_fixtures.py",
   "training_objectives": [
     "split determinism",
     "vocabulary determinism",

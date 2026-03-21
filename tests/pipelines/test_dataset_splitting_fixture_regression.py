@@ -11,6 +11,7 @@ from tests.pipelines.ir_test_support import (
 )
 from tests.pipelines.training_test_support import (
     TRAINING_FIXTURE_ROOT,
+    baseline_training_runtime_overrides,
     materialize_training_fixture_corpus,
 )
 
@@ -21,9 +22,15 @@ def test_dataset_splitting_outputs_match_tracked_training_fixtures(
     raw_root = materialize_training_fixture_corpus(tmp_path / "raw_training")
     conf_source, output_root = write_test_conf(tmp_path, raw_root)
 
-    run_session(conf_source, ["ir_build"])
-    run_session(conf_source, ["normalization"])
-    run_session(conf_source, ["dataset_splitting"])
+    runtime_overrides = baseline_training_runtime_overrides()
+
+    run_session(conf_source, ["ir_build"], runtime_params=runtime_overrides)
+    run_session(conf_source, ["normalization"], runtime_params=runtime_overrides)
+    run_session(
+        conf_source,
+        ["dataset_splitting"],
+        runtime_params=runtime_overrides,
+    )
 
     assert load_json(output_root / "split_manifest.json") == load_json(
         TRAINING_FIXTURE_ROOT / "split_manifest.json"

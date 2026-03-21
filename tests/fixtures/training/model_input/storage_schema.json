@@ -1,0 +1,11 @@
+{
+  "backend": "parquet",
+  "storage_schema_version": "parquet-v1",
+  "record_suffix": ".model_input.parquet",
+  "partition_fields": [
+    "split",
+    "shard_id"
+  ],
+  "parameters_filename": "parameters.json",
+  "storage_schema_filename": "storage_schema.json"
+}

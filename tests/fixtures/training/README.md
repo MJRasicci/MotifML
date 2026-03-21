@@ -7,6 +7,12 @@ The fixture definition lives in `tests/fixtures/training/training_fixture_catalo
 It is intentionally smaller than the full IR fixture corpus so training-preparation,
 loader, and CPU smoke tests stay fast even if the broader raw fixture set grows.
 
+Regenerate the tracked training-preparation artifacts intentionally with:
+
+```bash
+uv run python tools/regenerate_training_fixtures.py
+```
+
 Current training objectives covered by this slice:
 
 - `split determinism`
@@ -60,7 +66,11 @@ Voice-lane dropout and reentry that stress sequence ordering and replay.
 Generated artifact families in this directory:
 
 - `split_manifest.json` and `split_stats.json` for deterministic split regression
-- golden training-prep artifacts and representative tokenized-row snapshots
+- `vocabulary.json`, `vocabulary_version.json`, `vocab_stats.json`, and
+  `model_input_stats.json` for frozen training-prep reporting
+- `model_input/parameters.json`, `model_input/model_input_version.json`, and
+  `model_input/storage_schema.json` for the frozen `05_model_input` contract metadata
+- `representative_rows/` for human-reviewable tokenized document-row snapshots
 - a normalized tiny-run smoke bundle for baseline training/evaluation regression
 
 The tracked generated artifacts are owned by repository tools and should be regenerated

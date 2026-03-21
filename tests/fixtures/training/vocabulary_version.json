@@ -1,0 +1,26 @@
+{
+  "vocabulary_version": "ef4f1756503de6d14f888d8a85abac943e65d7623a5553ff89a8249b9d2b5dd6",
+  "feature_version": "65a6cd7042d55798e2ea7deeff30614bc56449c21d8ef4d6646bea5ca801ea14",
+  "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
+  "token_count": 43,
+  "vocabulary_size": 21,
+  "construction_parameters": {
+    "maximum_size": 65536,
+    "minimum_frequency": 1,
+    "special_tokens": {
+      "bos": "<bos>",
+      "eos": "<eos>",
+      "pad": "<pad>",
+      "unk": "<unk>"
+    },
+    "time_resolution": 96
+  },
+  "special_token_policy": {
+    "bos": "document",
+    "eos": "document",
+    "padding_interaction": "outside_boundaries",
+    "policy_mode": "baseline_v1",
+    "policy_name": "baseline_special_tokens",
+    "unknown_token_mapping": "map_to_unk"
+  }
+}

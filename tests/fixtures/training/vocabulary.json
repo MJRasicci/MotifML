@@ -1,0 +1,158 @@
+{
+  "vocabulary_version": "ef4f1756503de6d14f888d8a85abac943e65d7623a5553ff89a8249b9d2b5dd6",
+  "feature_version": "65a6cd7042d55798e2ea7deeff30614bc56449c21d8ef4d6646bea5ca801ea14",
+  "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
+  "token_count": 43,
+  "vocabulary_size": 21,
+  "token_to_id": {
+    "<pad>": 0,
+    "<bos>": 1,
+    "<eos>": 2,
+    "<unk>": 3,
+    "STRUCTURE:ONSET_GROUP": 4,
+    "NOTE_DURATION:32": 5,
+    "NOTE_PITCH:E4": 6,
+    "STRUCTURE:BAR": 7,
+    "STRUCTURE:VOICE_LANE": 8,
+    "TIME_SHIFT:96": 9,
+    "NOTE_DURATION:96": 10,
+    "NOTE_PITCH:G4": 11,
+    "STRUCTURE:PART": 12,
+    "STRUCTURE:STAFF": 13,
+    "TIME_SHIFT:32": 14,
+    "CONTROL_POINT:PART:DYNAMIC_CHANGE:MP": 15,
+    "CONTROL_POINT:SCORE:TEMPO_CHANGE:BPM=96": 16,
+    "NOTE_DURATION:192": 17,
+    "NOTE_DURATION:24": 18,
+    "NOTE_PITCH:D4": 19,
+    "NOTE_PITCH:F4": 20
+  },
+  "token_counts": [
+    {
+      "token": "<bos>",
+      "count": 2
+    },
+    {
+      "token": "<eos>",
+      "count": 2
+    },
+    {
+      "token": "<pad>",
+      "count": 0
+    },
+    {
+      "token": "<unk>",
+      "count": 0
+    },
+    {
+      "token": "CONTROL_POINT:PART:DYNAMIC_CHANGE:MP",
+      "count": 1
+    },
+    {
+      "token": "CONTROL_POINT:SCORE:TEMPO_CHANGE:BPM=96",
+      "count": 1
+    },
+    {
+      "token": "NOTE_DURATION:192",
+      "count": 1
+    },
+    {
+      "token": "NOTE_DURATION:24",
+      "count": 1
+    },
+    {
+      "token": "NOTE_DURATION:32",
+      "count": 3
+    },
+    {
+      "token": "NOTE_DURATION:96",
+      "count": 2
+    },
+    {
+      "token": "NOTE_PITCH:D4",
+      "count": 1
+    },
+    {
+      "token": "NOTE_PITCH:E4",
+      "count": 3
+    },
+    {
+      "token": "NOTE_PITCH:F4",
+      "count": 1
+    },
+    {
+      "token": "NOTE_PITCH:G4",
+      "count": 2
+    },
+    {
+      "token": "STRUCTURE:BAR",
+      "count": 3
+    },
+    {
+      "token": "STRUCTURE:ONSET_GROUP",
+      "count": 8
+    },
+    {
+      "token": "STRUCTURE:PART",
+      "count": 2
+    },
+    {
+      "token": "STRUCTURE:STAFF",
+      "count": 2
+    },
+    {
+      "token": "STRUCTURE:VOICE_LANE",
+      "count": 3
+    },
+    {
+      "token": "TIME_SHIFT:32",
+      "count": 2
+    },
+    {
+      "token": "TIME_SHIFT:96",
+      "count": 3
+    }
+  ],
+  "construction_parameters": {
+    "maximum_size": 65536,
+    "minimum_frequency": 1,
+    "special_tokens": {
+      "pad": "<pad>",
+      "bos": "<bos>",
+      "eos": "<eos>",
+      "unk": "<unk>"
+    },
+    "time_resolution": 96
+  },
+  "special_token_policy": {
+    "bos": "document",
+    "eos": "document",
+    "padding_interaction": "outside_boundaries",
+    "policy_mode": "baseline_v1",
+    "policy_name": "baseline_special_tokens",
+    "unknown_token_mapping": "map_to_unk"
+  },
+  "id_to_token": [
+    "<pad>",
+    "<bos>",
+    "<eos>",
+    "<unk>",
+    "STRUCTURE:ONSET_GROUP",
+    "NOTE_DURATION:32",
+    "NOTE_PITCH:E4",
+    "STRUCTURE:BAR",
+    "STRUCTURE:VOICE_LANE",
+    "TIME_SHIFT:96",
+    "NOTE_DURATION:96",
+    "NOTE_PITCH:G4",
+    "STRUCTURE:PART",
+    "STRUCTURE:STAFF",
+    "TIME_SHIFT:32",
+    "CONTROL_POINT:PART:DYNAMIC_CHANGE:MP",
+    "CONTROL_POINT:SCORE:TEMPO_CHANGE:BPM=96",
+    "NOTE_DURATION:192",
+    "NOTE_DURATION:24",
+    "NOTE_PITCH:D4",
+    "NOTE_PITCH:F4"
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "vocabulary_version": "ef4f1756503de6d14f888d8a85abac943e65d7623a5553ff89a8249b9d2b5dd6",
+  "feature_version": "65a6cd7042d55798e2ea7deeff30614bc56449c21d8ef4d6646bea5ca801ea14",
+  "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
+  "token_count": 43,
+  "vocabulary_size": 21,
+  "token_family_coverage": [
+    {
+      "family": "CONTROL_POINT",
+      "vocabulary_size": 2,
+      "token_count": 2
+    },
+    {
+      "family": "NOTE_DURATION",
+      "vocabulary_size": 4,
+      "token_count": 7
+    },
+    {
+      "family": "NOTE_PITCH",
+      "vocabulary_size": 4,
+      "token_count": 7
+    },
+    {
+      "family": "SPECIAL",
+      "vocabulary_size": 4,
+      "token_count": 4
+    },
+    {
+      "family": "STRUCTURE",
+      "vocabulary_size": 5,
+      "token_count": 18
+    },
+    {
+      "family": "TIME_SHIFT",
+      "vocabulary_size": 2,
+      "token_count": 5
+    }
+  ],
+  "top_tokens": [
+    {
+      "token": "STRUCTURE:ONSET_GROUP",
+      "count": 8
+    },
+    {
+      "token": "NOTE_DURATION:32",
+      "count": 3
+    },
+    {
+      "token": "NOTE_PITCH:E4",
+      "count": 3
+    },
+    {
+      "token": "STRUCTURE:BAR",
+      "count": 3
+    },
+    {
+      "token": "STRUCTURE:VOICE_LANE",
+      "count": 3
+    },
+    {
+      "token": "TIME_SHIFT:96",
+      "count": 3
+    },
+    {
+      "token": "<bos>",
+      "count": 2
+    },
+    {
+      "token": "<eos>",
+      "count": 2
+    },
+    {
+      "token": "NOTE_DURATION:96",
+      "count": 2
+    },
+    {
+      "token": "NOTE_PITCH:G4",
+      "count": 2
+    }
+  ],
+  "unk_token_count": 0,
+  "unk_token_fraction": 0.0,
+  "guardrails": {
+    "observed_vocabulary_size": 21,
+    "minimum_vocabulary_size": 7,
+    "required_token_families": [
+      "NOTE_DURATION",
+      "NOTE_PITCH",
+      "STRUCTURE"
+    ],
+    "missing_required_token_families": [],
+    "top_token": "STRUCTURE:ONSET_GROUP",
+    "top_token_count": 8,
+    "top_token_fraction": 0.18604651162790697,
+    "maximum_top_token_fraction": 0.6,
+    "estimated_unk_token_count": 0,
+    "estimated_unk_fraction": 0.0,
+    "maximum_unk_fraction": 0.25,
+    "passed": true
+  },
+  "construction_parameters": {
+    "maximum_size": 65536,
+    "minimum_frequency": 1,
+    "special_tokens": {
+      "pad": "<pad>",
+      "bos": "<bos>",
+      "eos": "<eos>",
+      "unk": "<unk>"
+    },
+    "time_resolution": 96
+  }
+}

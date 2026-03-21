@@ -1,0 +1,21 @@
+{
+  "model_input_version": "08ec6c7f96600434764c14fa933a024812d4032979886c1dce6aadbff39b7b7a",
+  "normalized_ir_version": "5e52c695b2121186f92364cdbf0ba1d44973617048c8ba3947f0381e598714f7",
+  "feature_version": "65a6cd7042d55798e2ea7deeff30614bc56449c21d8ef4d6646bea5ca801ea14",
+  "vocabulary_version": "ef4f1756503de6d14f888d8a85abac943e65d7623a5553ff89a8249b9d2b5dd6",
+  "projection_type": "sequence",
+  "sequence_mode": "baseline_v1",
+  "context_length": 64,
+  "stride": 32,
+  "padding_strategy": "right",
+  "special_token_policy": {
+    "bos": "document",
+    "eos": "document",
+    "padding_interaction": "outside_boundaries",
+    "policy_mode": "baseline_v1",
+    "policy_name": "baseline_special_tokens",
+    "unknown_token_mapping": "map_to_unk"
+  },
+  "storage_backend": "parquet",
+  "storage_schema_version": "parquet-v1"
+}

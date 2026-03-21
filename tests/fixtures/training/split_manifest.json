@@ -2,29 +2,29 @@
   {
     "document_id": "ensemble_polyphony_controls.json",
     "relative_path": "ensemble_polyphony_controls.json",
-    "split": "train",
+    "split": "validation",
     "group_key": "ensemble_polyphony_controls.json",
-    "split_version": "d78e21d465074d1697c2627414984c396293dde2f7e93687214debd047aa5939"
+    "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665"
   },
   {
     "document_id": "guitar_techniques_tuplets.json",
     "relative_path": "guitar_techniques_tuplets.json",
     "split": "train",
     "group_key": "guitar_techniques_tuplets.json",
-    "split_version": "d78e21d465074d1697c2627414984c396293dde2f7e93687214debd047aa5939"
+    "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665"
   },
   {
     "document_id": "single_track_monophonic_pickup.json",
     "relative_path": "single_track_monophonic_pickup.json",
     "split": "train",
     "group_key": "single_track_monophonic_pickup.json",
-    "split_version": "d78e21d465074d1697c2627414984c396293dde2f7e93687214debd047aa5939"
+    "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665"
   },
   {
     "document_id": "voice_reentry.json",
     "relative_path": "voice_reentry.json",
-    "split": "train",
+    "split": "validation",
     "group_key": "voice_reentry.json",
-    "split_version": "d78e21d465074d1697c2627414984c396293dde2f7e93687214debd047aa5939"
+    "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665"
   }
 ]

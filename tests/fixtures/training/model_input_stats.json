@@ -1,0 +1,68 @@
+{
+  "model_input_version": "08ec6c7f96600434764c14fa933a024812d4032979886c1dce6aadbff39b7b7a",
+  "storage_schema_version": "parquet-v1",
+  "total_document_count": 4,
+  "split_summaries": [
+    {
+      "split": "train",
+      "document_count": 2,
+      "total_token_count": 43,
+      "max_token_count": 23,
+      "p95_token_count": 23
+    },
+    {
+      "split": "validation",
+      "document_count": 2,
+      "total_token_count": 75,
+      "max_token_count": 44,
+      "p95_token_count": 44
+    }
+  ],
+  "shard_summaries": [
+    {
+      "shard_id": "global",
+      "document_count": 4,
+      "total_token_count": 118,
+      "max_token_count": 44,
+      "p95_token_count": 44
+    }
+  ],
+  "worst_offending_documents": [
+    {
+      "relative_path": "ensemble_polyphony_controls.json",
+      "document_id": "ensemble_polyphony_controls.json",
+      "split": "validation",
+      "shard_id": "global",
+      "token_count": 44,
+      "exceeds_oversized_threshold": false
+    },
+    {
+      "relative_path": "voice_reentry.json",
+      "document_id": "voice_reentry.json",
+      "split": "validation",
+      "shard_id": "global",
+      "token_count": 31,
+      "exceeds_oversized_threshold": false
+    },
+    {
+      "relative_path": "single_track_monophonic_pickup.json",
+      "document_id": "single_track_monophonic_pickup.json",
+      "split": "train",
+      "shard_id": "global",
+      "token_count": 23,
+      "exceeds_oversized_threshold": false
+    },
+    {
+      "relative_path": "guitar_techniques_tuplets.json",
+      "document_id": "guitar_techniques_tuplets.json",
+      "split": "train",
+      "shard_id": "global",
+      "token_count": 20,
+      "exceeds_oversized_threshold": false
+    }
+  ],
+  "reporting_parameters": {
+    "worst_document_limit": 10,
+    "oversized_token_count_threshold": 8192
+  }
+}

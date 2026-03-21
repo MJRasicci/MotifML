@@ -17,6 +17,7 @@ from tests.pipelines.ir_test_support import (  # noqa: E402
 )
 from tests.pipelines.training_test_support import (  # noqa: E402
     TRAINING_FIXTURE_ROOT,
+    baseline_training_runtime_overrides,
     materialize_training_fixture_corpus,
 )
 
@@ -29,9 +30,14 @@ def main() -> None:
         tmp_path = Path(tmp_dir)
         raw_root = materialize_training_fixture_corpus(tmp_path / "raw_training")
         conf_source, output_root = write_test_conf(tmp_path, raw_root)
-        run_session(conf_source, ["ir_build"])
-        run_session(conf_source, ["normalization"])
-        run_session(conf_source, ["dataset_splitting"])
+        runtime_overrides = baseline_training_runtime_overrides()
+        run_session(conf_source, ["ir_build"], runtime_params=runtime_overrides)
+        run_session(conf_source, ["normalization"], runtime_params=runtime_overrides)
+        run_session(
+            conf_source,
+            ["dataset_splitting"],
+            runtime_params=runtime_overrides,
+        )
 
         TRAINING_FIXTURE_ROOT.mkdir(parents=True, exist_ok=True)
         for file_name in OUTPUT_FILE_NAMES:

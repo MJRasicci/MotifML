@@ -1,18 +1,18 @@
 {
-  "split_version": "d78e21d465074d1697c2627414984c396293dde2f7e93687214debd047aa5939",
+  "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
   "total_document_count": 4,
   "total_group_count": 4,
   "splits": [
     {
       "split": "train",
-      "document_count": 4,
-      "group_count": 4,
+      "document_count": 2,
+      "group_count": 2,
       "token_count": null
     },
     {
       "split": "validation",
-      "document_count": 0,
-      "group_count": 0,
+      "document_count": 2,
+      "group_count": 2,
       "token_count": null
     },
     {
