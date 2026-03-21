@@ -109,6 +109,26 @@ split_stats:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/training/split_stats.json
 
+token_count_shard:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/02_intermediate/training/token_counts/shards/${runtime_params:execution.shard_id,__all__}.json
+
+token_count_shard_collection:
+  type: motifml.datasets.json_directory_dataset.JsonDirectoryDataset
+  filepath: data/02_intermediate/training/token_counts/shards
+
+vocabulary:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/05_model_input/ir/vocabulary.json
+
+vocabulary_version:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/05_model_input/ir/vocabulary_version.json
+
+vocab_stats:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/training/vocab_stats.json
+
 ingested_raw_motif_json_corpus:
   type: MemoryDataset
   copy_mode: assign

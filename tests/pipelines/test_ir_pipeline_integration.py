@@ -110,12 +110,24 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
             runtime_params={"execution": {"shard_id": shard_id}},
         )
 
+    run_session(conf_source, ["dataset_splitting"])
+
+    for shard_id in shard_ids:
+        run_session(
+            conf_source,
+            ["vocabulary_counting_shard"],
+            runtime_params={"execution": {"shard_id": shard_id}},
+        )
+
     run_session(conf_source, ["partitioned_reduce"])
 
     manifest = load_json(output_root / "motif_ir_manifest.json")
     validation_report = load_json(output_root / "motif_ir_validation_report.json")
     summary = load_json(output_root / "motif_ir_summary.json")
     ir_features = load_partitioned_record_set(output_root / "ir_features")
+    vocabulary = load_json(output_root / "vocabulary.json")
+    vocabulary_version = load_json(output_root / "vocabulary_version.json")
+    vocab_stats = load_json(output_root / "vocab_stats.json")
 
     assert len(manifest) == EXPECTED_FIXTURE_COUNT
     assert len(validation_report) == EXPECTED_FIXTURE_COUNT
@@ -135,10 +147,13 @@ def test_kedro_session_runs_partitioned_pipeline_flow(tmp_path: Path):
     assert len(sorted((output_root / "summary_shards").glob("*.json"))) == len(
         shard_ids
     )
+    assert len(sorted((output_root / "token_counts").glob("*.json"))) == len(shard_ids)
     assert len(ir_features["records"]) == EXPECTED_FIXTURE_COUNT
     assert ir_features["parameters"]["feature_version"]
     assert ir_features["parameters"]["sequence_schema_version"]
     assert ir_features["parameters"]["normalized_ir_version"]
+    assert vocabulary["vocabulary_version"] == vocabulary_version["vocabulary_version"]
+    assert vocab_stats["vocabulary_version"] == vocabulary["vocabulary_version"]
     assert len(load_partitioned_record_set(output_root / "model_input")["records"]) == (
         EXPECTED_FIXTURE_COUNT
     )

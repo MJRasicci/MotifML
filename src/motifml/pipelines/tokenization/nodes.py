@@ -7,7 +7,32 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from motifml.ir.projections.sequence import SequenceProjection
+from motifml.ir.models import (
+    ControlScope,
+    DynamicChangeValue,
+    FermataValue,
+    HairpinDirection,
+    HairpinValue,
+    NoteEvent,
+    OttavaValue,
+    Pitch,
+    PitchStep,
+    PointControlEvent,
+    PointControlKind,
+    SpanControlEvent,
+    SpanControlKind,
+    TempoChangeValue,
+)
+from motifml.ir.projections.sequence import (
+    NoteSequenceEvent,
+    PointControlSequenceEvent,
+    SequenceProjection,
+    SequenceProjectionMode,
+    SpanControlSequenceEvent,
+    StructureMarkerKind,
+    StructureMarkerSequenceEvent,
+)
+from motifml.ir.time import ScoreTime
 from motifml.pipelines.feature_extraction.models import (
     IrFeatureRecord,
     IrFeatureSet,
@@ -123,6 +148,25 @@ def count_training_split_tokens(
     )
 
 
+def count_training_split_tokens_from_model_input_parameters(
+    ir_features: IrFeatureSet | Mapping[str, Any],
+    split_manifest: tuple[SplitManifestEntry, ...] | list[Mapping[str, Any]],
+    sequence_schema: SequenceSchemaContract | Mapping[str, Any],
+    vocabulary_parameters: VocabularyParameters | Mapping[str, Any],
+    model_input_parameters: Mapping[str, Any],
+) -> ShardTokenCounts:
+    """Pipeline-friendly wrapper that reads special-token policy from model input."""
+    return count_training_split_tokens(
+        ir_features,
+        split_manifest,
+        sequence_schema,
+        vocabulary_parameters,
+        special_token_policy=_special_token_policy_from_model_input(
+            model_input_parameters
+        ),
+    )
+
+
 def merge_model_input_shards(
     model_input_shards: list[ModelInputSet] | list[Mapping[str, Any]],
 ) -> ModelInputSet:
@@ -231,6 +275,19 @@ def reduce_vocabulary(
     return vocabulary, stats, metadata
 
 
+def reduce_vocabulary_from_data_split_parameters(
+    token_count_shards: list[ShardTokenCounts] | list[Mapping[str, Any]],
+    parameters: VocabularyParameters | Mapping[str, Any],
+    data_split_parameters: Mapping[str, Any],
+) -> tuple[VocabularyArtifact, VocabularyStatsReport, VocabularyMetadata]:
+    """Pipeline-friendly wrapper that derives the split seed from data-split params."""
+    return reduce_vocabulary(
+        token_count_shards,
+        parameters,
+        split_seed=data_split_parameters["hash_seed"],
+    )
+
+
 def _iter_feature_records(
     ir_features: IrFeatureSet | Mapping[str, Any],
 ) -> tuple[_FeatureRecordInput, ...]:
@@ -269,14 +326,250 @@ def _coerce_feature_set(value: IrFeatureSet | Mapping[str, Any]) -> IrFeatureSet
     return IrFeatureSet(
         parameters=coerce_feature_extraction_parameters(value.get("parameters", {})),
         records=tuple(
-            IrFeatureRecord(
-                relative_path=str(record["relative_path"]),
-                projection_type=ProjectionType(record["projection_type"]),
-                projection=record.get("projection", {}),
-            )
-            for record in value.get("records", ())
+            _coerce_feature_record(record) for record in value.get("records", ())
         ),
     )
+
+
+def _coerce_feature_record(
+    record: IrFeatureRecord | Mapping[str, Any],
+) -> IrFeatureRecord:
+    if isinstance(record, IrFeatureRecord):
+        return record
+
+    projection_type = ProjectionType(record["projection_type"])
+    projection = record.get("projection", {})
+    if projection_type is ProjectionType.SEQUENCE:
+        projection = _coerce_sequence_projection(projection)
+
+    return IrFeatureRecord(
+        relative_path=str(record["relative_path"]),
+        projection_type=projection_type,
+        projection=projection,
+    )
+
+
+def _coerce_sequence_projection(
+    value: SequenceProjection | Mapping[str, Any],
+) -> SequenceProjection:
+    if isinstance(value, SequenceProjection):
+        return value
+    if not isinstance(value, Mapping):
+        raise ValueError("Sequence projections must be mappings or SequenceProjection.")
+
+    return SequenceProjection(
+        mode=SequenceProjectionMode(str(value["mode"])),
+        events=tuple(
+            _coerce_sequence_event(event) for event in value.get("events", ())
+        ),
+    )
+
+
+def _coerce_sequence_event(
+    value: object,
+) -> (
+    StructureMarkerSequenceEvent
+    | PointControlSequenceEvent
+    | SpanControlSequenceEvent
+    | NoteSequenceEvent
+):
+    if isinstance(
+        value,
+        StructureMarkerSequenceEvent
+        | PointControlSequenceEvent
+        | SpanControlSequenceEvent
+        | NoteSequenceEvent,
+    ):
+        return value
+    if not isinstance(value, Mapping):
+        raise ValueError("Sequence events must be mappings or typed event objects.")
+
+    if "note" in value:
+        return NoteSequenceEvent(
+            time=_coerce_score_time(value["time"]),
+            note=_coerce_note_event(value["note"]),
+            part_id=str(value["part_id"]),
+            staff_id=str(value["staff_id"]),
+            bar_id=str(value["bar_id"]),
+            voice_lane_id=str(value["voice_lane_id"]),
+            onset_id=str(value["onset_id"]),
+        )
+
+    if "marker_kind" in value:
+        return StructureMarkerSequenceEvent(
+            time=_coerce_score_time(value["time"]),
+            marker_kind=StructureMarkerKind(str(value["marker_kind"])),
+            entity_id=str(value["entity_id"]),
+            part_id=_optional_text(value.get("part_id")),
+            staff_id=_optional_text(value.get("staff_id")),
+            bar_id=_optional_text(value.get("bar_id")),
+            voice_lane_id=_optional_text(value.get("voice_lane_id")),
+        )
+
+    control = value.get("control")
+    if isinstance(control, Mapping) and "start_time" in control:
+        return SpanControlSequenceEvent(
+            time=_coerce_score_time(value["time"]),
+            control=_coerce_span_control_event(control),
+            part_id=_optional_text(value.get("part_id")),
+            staff_id=_optional_text(value.get("staff_id")),
+            bar_id=_optional_text(value.get("bar_id")),
+            voice_lane_id=_optional_text(value.get("voice_lane_id")),
+        )
+
+    if isinstance(control, Mapping):
+        return PointControlSequenceEvent(
+            time=_coerce_score_time(value["time"]),
+            control=_coerce_point_control_event(control),
+            part_id=_optional_text(value.get("part_id")),
+            staff_id=_optional_text(value.get("staff_id")),
+            bar_id=_optional_text(value.get("bar_id")),
+            voice_lane_id=_optional_text(value.get("voice_lane_id")),
+        )
+
+    raise ValueError("Unable to determine the sequence event type from persisted data.")
+
+
+def _coerce_note_event(value: NoteEvent | Mapping[str, Any]) -> NoteEvent:
+    if isinstance(value, NoteEvent):
+        return value
+    if not isinstance(value, Mapping):
+        raise ValueError("Note events must be mappings or NoteEvent instances.")
+
+    pitch = value.get("pitch")
+    return NoteEvent(
+        note_id=str(value["note_id"]),
+        onset_id=str(value["onset_id"]),
+        part_id=str(value["part_id"]),
+        staff_id=str(value["staff_id"]),
+        time=_coerce_score_time(value["time"]),
+        attack_duration=_coerce_score_time(value["attack_duration"]),
+        sounding_duration=_coerce_score_time(value["sounding_duration"]),
+        pitch=None if pitch is None else _coerce_pitch(pitch),
+        velocity=None if value.get("velocity") is None else int(value["velocity"]),
+        string_number=(
+            None if value.get("string_number") is None else int(value["string_number"])
+        ),
+        show_string_number=(
+            None
+            if value.get("show_string_number") is None
+            else bool(value["show_string_number"])
+        ),
+        techniques=value.get("techniques"),
+    )
+
+
+def _coerce_pitch(value: Pitch | Mapping[str, Any]) -> Pitch:
+    if isinstance(value, Pitch):
+        return value
+    if not isinstance(value, Mapping):
+        raise ValueError("Pitch values must be mappings or Pitch instances.")
+
+    return Pitch(
+        step=PitchStep(str(value["step"])),
+        octave=int(value["octave"]),
+        accidental=_optional_text(value.get("accidental")),
+    )
+
+
+def _coerce_point_control_event(
+    value: PointControlEvent | Mapping[str, Any],
+) -> PointControlEvent:
+    if isinstance(value, PointControlEvent):
+        return value
+    if not isinstance(value, Mapping):
+        raise ValueError(
+            "Point control events must be mappings or PointControlEvent instances."
+        )
+
+    kind = PointControlKind(str(value["kind"]))
+    return PointControlEvent(
+        control_id=str(value["control_id"]),
+        kind=kind,
+        scope=ControlScope(str(value["scope"])),
+        target_ref=str(value["target_ref"]),
+        time=_coerce_score_time(value["time"]),
+        value=_coerce_point_control_value(kind, value["value"]),
+    )
+
+
+def _coerce_span_control_event(
+    value: SpanControlEvent | Mapping[str, Any],
+) -> SpanControlEvent:
+    if isinstance(value, SpanControlEvent):
+        return value
+    if not isinstance(value, Mapping):
+        raise ValueError(
+            "Span control events must be mappings or SpanControlEvent instances."
+        )
+
+    kind = SpanControlKind(str(value["kind"]))
+    return SpanControlEvent(
+        control_id=str(value["control_id"]),
+        kind=kind,
+        scope=ControlScope(str(value["scope"])),
+        target_ref=str(value["target_ref"]),
+        start_time=_coerce_score_time(value["start_time"]),
+        end_time=_coerce_score_time(value["end_time"]),
+        value=_coerce_span_control_value(kind, value["value"]),
+        start_anchor_ref=_optional_text(value.get("start_anchor_ref")),
+        end_anchor_ref=_optional_text(value.get("end_anchor_ref")),
+    )
+
+
+def _coerce_point_control_value(
+    kind: PointControlKind,
+    value: object,
+) -> TempoChangeValue | DynamicChangeValue | FermataValue:
+    if kind is PointControlKind.TEMPO_CHANGE:
+        payload = _mapping(value, "tempo change value")
+        return TempoChangeValue(beats_per_minute=float(payload["beats_per_minute"]))
+    if kind is PointControlKind.DYNAMIC_CHANGE:
+        payload = _mapping(value, "dynamic change value")
+        return DynamicChangeValue(marking=str(payload["marking"]))
+    payload = _mapping(value, "fermata value")
+    return FermataValue(
+        fermata_type=_optional_text(payload.get("fermata_type")),
+        length_scale=(
+            None
+            if payload.get("length_scale") is None
+            else float(payload["length_scale"])
+        ),
+    )
+
+
+def _coerce_span_control_value(
+    kind: SpanControlKind,
+    value: object,
+) -> HairpinValue | OttavaValue:
+    payload = _mapping(value, "span control value")
+    if kind is SpanControlKind.HAIRPIN:
+        return HairpinValue(
+            direction=HairpinDirection(str(payload["direction"])),
+            niente=bool(payload.get("niente", False)),
+        )
+    return OttavaValue(octave_shift=int(payload["octave_shift"]))
+
+
+def _coerce_score_time(value: ScoreTime | Mapping[str, Any]) -> ScoreTime:
+    if isinstance(value, ScoreTime):
+        return value
+    if not isinstance(value, Mapping):
+        raise ValueError("ScoreTime values must be mappings or ScoreTime instances.")
+    return ScoreTime(int(value["numerator"]), int(value["denominator"]))
+
+
+def _mapping(value: object, field_name: str) -> Mapping[str, Any]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{field_name} must be a mapping.")
+    return value
+
+
+def _optional_text(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
 
 
 def _tokenize_record(
@@ -428,6 +721,17 @@ def _vocabulary_version_payload(parameters: VocabularyParameters) -> dict[str, A
         "maximum_size": parameters.maximum_size,
         "special_tokens": dict(parameters.special_tokens or SPECIAL_TOKENS),
     }
+
+
+def _special_token_policy_from_model_input(
+    model_input_parameters: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    if "special_token_policy" not in model_input_parameters:
+        raise ValueError("model_input parameters must include special_token_policy.")
+    special_token_policy = model_input_parameters["special_token_policy"]
+    if not isinstance(special_token_policy, Mapping):
+        raise ValueError("special_token_policy must be a mapping.")
+    return special_token_policy
 
 
 def _projection_summary_tokens(record: _FeatureRecordInput) -> tuple[str, ...]:

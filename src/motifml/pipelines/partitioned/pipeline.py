@@ -11,6 +11,9 @@ from motifml.pipelines.ir_validation.nodes import (
     report_ir_scale_metrics,
 )
 from motifml.pipelines.normalization.nodes import merge_normalized_ir_version_fragments
+from motifml.pipelines.tokenization.nodes import (
+    reduce_vocabulary_from_data_split_parameters,
+)
 
 
 def create_reduce_pipeline(**kwargs: object) -> Pipeline:
@@ -48,6 +51,16 @@ def create_reduce_pipeline(**kwargs: object) -> Pipeline:
                 inputs="normalized_ir_version_shard_collection",
                 outputs="normalized_ir_version",
                 name="merge_normalized_ir_version_fragments",
+            ),
+            node(
+                func=reduce_vocabulary_from_data_split_parameters,
+                inputs=[
+                    "token_count_shard_collection",
+                    "params:vocabulary",
+                    "params:data_split",
+                ],
+                outputs=["vocabulary", "vocab_stats", "vocabulary_version"],
+                name="reduce_vocabulary_from_shard_counts",
             ),
         ],
         tags=["partitioned", "reduce"],

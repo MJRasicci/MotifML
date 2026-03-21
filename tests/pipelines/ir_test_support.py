@@ -194,6 +194,30 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "type": "motifml.datasets.json_dataset.JsonDataset",
             "filepath": str(output_root / "split_stats.json"),
         },
+        "token_count_shard": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(
+                output_root
+                / "token_counts"
+                / "${runtime_params:execution.shard_id,__all__}.json"
+            ),
+        },
+        "token_count_shard_collection": {
+            "type": "motifml.datasets.json_directory_dataset.JsonDirectoryDataset",
+            "filepath": str(output_root / "token_counts"),
+        },
+        "vocabulary": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "vocabulary.json"),
+        },
+        "vocabulary_version": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "vocabulary_version.json"),
+        },
+        "vocab_stats": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "vocab_stats.json"),
+        },
         "ir_features": {
             "type": "motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset",
             "filepath": str(output_root / "ir_features"),

@@ -13,6 +13,7 @@ EXPECTED_NORMALIZATION_NODE_COUNT = 2
 EXPECTED_DATASET_SPLITTING_NODE_COUNT = 2
 EXPECTED_FEATURE_EXTRACTION_NODE_COUNT = 1
 EXPECTED_TOKENIZATION_NODE_COUNT = 1
+EXPECTED_VOCABULARY_COUNTING_NODE_COUNT = 1
 EXPECTED_DEFAULT_NODE_ORDER = [
     "build_raw_corpus_manifest",
     "build_raw_partition_index",
@@ -59,6 +60,7 @@ def test_register_pipelines_exposes_project_pipelines():
     assert "feature_extraction" in pipelines
     assert "feature_extraction_shard" in pipelines
     assert "tokenization" in pipelines
+    assert "vocabulary_counting_shard" in pipelines
     assert "tokenization_shard" in pipelines
     assert "partitioned_reduce" in pipelines
     assert "shard_reduce" in pipelines
@@ -77,6 +79,10 @@ def test_register_pipelines_exposes_project_pipelines():
         == EXPECTED_FEATURE_EXTRACTION_NODE_COUNT
     )
     assert len(pipelines["tokenization"].nodes) == EXPECTED_TOKENIZATION_NODE_COUNT
+    assert (
+        len(pipelines["vocabulary_counting_shard"].nodes)
+        == EXPECTED_VOCABULARY_COUNTING_NODE_COUNT
+    )
 
 
 def test_register_pipelines_builds_the_default_pipeline_in_stage_order():
@@ -170,6 +176,9 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "normalized_ir_version_shard_collection",
         "motif_ir_summary_shard_collection",
         "motif_ir_validation_report_shard_collection",
+        "token_count_shard_collection",
+        "params:vocabulary",
+        "params:data_split",
     }
 
     assert pipelines["normalization_shard"].inputs() == {
@@ -188,6 +197,15 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "params:sequence_schema",
     }
     assert pipelines["feature_extraction_shard"].outputs() == {"ir_features_shard"}
+
+    assert pipelines["vocabulary_counting_shard"].inputs() == {
+        "ir_features_shard",
+        "split_manifest",
+        "params:sequence_schema",
+        "params:vocabulary",
+        "params:model_input",
+    }
+    assert pipelines["vocabulary_counting_shard"].outputs() == {"token_count_shard"}
 
     assert pipelines["tokenization_shard"].inputs() == {
         "ir_features_shard",

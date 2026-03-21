@@ -23,6 +23,9 @@ from motifml.pipelines.partitioned.pipeline import create_reduce_pipeline
 from motifml.pipelines.tokenization.pipeline import (
     create_pipeline as create_tokenization,
 )
+from motifml.pipelines.vocabulary_counting.pipeline import (
+    create_pipeline as create_vocabulary_counting,
+)
 
 
 def _stage_raw_corpus_for_ir_build(
@@ -43,6 +46,7 @@ def register_pipelines() -> dict[str, Pipeline]:
     dataset_splitting = create_dataset_splitting()
     feature_extraction = create_feature_extraction()
     tokenization = create_tokenization()
+    vocabulary_counting = create_vocabulary_counting()
     partitioned_reduce = create_reduce_pipeline()
 
     staged_ir_build = pipeline(
@@ -117,6 +121,7 @@ def register_pipelines() -> dict[str, Pipeline]:
         "dataset_splitting": dataset_splitting,
         "feature_extraction": feature_extraction,
         "tokenization": tokenization,
+        "vocabulary_counting_shard": vocabulary_counting,
         "ir_build_shard": ir_build_shard,
         "ir_validation_shard": ir_validation_shard,
         "normalization_shard": normalization_shard,
