@@ -275,10 +275,26 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "filepath": str(output_root / "model_input"),
             "shard_id": "global",
         },
+        "model_input_runtime": {
+            "type": "motifml.datasets.tokenized_model_input_runtime_dataset.TokenizedModelInputRuntimeDataset",
+            "filepath": str(output_root / "model_input"),
+        },
         "model_input_shard": {
             "type": "motifml.datasets.tokenized_model_input_dataset.TokenizedModelInputDataset",
             "filepath": str(output_root / "model_input"),
             "shard_id": "${runtime_params:execution.shard_id,__all__}",
+        },
+        "training_artifacts": {
+            "type": "motifml.datasets.training_checkpoint_dataset.TrainingCheckpointDataset",
+            "filepath": str(output_root / "training" / "baseline"),
+        },
+        "training_history": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "training_history.json"),
+        },
+        "training_run_metadata": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "training_run_metadata.json"),
         },
     }
 

@@ -15,6 +15,7 @@ EXPECTED_FEATURE_EXTRACTION_NODE_COUNT = 1
 EXPECTED_TOKENIZATION_NODE_COUNT = 3
 EXPECTED_VOCABULARY_COUNTING_NODE_COUNT = 1
 EXPECTED_MODEL_INPUT_REDUCE_NODE_COUNT = 2
+EXPECTED_TRAINING_NODE_COUNT = 1
 EXPECTED_DEFAULT_NODE_ORDER = [
     "build_raw_corpus_manifest",
     "build_raw_partition_index",
@@ -66,6 +67,7 @@ def test_register_pipelines_exposes_project_pipelines():
     assert "feature_extraction_shard" in pipelines
     assert "tokenization" in pipelines
     assert "vocabulary_counting_shard" in pipelines
+    assert "training" in pipelines
     assert "tokenization_shard" in pipelines
     assert "partitioned_reduce" in pipelines
     assert "shard_reduce" in pipelines
@@ -93,6 +95,7 @@ def test_register_pipelines_exposes_project_pipelines():
         len(pipelines["model_input_reduce"].nodes)
         == EXPECTED_MODEL_INPUT_REDUCE_NODE_COUNT
     )
+    assert len(pipelines["training"].nodes) == EXPECTED_TRAINING_NODE_COUNT
 
 
 def test_register_pipelines_builds_the_default_pipeline_in_stage_order():
@@ -170,6 +173,19 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "model_input_version",
     }
     assert pipelines["tokenization"].all_outputs() >= {"vocabulary"}
+
+    assert pipelines["training"].inputs() == {
+        "model_input_runtime",
+        "vocabulary",
+        "params:model",
+        "params:training",
+        "params:seed",
+    }
+    assert pipelines["training"].outputs() == {
+        "training_artifacts",
+        "training_history",
+        "training_run_metadata",
+    }
 
     assert pipelines["ingestion"].all_outputs() >= {
         "raw_motif_json_manifest",

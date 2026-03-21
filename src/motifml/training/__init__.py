@@ -51,6 +51,7 @@ from motifml.training.model_input import (
     coerce_tokenized_document_rows,
     sort_tokenized_document_rows,
 )
+from motifml.training.model_input_runtime import TokenizedModelInputRuntimeHandle
 from motifml.training.model_input_stats import (
     ModelInputOversizedDocumentEntry,
     ModelInputReportingParameters,
@@ -111,6 +112,7 @@ from motifml.training.training_loop import (
     coerce_training_loop_parameters,
     compute_causal_language_model_loss,
     resolve_torch_device,
+    run_training_epoch,
     run_validation_pass,
     seed_training_libraries,
     train_decoder_only_model,
@@ -149,6 +151,7 @@ __all__ = [
     "ModelInputShardSummaryEntry",
     "ModelInputSplitStatsEntry",
     "ModelInputStatsReport",
+    "TokenizedModelInputRuntimeHandle",
     "MODEL_CONFIG_FILENAME",
     "PAD_TOKEN",
     "PaddingInteraction",
@@ -217,6 +220,7 @@ __all__ = [
     "load_tokenized_document_row_file",
     "reduce_model_input_stats_shards",
     "resolve_torch_device",
+    "run_training_epoch",
     "run_validation_pass",
     "select_best_checkpoint",
     "seed_training_libraries",

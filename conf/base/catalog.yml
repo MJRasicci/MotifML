@@ -226,7 +226,23 @@ model_input:
   filepath: data/05_model_input/ir
   shard_id: global
 
+model_input_runtime:
+  type: motifml.datasets.tokenized_model_input_runtime_dataset.TokenizedModelInputRuntimeDataset
+  filepath: data/05_model_input/ir
+
 model_input_shard:
   type: motifml.datasets.tokenized_model_input_dataset.TokenizedModelInputDataset
   filepath: data/05_model_input/ir
   shard_id: "${runtime_params:execution.shard_id,__all__}"
+
+training_artifacts:
+  type: motifml.datasets.training_checkpoint_dataset.TrainingCheckpointDataset
+  filepath: data/06_models/training/baseline
+
+training_history:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/training/training_history.json
+
+training_run_metadata:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/training/training_run_metadata.json

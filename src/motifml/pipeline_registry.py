@@ -29,6 +29,7 @@ from motifml.pipelines.tokenization.pipeline import (
 from motifml.pipelines.tokenization.pipeline import (
     create_shard_pipeline as create_tokenization_shard,
 )
+from motifml.pipelines.training.pipeline import create_pipeline as create_training
 from motifml.pipelines.vocabulary_counting.pipeline import (
     create_pipeline as create_vocabulary_counting,
 )
@@ -56,6 +57,7 @@ def register_pipelines() -> dict[str, Pipeline]:
     vocabulary_counting = create_vocabulary_counting()
     partitioned_reduce = create_reduce_pipeline()
     model_input_reduce = create_model_input_reduce_pipeline()
+    training = create_training()
 
     staged_ir_build = pipeline(
         [
@@ -124,6 +126,7 @@ def register_pipelines() -> dict[str, Pipeline]:
         "feature_extraction": feature_extraction,
         "tokenization": tokenization,
         "vocabulary_counting_shard": vocabulary_counting,
+        "training": training,
         "ir_build_shard": ir_build_shard,
         "ir_validation_shard": ir_validation_shard,
         "normalization_shard": normalization_shard,

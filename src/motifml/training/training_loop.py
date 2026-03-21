@@ -384,7 +384,7 @@ def train_decoder_only_model(  # noqa: PLR0913
     best_epoch_index = 0
     best_validation_loss = float("inf")
     for epoch_index in range(typed_parameters.num_epochs):
-        train_loss, train_token_count = _run_training_epoch(
+        train_loss, train_token_count = run_training_epoch(
             model,
             train_batches=train_batches_for_epoch(epoch_index),
             device=device,
@@ -418,7 +418,7 @@ def train_decoder_only_model(  # noqa: PLR0913
     )
 
 
-def _run_training_epoch(  # noqa: PLR0913
+def run_training_epoch(  # noqa: PLR0913
     model: nn.Module,
     *,
     train_batches: Iterable[TokenWindowBatch],
@@ -530,6 +530,7 @@ __all__ = [
     "coerce_learning_rate_scheduler_parameters",
     "coerce_training_loop_parameters",
     "resolve_torch_device",
+    "run_training_epoch",
     "run_validation_pass",
     "seed_training_libraries",
     "train_decoder_only_model",
