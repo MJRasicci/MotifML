@@ -5,6 +5,9 @@ from __future__ import annotations
 from kedro.pipeline import Pipeline, node, pipeline
 
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
+from motifml.pipelines.dataset_splitting.pipeline import (
+    create_pipeline as create_dataset_splitting,
+)
 from motifml.pipelines.feature_extraction.pipeline import (
     create_pipeline as create_feature_extraction,
 )
@@ -37,6 +40,7 @@ def register_pipelines() -> dict[str, Pipeline]:
     ir_build = create_ir_build()
     ir_validation = create_ir_validation()
     normalization = create_normalization()
+    dataset_splitting = create_dataset_splitting()
     feature_extraction = create_feature_extraction()
     tokenization = create_tokenization()
     partitioned_reduce = create_reduce_pipeline()
@@ -110,6 +114,7 @@ def register_pipelines() -> dict[str, Pipeline]:
         "ir_build": ir_build,
         "ir_validation": ir_validation,
         "normalization": normalization,
+        "dataset_splitting": dataset_splitting,
         "feature_extraction": feature_extraction,
         "tokenization": tokenization,
         "ir_build_shard": ir_build_shard,

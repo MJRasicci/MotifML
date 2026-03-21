@@ -101,6 +101,10 @@ normalized_ir_version_shard_collection:
   type: motifml.datasets.json_directory_dataset.JsonDirectoryDataset
   filepath: data/03_primary/ir/versions/shards
 
+split_manifest:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/02_intermediate/training/split_manifest.json
+
 ingested_raw_motif_json_corpus:
   type: MemoryDataset
   copy_mode: assign
