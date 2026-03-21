@@ -17,13 +17,13 @@ GOLDEN_IR_FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "ir" / "golden"
 
 
 def execute_notebook(path: Path) -> nbformat.NotebookNode:
-    """Execute one notebook from the repository root."""
+    """Execute one notebook from its parent directory."""
     notebook = nbformat.read(path, as_version=4)
     client = NotebookClient(
         notebook,
         timeout=120,
         kernel_name="python3",
-        resources={"metadata": {"path": str(REPO_ROOT)}},
+        resources={"metadata": {"path": str(path.parent)}},
     )
     client.execute()
     return notebook
