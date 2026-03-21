@@ -66,7 +66,8 @@ composition:
   ``normalized_ir_version`` metadata and validates that training-specific fields have
   not leaked into the normalized artifact surface
 - ``feature_extraction`` projects normalized IR into sequence, graph, or hierarchical
-  feature views according to ``params:feature_extraction``
+  feature views according to ``params:feature_extraction`` and the frozen
+  ``params:sequence_schema`` contract
 - ``tokenization`` converts projected features into a deterministic baseline
   ``model_input`` dataset according to ``params:tokenization``
 
@@ -102,6 +103,10 @@ Current Pipeline Responsibilities
    - graph projection
    - hierarchical projection
 
+   For the baseline sequence path, ``feature_extraction.sequence_mode`` now makes the
+   intended sequence surface explicit instead of inferring it only from legacy
+   event-family flags.
+
 ``tokenization``
    Packages projected features into a deterministic baseline model-input surface. The
    current implementation records projection metadata and simple structural counts in a
@@ -125,7 +130,8 @@ Examples of currently configured parameters include:
 
 - fixed IR build metadata such as ``ir_schema_version`` and ``corpus_build_version``
 - per-rule validation severities for the structural validator
-- projection type and event inclusion settings for feature extraction
+- projection type, explicit sequence mode, and sequence-schema settings for feature
+  extraction
 - vocabulary strategy, max sequence length, padding strategy, and time resolution for
   tokenization
 

@@ -15,7 +15,11 @@ def create_pipeline(**kwargs: object) -> Pipeline:
         [
             node(
                 func=extract_features,
-                inputs=["normalized_ir_corpus", "params:feature_extraction"],
+                inputs=[
+                    "normalized_ir_corpus",
+                    "params:feature_extraction",
+                    "params:sequence_schema",
+                ],
                 outputs="ir_features",
                 name="extract_features",
             )

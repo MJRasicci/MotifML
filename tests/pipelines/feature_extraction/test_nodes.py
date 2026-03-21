@@ -3,28 +3,47 @@
 from __future__ import annotations
 
 from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
+from motifml.ir.ids import point_control_id, span_control_id
 from motifml.ir.models import (
     Bar,
+    ControlScope,
+    HairpinDirection,
+    HairpinValue,
     IrDocumentMetadata,
     MotifMlIrDocument,
     NoteEvent,
     OnsetGroup,
     Part,
     Pitch,
+    PointControlEvent,
+    PointControlKind,
+    SpanControlEvent,
+    SpanControlKind,
     Staff,
+    TempoChangeValue,
     TimeSignature,
     Transposition,
     VoiceLane,
 )
 from motifml.ir.projections.graph import GraphAdjacency, GraphProjection
 from motifml.ir.projections.hierarchical import HierarchicalProjection
-from motifml.ir.projections.sequence import SequenceProjection, SequenceProjectionMode
+from motifml.ir.projections.sequence import (
+    PointControlSequenceEvent,
+    SequenceProjection,
+    SequenceProjectionMode,
+    SpanControlSequenceEvent,
+    StructureMarkerSequenceEvent,
+)
 from motifml.ir.time import ScoreTime
-from motifml.pipelines.feature_extraction.models import FeatureExtractionParameters
+from motifml.pipelines.feature_extraction.models import (
+    BASELINE_SEQUENCE_MODE,
+    FeatureExtractionParameters,
+)
 from motifml.pipelines.feature_extraction.nodes import (
     extract_features,
     merge_feature_shards,
 )
+from motifml.training.sequence_schema import SequenceSchemaContract
 
 
 def test_extract_features_uses_the_sequence_projection(monkeypatch) -> None:
@@ -45,17 +64,22 @@ def test_extract_features_uses_the_sequence_projection(monkeypatch) -> None:
         [record],
         FeatureExtractionParameters(
             projection_type="sequence",
-            event_types_included=("notes", "controls"),
+            sequence_mode=BASELINE_SEQUENCE_MODE,
         ),
+        SequenceSchemaContract(),
     )
 
     assert features.parameters.projection_type.value == "sequence"
     assert isinstance(features.records[0].projection, SequenceProjection)
     assert (
-        features.records[0].projection.mode is SequenceProjectionMode.NOTES_AND_CONTROLS
+        features.records[0].projection.mode
+        is SequenceProjectionMode.NOTES_AND_CONTROLS_AND_STRUCTURE_MARKERS
     )
     assert captured["document"] == record.document
-    assert captured["mode"] is SequenceProjectionMode.NOTES_AND_CONTROLS
+    assert (
+        captured["mode"]
+        is SequenceProjectionMode.NOTES_AND_CONTROLS_AND_STRUCTURE_MARKERS
+    )
 
 
 def test_extract_features_uses_the_graph_projection(monkeypatch) -> None:
@@ -86,9 +110,9 @@ def test_extract_features_uses_the_graph_projection(monkeypatch) -> None:
         [record],
         {
             "projection_type": "graph",
-            "event_types_included": ["notes"],
             "derived_edge_families_included": ["playback_next"],
         },
+        SequenceSchemaContract(),
     )
 
     assert features.parameters.projection_type.value == "graph"
@@ -114,9 +138,9 @@ def test_extract_features_uses_the_hierarchical_projection(monkeypatch) -> None:
         [record],
         {
             "projection_type": "hierarchical",
-            "event_types_included": ["notes"],
             "derived_edge_families_included": [],
         },
+        SequenceSchemaContract(),
     )
 
     assert features.parameters.projection_type.value == "hierarchical"
@@ -157,13 +181,66 @@ def test_merge_feature_shards_preserves_parameter_contract_and_order() -> None:
     ]
 
 
-def _build_record() -> MotifIrDocumentRecord:
+def test_extract_features_excludes_structure_markers_when_schema_disables_them() -> (
+    None
+):
+    features = extract_features(
+        [_build_record()],
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        {
+            "structure_markers": {"enabled": False},
+            "controls": {
+                "include_point_controls": False,
+                "include_span_controls": False,
+            },
+        },
+    )
+
+    projection = features.records[0].projection
+
+    assert all(
+        not isinstance(event, StructureMarkerSequenceEvent)
+        for event in projection.events
+    )
+
+
+def test_extract_features_excludes_control_families_when_schema_disables_them() -> None:
+    features = extract_features(
+        [_build_record(include_controls=True)],
+        {
+            "projection_type": "sequence",
+            "sequence_mode": BASELINE_SEQUENCE_MODE,
+        },
+        {
+            "controls": {
+                "include_point_controls": False,
+                "include_span_controls": False,
+            }
+        },
+    )
+
+    projection = features.records[0].projection
+
+    assert all(
+        not isinstance(event, PointControlSequenceEvent) for event in projection.events
+    )
+    assert all(
+        not isinstance(event, SpanControlSequenceEvent) for event in projection.events
+    )
+
+
+def _build_record(include_controls: bool = False) -> MotifIrDocumentRecord:
     part_id = "part:track-a"
     staff_id = "staff:part:track-a:0"
     bar_id = "bar:0"
     voice_lane_id = "voice:staff:part:track-a:0:0:0"
     onset_id = "onset:voice:staff:part:track-a:0:0:0:0"
     note_id = "note:onset:voice:staff:part:track-a:0:0:0:0:0"
+    point_control_event_id = point_control_id("score", 0)
+    span_control_event_id = span_control_id(staff_id, 0)
 
     return MotifIrDocumentRecord(
         relative_path="fixtures/example.json",
@@ -203,6 +280,35 @@ def _build_record() -> MotifIrDocumentRecord:
                     bar_id=bar_id,
                     voice_index=0,
                 ),
+            ),
+            point_control_events=(
+                (
+                    PointControlEvent(
+                        control_id=point_control_event_id,
+                        kind=PointControlKind.TEMPO_CHANGE,
+                        scope=ControlScope.SCORE,
+                        target_ref="score",
+                        time=ScoreTime(0, 1),
+                        value=TempoChangeValue(beats_per_minute=120.0),
+                    ),
+                )
+                if include_controls
+                else ()
+            ),
+            span_control_events=(
+                (
+                    SpanControlEvent(
+                        control_id=span_control_event_id,
+                        kind=SpanControlKind.HAIRPIN,
+                        scope=ControlScope.STAFF,
+                        target_ref=staff_id,
+                        start_time=ScoreTime(0, 1),
+                        end_time=ScoreTime(1, 4),
+                        value=HairpinValue(direction=HairpinDirection.CRESCENDO),
+                    ),
+                )
+                if include_controls
+                else ()
             ),
             onset_groups=(
                 OnsetGroup(

@@ -47,8 +47,7 @@ ir_validation:
 
 feature_extraction:
   projection_type: sequence
-  event_types_included:
-    - notes
+  sequence_mode: baseline_v1
   derived_edge_families_included: []
 
 tokenization:
