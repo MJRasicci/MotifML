@@ -1,0 +1,30 @@
+[
+  {
+    "document_id": "ensemble_polyphony_controls.json",
+    "relative_path": "ensemble_polyphony_controls.json",
+    "split": "train",
+    "group_key": "ensemble_polyphony_controls.json",
+    "split_version": "d78e21d465074d1697c2627414984c396293dde2f7e93687214debd047aa5939"
+  },
+  {
+    "document_id": "guitar_techniques_tuplets.json",
+    "relative_path": "guitar_techniques_tuplets.json",
+    "split": "train",
+    "group_key": "guitar_techniques_tuplets.json",
+    "split_version": "d78e21d465074d1697c2627414984c396293dde2f7e93687214debd047aa5939"
+  },
+  {
+    "document_id": "single_track_monophonic_pickup.json",
+    "relative_path": "single_track_monophonic_pickup.json",
+    "split": "train",
+    "group_key": "single_track_monophonic_pickup.json",
+    "split_version": "d78e21d465074d1697c2627414984c396293dde2f7e93687214debd047aa5939"
+  },
+  {
+    "document_id": "voice_reentry.json",
+    "relative_path": "voice_reentry.json",
+    "split": "train",
+    "group_key": "voice_reentry.json",
+    "split_version": "d78e21d465074d1697c2627414984c396293dde2f7e93687214debd047aa5939"
+  }
+]

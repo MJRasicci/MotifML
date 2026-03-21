@@ -4,8 +4,8 @@ MotifML is a Kedro-based symbolic-music research pipeline for turning Motif expo
 deterministic IR corpora and downstream ML-ready datasets.
 
 The repository currently covers raw-corpus ingestion, canonical IR build and validation,
-fixture-backed regression artifacts, and baseline normalization, feature-extraction, and
-tokenization stages for downstream experiments.
+fixture-backed regression artifacts, deterministic split planning, and baseline
+normalization, feature-extraction, and tokenization stages for downstream experiments.
 
 ## Current Scope
 
@@ -15,6 +15,8 @@ tokenization stages for downstream experiments.
   summaries
 - track regression surfaces through fixtures, golden IR artifacts, inspection bundles,
   and the IR inspection notebook
+- plan deterministic score-level experiment splits with persisted manifests and split
+  summaries
 - project IR documents into sequence, graph, and hierarchical feature views
 - package baseline model-input artifacts under Kedro
 
@@ -92,6 +94,12 @@ Regenerate the tracked inspection bundles:
 
 ```bash
 uv run python tools/generate_ir_inspection_bundles.py
+```
+
+Regenerate the tracked split-planning fixtures:
+
+```bash
+uv run python tools/regenerate_training_split_fixtures.py
 ```
 
 The core project documentation is organized as:

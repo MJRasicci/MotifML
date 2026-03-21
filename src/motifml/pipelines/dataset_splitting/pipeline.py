@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from kedro.pipeline import Pipeline, node, pipeline
 
-from motifml.pipelines.dataset_splitting.nodes import assign_dataset_splits
+from motifml.pipelines.dataset_splitting.nodes import (
+    assign_dataset_splits,
+    build_split_statistics,
+)
 
 
 def create_pipeline(**kwargs: object) -> Pipeline:
@@ -18,7 +21,13 @@ def create_pipeline(**kwargs: object) -> Pipeline:
                 inputs=["normalized_ir_corpus", "params:data_split"],
                 outputs="split_manifest",
                 name="assign_dataset_splits",
-            )
+            ),
+            node(
+                func=build_split_statistics,
+                inputs="split_manifest",
+                outputs="split_stats",
+                name="build_split_statistics",
+            ),
         ],
         tags=["dataset_splitting", "training_prep"],
     )

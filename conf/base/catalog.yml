@@ -105,6 +105,10 @@ split_manifest:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/02_intermediate/training/split_manifest.json
 
+split_stats:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/training/split_stats.json
+
 ingested_raw_motif_json_corpus:
   type: MemoryDataset
   copy_mode: assign

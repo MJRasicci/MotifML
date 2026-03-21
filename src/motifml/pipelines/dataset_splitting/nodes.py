@@ -17,6 +17,9 @@ from motifml.pipelines.dataset_splitting.models import (
 from motifml.training.contracts import (
     DatasetSplit,
     SplitManifestEntry,
+    SplitStatsEntry,
+    SplitStatsReport,
+    coerce_split_manifest_entries,
     sort_split_manifest_entries,
 )
 from motifml.training.versioning import build_split_version
@@ -58,6 +61,44 @@ def assign_dataset_splits(
             )
             for candidate in candidates
         )
+    )
+
+
+def build_split_statistics(
+    split_manifest: tuple[SplitManifestEntry, ...] | list[Mapping[str, Any]],
+) -> SplitStatsReport:
+    """Aggregate per-split document and group counts for reporting."""
+    entries = coerce_split_manifest_entries(split_manifest)
+    if not entries:
+        raise ValueError("split_manifest must contain at least one entry.")
+
+    split_version = entries[0].split_version
+    if any(entry.split_version != split_version for entry in entries[1:]):
+        raise ValueError("split_manifest entries must share one split_version.")
+
+    group_keys_by_split: dict[DatasetSplit, set[str]] = {
+        split: set() for split in DatasetSplit
+    }
+    document_counts_by_split: dict[DatasetSplit, int] = {
+        split: 0 for split in DatasetSplit
+    }
+    for entry in entries:
+        group_keys_by_split[entry.split].add(entry.group_key)
+        document_counts_by_split[entry.split] += 1
+
+    return SplitStatsReport(
+        split_version=split_version,
+        total_document_count=len(entries),
+        total_group_count=len({entry.group_key for entry in entries}),
+        splits=tuple(
+            SplitStatsEntry(
+                split=split,
+                document_count=document_counts_by_split[split],
+                group_count=len(group_keys_by_split[split]),
+                token_count=None,
+            )
+            for split in DatasetSplit
+        ),
     )
 
 
@@ -182,4 +223,4 @@ def _normalize_optional_text(value: str) -> str:
     return str(value).strip()
 
 
-__all__ = ["assign_dataset_splits"]
+__all__ = ["assign_dataset_splits", "build_split_statistics"]

@@ -24,11 +24,14 @@ def test_dataset_splitting_pipeline_persists_stable_manifests_for_unchanged_inpu
     run_session(conf_source, ["normalization"])
     run_session(conf_source, ["dataset_splitting"])
     first_bytes = (output_root / "split_manifest.json").read_bytes()
+    first_stats_bytes = (output_root / "split_stats.json").read_bytes()
 
     run_session(conf_source, ["dataset_splitting"])
     second_bytes = (output_root / "split_manifest.json").read_bytes()
+    second_stats_bytes = (output_root / "split_stats.json").read_bytes()
 
     assert first_bytes == second_bytes
+    assert first_stats_bytes == second_stats_bytes
 
 
 def test_dataset_splitting_pipeline_is_independent_of_shard_execution(
@@ -47,6 +50,7 @@ def test_dataset_splitting_pipeline_is_independent_of_shard_execution(
     run_session(global_conf, ["normalization"])
     run_session(global_conf, ["dataset_splitting"])
     global_manifest = load_json(global_output / "split_manifest.json")
+    global_stats = load_json(global_output / "split_stats.json")
 
     run_session(sharded_conf, ["ingestion"])
     partition_index = load_partition_index(sharded_output / "raw_partition_index.json")
@@ -58,8 +62,10 @@ def test_dataset_splitting_pipeline_is_independent_of_shard_execution(
         )
     run_session(sharded_conf, ["dataset_splitting"])
     sharded_manifest = load_json(sharded_output / "split_manifest.json")
+    sharded_stats = load_json(sharded_output / "split_stats.json")
 
     assert sharded_manifest == global_manifest
+    assert sharded_stats == global_stats
 
 
 def test_dataset_splitting_pipeline_honors_ratio_overrides(tmp_path: Path) -> None:
@@ -78,9 +84,11 @@ def test_dataset_splitting_pipeline_honors_ratio_overrides(tmp_path: Path) -> No
     )
 
     manifest = load_json(output_root / "split_manifest.json")
+    split_stats = load_json(output_root / "split_stats.json")
 
     assert manifest
     assert {entry["split"] for entry in manifest} == {"validation"}
+    assert split_stats["splits"][1]["document_count"] == len(manifest)
 
 
 def test_dataset_splitting_pipeline_keeps_parent_directory_groups_together(
@@ -103,6 +111,7 @@ def test_dataset_splitting_pipeline_keeps_parent_directory_groups_together(
     )
 
     manifest = load_json(output_root / "split_manifest.json")
+    split_stats = load_json(output_root / "split_stats.json")
     by_path = {entry["relative_path"]: entry for entry in manifest}
 
     assert by_path["collection_a/song_one.json"]["group_key"] == "collection_a"
@@ -111,6 +120,7 @@ def test_dataset_splitting_pipeline_keeps_parent_directory_groups_together(
         by_path["collection_a/song_one.json"]["split"]
         == by_path["collection_a/song_two.json"]["split"]
     )
+    assert split_stats["split_version"] == manifest[0]["split_version"]
 
 
 def _build_parent_group_fixture_corpus(destination: Path) -> Path:

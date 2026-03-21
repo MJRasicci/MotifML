@@ -190,6 +190,10 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "type": "motifml.datasets.json_dataset.JsonDataset",
             "filepath": str(output_root / "split_manifest.json"),
         },
+        "split_stats": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "split_stats.json"),
+        },
         "ir_features": {
             "type": "motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset",
             "filepath": str(output_root / "ir_features"),

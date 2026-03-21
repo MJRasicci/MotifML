@@ -10,7 +10,7 @@ EXPECTED_INGESTION_NODE_COUNT = 4
 EXPECTED_IR_BUILD_NODE_COUNT = 12
 EXPECTED_IR_VALIDATION_NODE_COUNT = 4
 EXPECTED_NORMALIZATION_NODE_COUNT = 2
-EXPECTED_DATASET_SPLITTING_NODE_COUNT = 1
+EXPECTED_DATASET_SPLITTING_NODE_COUNT = 2
 EXPECTED_FEATURE_EXTRACTION_NODE_COUNT = 1
 EXPECTED_TOKENIZATION_NODE_COUNT = 1
 EXPECTED_DEFAULT_NODE_ORDER = [
@@ -132,7 +132,11 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "normalized_ir_corpus",
         "params:data_split",
     }
-    assert pipelines["dataset_splitting"].outputs() == {"split_manifest"}
+    assert pipelines["dataset_splitting"].all_outputs() >= {
+        "split_manifest",
+        "split_stats",
+    }
+    assert pipelines["dataset_splitting"].outputs() == {"split_stats"}
 
     assert pipelines["tokenization"].inputs() == {
         "ir_features",

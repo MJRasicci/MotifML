@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Final
+
 from motifml.datasets.motif_ir_corpus_dataset import MotifIrDocumentRecord
 from motifml.ir.models import IrDocumentMetadata, MotifMlIrDocument
 from motifml.pipelines.dataset_splitting.models import (
@@ -9,8 +11,15 @@ from motifml.pipelines.dataset_splitting.models import (
     GroupingStrategy,
     SplitRatios,
 )
-from motifml.pipelines.dataset_splitting.nodes import assign_dataset_splits
-from motifml.training.contracts import DatasetSplit
+from motifml.pipelines.dataset_splitting.nodes import (
+    assign_dataset_splits,
+    build_split_statistics,
+)
+from motifml.training.contracts import DatasetSplit, SplitManifestEntry
+
+EXPECTED_DOCUMENT_COUNT: Final = 3
+EXPECTED_GROUP_COUNT: Final = 2
+EXPECTED_TRAIN_DOCUMENT_COUNT: Final = 2
 
 
 def test_assign_dataset_splits_is_stable_and_sorts_by_relative_path() -> None:
@@ -72,6 +81,49 @@ def test_assign_dataset_splits_keeps_parent_directory_groups_together() -> None:
         by_path["collection_a/song_one.json"].split
         == by_path["collection_a/song_two.json"].split
     )
+
+
+def test_build_split_statistics_reports_per_split_counts_and_token_placeholders() -> (
+    None
+):
+    report = build_split_statistics(
+        (
+            SplitManifestEntry(
+                document_id="collection_a/song_one.json",
+                relative_path="collection_a/song_one.json",
+                split=DatasetSplit.TRAIN,
+                group_key="collection_a",
+                split_version="split-v1",
+            ),
+            SplitManifestEntry(
+                document_id="collection_a/song_two.json",
+                relative_path="collection_a/song_two.json",
+                split=DatasetSplit.TRAIN,
+                group_key="collection_a",
+                split_version="split-v1",
+            ),
+            SplitManifestEntry(
+                document_id="collection_b/song_three.json",
+                relative_path="collection_b/song_three.json",
+                split=DatasetSplit.TEST,
+                group_key="collection_b",
+                split_version="split-v1",
+            ),
+        )
+    )
+
+    assert report.total_document_count == EXPECTED_DOCUMENT_COUNT
+    assert report.total_group_count == EXPECTED_GROUP_COUNT
+    assert [entry.split for entry in report.splits] == [
+        DatasetSplit.TRAIN,
+        DatasetSplit.VALIDATION,
+        DatasetSplit.TEST,
+    ]
+    assert report.splits[0].document_count == EXPECTED_TRAIN_DOCUMENT_COUNT
+    assert report.splits[0].group_count == 1
+    assert report.splits[0].token_count is None
+    assert report.splits[1].document_count == 0
+    assert report.splits[2].document_count == 1
 
 
 def _build_record(relative_path: str) -> MotifIrDocumentRecord:

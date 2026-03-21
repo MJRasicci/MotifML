@@ -14,6 +14,7 @@ The repository currently covers the symbolic data-engineering side of the projec
 - canonical IR construction from raw Motif JSON
 - structural IR validation and corpus-level reporting
 - deterministic inspection artifacts for fixture-backed regression analysis
+- deterministic score-level split planning for downstream experiments
 - baseline normalization, feature-extraction, and tokenization stages for downstream ML
   experiments
 
@@ -41,8 +42,10 @@ flow:
      -> data/08_reporting/ir/motif_ir_summary.json
      -> data/03_primary/ir/documents/*.ir.json
      -> data/03_primary/ir/normalized_ir_version.json
+     -> data/02_intermediate/training/split_manifest.json
      -> data/04_feature/ir/parameters.json + data/04_feature/ir/records/**/*.feature.json
      -> data/05_model_input/ir/parameters.json + data/05_model_input/ir/records/**/*.model_input.json
+     -> data/08_reporting/training/split_stats.json
 
 The raw corpus is sourced from files under ``data/00_corpus/`` together with the Motif
 CLI binary at ``tools/motif-cli``. ``MotifJsonCorpusDataset`` fingerprints the source
@@ -53,7 +56,7 @@ files and CLI binary, stores the build state at
 Kedro Pipelines
 ---------------
 
-``src/motifml/pipeline_registry.py`` registers six named pipelines and one default
+``src/motifml/pipeline_registry.py`` registers seven named pipelines and one default
 composition:
 
 - ``ingestion`` builds a file-level manifest and aggregate summary for the raw Motif JSON
@@ -66,6 +69,9 @@ composition:
   to ``03_primary`` normalized IR, but it now also persists explicit
   ``normalized_ir_version`` metadata and validates that training-specific fields have
   not leaked into the normalized artifact surface
+- ``dataset_splitting`` assigns deterministic score-level train / validation / test
+  membership from normalized IR and persists both ``split_manifest`` and
+  ``split_stats`` artifacts
 - ``feature_extraction`` projects normalized IR into sequence, graph, or hierarchical
   feature views according to ``params:feature_extraction`` and the frozen
   ``params:sequence_schema`` contract, and persists explicit ``feature_version`` plus
@@ -97,6 +103,11 @@ Current Pipeline Responsibilities
    Exists as a stable pipeline boundary for future normalization work. In the current
    repository state it preserves the canonical IR unchanged while enforcing the
    task-agnostic ``03_primary`` contract and emitting ``normalized_ir_version``.
+
+``dataset_splitting``
+   Produces deterministic score-level experiment splits independent of execution
+   sharding. The stage persists a reviewable ``split_manifest`` and aggregate
+   ``split_stats`` reporting surface under Kedro.
 
 ``feature_extraction``
    Selects one of three projection families:
