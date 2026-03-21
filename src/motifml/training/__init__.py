@@ -15,6 +15,11 @@ from motifml.training.contracts import (
     deserialize_metadata_artifact,
     serialize_metadata_artifact,
 )
+from motifml.training.model_input import (
+    TokenizedDocumentRow,
+    coerce_tokenized_document_row,
+    coerce_tokenized_document_rows,
+)
 from motifml.training.special_token_policy import (
     BoundaryPlacement,
     PaddingInteraction,
@@ -73,6 +78,7 @@ __all__ = [
     "SPECIAL_TOKENS",
     "SpecialTokenPolicy",
     "SplitManifestEntry",
+    "TokenizedDocumentRow",
     "TrainingRunMetadata",
     "TrainingParameterSnapshots",
     "TokenFamily",
@@ -96,6 +102,8 @@ __all__ = [
     "build_vocabulary_version",
     "coerce_frozen_vocabulary",
     "coerce_special_token_policy",
+    "coerce_tokenized_document_row",
+    "coerce_tokenized_document_rows",
     "decode_token_ids_to_strings",
     "deserialize_metadata_artifact",
     "encode_projected_events_to_tokens",
