@@ -58,6 +58,7 @@ def expand_sequence_event_spans(
     events: Sequence[SequenceEvent],
     *,
     time_resolution: int,
+    ordering_context: str | None = None,
     note_payload_fields: Sequence[NotePayloadField | str] = (
         NotePayloadField.PITCH,
         NotePayloadField.DURATION,
@@ -68,7 +69,7 @@ def expand_sequence_event_spans(
         raise ValueError("time_resolution must be positive.")
 
     normalized_fields = _canonical_note_payload_fields(note_payload_fields)
-    _validate_event_order(events)
+    validate_sequence_event_order(events, context=ordering_context)
 
     spans: list[EventTokenSpan] = []
     previous_time = _ZERO_TIME
@@ -187,16 +188,32 @@ def _canonical_note_payload_fields(
     )
 
 
-def _validate_event_order(events: Sequence[SequenceEvent]) -> None:
+def validate_sequence_event_order(
+    events: Sequence[SequenceEvent],
+    *,
+    context: str | None = None,
+) -> None:
     expected = tuple(sorted(events, key=lambda event: event.sort_key()))
     if tuple(events) == expected:
         return
 
+    context_prefix = ""
+    if context is not None:
+        normalized_context = context.strip()
+        if not normalized_context:
+            raise ValueError("context must be non-empty when provided.")
+        context_prefix = f"{normalized_context}: "
+
     for index, (actual, ordered) in enumerate(zip(events, expected, strict=True)):
         if actual != ordered:
             raise ValueError(
-                "Sequence events must already be in canonical order before token "
-                f"expansion. Event index {index} is out of order."
+                f"{context_prefix}Sequence events must already be in canonical order "
+                "before token expansion. "
+                f"event_index={index}, "
+                f"actual={type(actual).__name__}@{actual.time} "
+                f"sort_key={actual.sort_key()}, "
+                f"expected={type(ordered).__name__}@{ordered.time} "
+                f"sort_key={ordered.sort_key()}."
             )
 
 
@@ -265,4 +282,5 @@ __all__ = [
     "EventTokenSpan",
     "expand_sequence_event_spans",
     "flatten_token_spans",
+    "validate_sequence_event_order",
 ]

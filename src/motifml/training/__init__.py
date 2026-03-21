@@ -98,6 +98,7 @@ from motifml.training.token_ordering import (
     EventTokenSpan,
     expand_sequence_event_spans,
     flatten_token_spans,
+    validate_sequence_event_order,
 )
 from motifml.training.training_loop import (
     LearningRateSchedulerName,
@@ -228,4 +229,5 @@ __all__ = [
     "serialize_metadata_artifact",
     "sort_tokenized_document_rows",
     "train_decoder_only_model",
+    "validate_sequence_event_order",
 ]

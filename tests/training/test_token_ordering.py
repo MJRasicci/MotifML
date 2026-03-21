@@ -27,6 +27,7 @@ from motifml.training.sequence_schema import NotePayloadField
 from motifml.training.token_ordering import (
     expand_sequence_event_spans,
     flatten_token_spans,
+    validate_sequence_event_order,
 )
 
 
@@ -96,6 +97,20 @@ def test_expand_sequence_event_spans_rejects_out_of_order_events() -> None:
             ),
             time_resolution=96,
         )
+
+
+def test_validate_sequence_event_order_reports_context_and_offending_index() -> None:
+    with pytest.raises(ValueError, match="document_id=doc-1") as exc_info:
+        validate_sequence_event_order(
+            (
+                _build_note_event(time=ScoreTime(0, 1)),
+                _build_structure_event(ScoreTime(0, 1), "part", "part:1"),
+            ),
+            context="document_id=doc-1 relative_path=fixtures/out_of_order.json",
+        )
+
+    assert "event_index=0" in str(exc_info.value)
+    assert "relative_path=fixtures/out_of_order.json" in str(exc_info.value)
 
 
 def test_expand_sequence_event_spans_rejects_non_quantized_time_deltas() -> None:

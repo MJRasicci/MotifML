@@ -66,6 +66,7 @@ def encode_projected_events_to_tokens(
     events: Sequence[SequenceEvent],
     *,
     time_resolution: int,
+    ordering_context: str | None = None,
     note_payload_fields: Sequence[NotePayloadField | str] = (
         NotePayloadField.PITCH,
         NotePayloadField.DURATION,
@@ -81,6 +82,7 @@ def encode_projected_events_to_tokens(
     spans = expand_sequence_event_spans(
         events,
         time_resolution=time_resolution,
+        ordering_context=ordering_context,
         note_payload_fields=note_payload_fields,
     )
     return policy.apply_to_tokens(

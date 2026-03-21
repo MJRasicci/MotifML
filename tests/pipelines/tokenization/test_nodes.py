@@ -833,6 +833,84 @@ def test_tokenize_features_with_vocabulary_rejects_mismatched_sequence_mode() ->
         )
 
 
+def test_tokenize_features_with_vocabulary_fails_fast_for_invalid_event_ordering() -> (
+    None
+):
+    feature_set = IrFeatureSet(
+        parameters=FeatureExtractionParameters(
+            projection_type="sequence",
+            sequence_mode="baseline_v1",
+            feature_version="feature-v1",
+            sequence_schema_version="sequence-schema-v1",
+            normalized_ir_version="normalized-v1",
+        ),
+        records=(
+            IrFeatureRecord(
+                relative_path="fixtures/out_of_order.json",
+                projection_type="sequence",
+                projection=SequenceProjection(
+                    mode=SequenceProjectionMode.NOTES_AND_CONTROLS_AND_STRUCTURE_MARKERS,
+                    events=(
+                        _build_note_event("C", ScoreTime(0, 1)),
+                        StructureMarkerSequenceEvent(
+                            time=ScoreTime(0, 1),
+                            marker_kind=StructureMarkerKind.BAR,
+                            entity_id="bar:1",
+                            part_id="part:1",
+                            staff_id="staff:part:1:1",
+                            bar_id="bar:1",
+                            voice_lane_id=None,
+                        ),
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=(
+            "document_id=doc-out-of-order.*"
+            "relative_path=fixtures/out_of_order.json.*"
+            "event_index=0"
+        ),
+    ):
+        tokenize_features_with_vocabulary(
+            feature_set,
+            split_manifest=(
+                SplitManifestEntry(
+                    document_id="doc-out-of-order",
+                    relative_path="fixtures/out_of_order.json",
+                    split=DatasetSplit.TRAIN,
+                    group_key="doc-out-of-order",
+                    split_version="split-v1",
+                ),
+            ),
+            sequence_schema=SequenceSchemaContract(),
+            vocabulary=_build_vocabulary_artifact(
+                ("STRUCTURE:BAR", "NOTE_PITCH:C4", "NOTE_DURATION:96"),
+                feature_version="feature-v1",
+            ),
+            model_input_parameters={
+                "projection_type": "sequence",
+                "sequence_mode": "baseline_v1",
+                "context_length": 4,
+                "stride": 3,
+                "padding_strategy": "right",
+                "special_token_policy": {
+                    "bos": "document",
+                    "eos": "document",
+                    "padding_interaction": "outside_boundaries",
+                    "unknown_token_mapping": "map_to_unk",
+                },
+                "storage": {
+                    "backend": "parquet",
+                    "schema_version": "parquet-v1",
+                },
+            },
+        )
+
+
 def test_tokenize_features_with_vocabulary_rejects_non_sequence_projection_type() -> (
     None
 ):

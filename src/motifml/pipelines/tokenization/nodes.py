@@ -149,6 +149,10 @@ def count_training_split_tokens(
             encode_projected_events_to_tokens(
                 record.projection.events,
                 time_resolution=typed_parameters.time_resolution,
+                ordering_context=_projection_ordering_context(
+                    document_id=split_entry.document_id,
+                    relative_path=record.relative_path,
+                ),
                 note_payload_fields=typed_sequence_schema.note_payload_fields,
                 special_token_policy=typed_special_token_policy,
             )
@@ -278,6 +282,10 @@ def tokenize_features_with_vocabulary(  # noqa: PLR0913
         token_strings = encode_projected_events_to_tokens(
             record.projection.events,
             time_resolution=time_resolution,
+            ordering_context=_projection_ordering_context(
+                document_id=split_entry.document_id,
+                relative_path=record.relative_path,
+            ),
             note_payload_fields=typed_sequence_schema.note_payload_fields,
             special_token_policy=typed_special_token_policy,
         )
@@ -1049,6 +1057,13 @@ def _token_family(token: str) -> str:
     if token.startswith("<") and token.endswith(">"):
         return "SPECIAL"
     return token.split(":", maxsplit=1)[0]
+
+
+def _projection_ordering_context(*, document_id: str, relative_path: str) -> str:
+    return (
+        "Invalid tokenization event ordering for "
+        f"document_id={document_id} relative_path={relative_path}"
+    )
 
 
 def _vocabulary_version_payload(parameters: VocabularyParameters) -> dict[str, Any]:
