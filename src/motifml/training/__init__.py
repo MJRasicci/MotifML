@@ -15,6 +15,12 @@ from motifml.training.contracts import (
     deserialize_metadata_artifact,
     serialize_metadata_artifact,
 )
+from motifml.training.data_loading import (
+    LazyTokenizedDocumentDataset,
+    LoadedTokenizedDocument,
+    discover_model_input_shards,
+    load_tokenized_document_row_file,
+)
 from motifml.training.model_input import (
     TokenizedDocumentRow,
     build_window_start_offsets,
@@ -86,6 +92,8 @@ __all__ = [
     "EventTokenSpan",
     "EvaluationRunMetadata",
     "FrozenVocabulary",
+    "LazyTokenizedDocumentDataset",
+    "LoadedTokenizedDocument",
     "ModelInputMetadata",
     "ModelInputOversizedDocumentEntry",
     "ModelInputReportingParameters",
@@ -129,12 +137,14 @@ __all__ = [
     "coerce_tokenized_document_row",
     "coerce_tokenized_document_rows",
     "decode_token_ids_to_strings",
+    "discover_model_input_shards",
     "deserialize_metadata_artifact",
     "encode_projected_events_to_tokens",
     "encode_token_strings_to_ids",
     "expand_sequence_event_spans",
     "flatten_token_spans",
     "freeze_parameter_snapshot",
+    "load_tokenized_document_row_file",
     "reduce_model_input_stats_shards",
     "serialize_metadata_artifact",
     "sort_tokenized_document_rows",
