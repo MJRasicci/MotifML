@@ -18,9 +18,10 @@ infrastructure:
 - experiments should be expressible through Kedro configuration rather than ad hoc code
   edits
 
-The current implemented scope is strongest on symbolic data engineering and IR
-construction. The documentation structure is intentionally broader so future training,
-evaluation, and analysis systems can be documented without reorganizing everything again.
+The current implemented scope now includes one baseline training path and one baseline
+evaluation path in addition to the symbolic data-engineering and IR construction layers.
+The documentation structure is intentionally broader so future analysis and generation
+systems can be documented without reorganizing everything again.
 
 Core Engineering Expectations
 -----------------------------
@@ -75,6 +76,8 @@ When changing the codebase:
 - update schemas, serializers, parameters, and docs together when contracts change
 - keep generated and tracked artifacts intentional; do not hand-edit generated outputs
   when a repository tool is responsible for producing them
+- keep the tracked training fixture slice, representative rows, and normalized smoke
+  bundle aligned with intentional training-contract changes
 
 If a change affects persisted datasets, schema surfaces, or pipeline outputs, call that
 out explicitly in the PR description so the impact is easy to trace later.
@@ -117,6 +120,12 @@ with:
 
    uv run python tools/regenerate_training_fixtures.py
 
+The canonical one-command full baseline review path is:
+
+.. code-block:: bash
+
+   uv run kedro run --pipeline=baseline_training_evaluation
+
 Documentation Expectations
 --------------------------
 
@@ -137,9 +146,13 @@ Use these pages when working in specific parts of the project:
 
 - :doc:`/overview/architecture` for the current pipeline and repository layout
 - :doc:`/guides/ir_engineering` for IR-specific implementation guidance
-- :doc:`/guides/inspection_artifacts` for tracked fixture, golden, and inspection
-  surfaces
+- :doc:`/guides/training_workflow` for the approved baseline training, evaluation,
+  notebook, and fixture-regeneration workflow
+- :doc:`/guides/inspection_artifacts` for tracked IR and training fixture, golden, and
+  inspection surfaces
 - :doc:`/reference/ir_contract` for the current canonical IR contract
+- :doc:`/reference/training_contract` for the baseline training versioning, split,
+  token, and artifact-layout contract
 
 As MotifML grows beyond the current IR-heavy stage, new subsystem guides should live
 alongside these pages rather than forcing contributors to reinterpret IR-specific docs as

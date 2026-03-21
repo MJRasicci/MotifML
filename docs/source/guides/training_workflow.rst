@@ -1,0 +1,124 @@
+Training Workflow
+=================
+
+This guide describes the approved maintainer workflow for MotifML's baseline training
+and evaluation stack. Use it when you need to rerun the baseline, inspect runtime
+artifacts, or intentionally regenerate the tracked training fixtures.
+
+Canonical Run Paths
+-------------------
+
+MotifML keeps preprocessing, training, and evaluation as named Kedro pipelines so
+maintainers can choose the scope they need:
+
+.. code-block:: bash
+
+   uv run kedro run --async
+   uv run kedro run --pipeline=baseline_training
+   uv run kedro run --pipeline=evaluation
+   uv run kedro run --pipeline=baseline_training_evaluation
+
+Use these command paths intentionally:
+
+- ``__default__`` via ``uv run kedro run --async`` stops at persisted
+  ``05_model_input`` artifacts and is the lightest way to refresh the training-prep
+  surface.
+- ``baseline_training`` runs the default preprocessing path plus baseline training and
+  persists ``06_models`` plus training reporting under ``08_reporting/training``.
+- ``evaluation`` reuses an existing best checkpoint and persisted ``05_model_input`` to
+  produce decoded outputs and evaluation reporting.
+- ``baseline_training_evaluation`` is the canonical single-command review path from
+  raw corpus inputs through evaluation outputs.
+
+Configuration and Overrides
+---------------------------
+
+Baseline behavior is frozen through the training-phase parameter families in
+``conf/base/parameters.yml``:
+
+- ``data_split`` controls score-level split assignment and the split hash seed.
+- ``sequence_schema`` freezes the baseline token-emission surface from ``04_feature``.
+- ``vocabulary`` controls special tokens, size limits, and acceptance guardrails.
+- ``model_input`` controls context length, stride, padding, special-token policy, and
+  the binary storage backend.
+- ``model`` controls the decoder-only Transformer architecture.
+- ``training`` controls device, optimizer, scheduler, batch size, and epoch count.
+- ``evaluation`` controls evaluation splits, decoding limits, qualitative samples, and
+  guardrail thresholds.
+- ``seed`` freezes the shared deterministic experiment seed.
+
+Experiments should be expressed through Kedro overrides rather than code edits. For
+example:
+
+.. code-block:: bash
+
+   uv run kedro run --pipeline=baseline_training_evaluation \
+     --params training.device=cuda,training.num_epochs=20,evaluation.qualitative.samples_per_split=8
+
+Artifact Review Surfaces
+------------------------
+
+The baseline run produces four primary artifact families:
+
+- ``data/05_model_input/ir/`` for persisted tokenized-document rows, vocabulary
+  metadata, version keys, and storage-schema metadata
+- ``data/06_models/training/baseline/`` for checkpoints plus frozen model and training
+  configs
+- ``data/07_model_output/evaluation/`` for decoded qualitative sample payloads
+- ``data/08_reporting/training/`` for split stats, vocabulary/model-input reports,
+  training history, metrics, Markdown summaries, and run metadata
+
+The section 15 notebooks are the supported interactive inspection surfaces for these
+artifacts:
+
+- ``notebooks/model_input_inspection.ipynb``
+- ``notebooks/tokenization_validation.ipynb``
+- ``notebooks/training_run_review.ipynb``
+- ``notebooks/training_failure_analysis.ipynb``
+
+By default they look for runtime outputs under ``data/``. For ad hoc review of a
+temporary test run, set ``MOTIFML_TRAINING_ARTIFACT_ROOT`` to the artifact directory
+that contains the temporary ``model_input/``, reporting files, and evaluation outputs.
+``model_input_inspection.ipynb`` also honors ``MOTIFML_MODEL_INPUT_DOCUMENT``, and
+``tokenization_validation.ipynb`` honors ``MOTIFML_TOKENIZATION_DOCUMENT`` for
+document-specific traces.
+
+Lazy Loading Expectations
+-------------------------
+
+Lazy ``05_model_input`` consumption is a hard contract, not an optimization detail.
+Training and evaluation must stream tokenized rows and reconstructed windows through
+``TokenizedModelInputRuntimeDataset`` and the helpers under ``motifml.training``.
+
+Do not introduce code that:
+
+- materializes every tokenized document row in memory before iteration
+- reconstructs every training window for the whole corpus up front
+- bypasses the persisted ``05_model_input`` contract with notebook-local or script-local
+  loaders in production code
+
+Regression coverage should continue to prove that the first batch can be assembled
+without touching later documents in the corpus.
+
+Regenerating Tracked Training Artifacts
+---------------------------------------
+
+The tracked training fixture slice and normalized smoke bundle live under
+``tests/fixtures/training/``. They are managed artifacts and should only change when an
+intentional contract or behavior change is being reviewed.
+
+Regenerate them with:
+
+.. code-block:: bash
+
+   uv run python tools/regenerate_training_fixtures.py
+
+Run that command when a change intentionally affects:
+
+- split planning behavior
+- vocabulary contents or version-key derivation
+- tokenized row structure or model-input metadata
+- baseline training metadata, metrics, or qualitative evaluation outputs
+
+Review the resulting diffs directly. The tracked fixture bundle is part of the
+repository's regression surface, not just local developer convenience data.

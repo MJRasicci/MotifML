@@ -106,6 +106,9 @@ and reducer variants:
 - ``baseline_training`` composes the default preprocessing stages with ``training`` so
   maintainers have one explicit command path for end-to-end baseline runs from
   ``data/00_corpus`` through ``06_models`` and ``08_reporting``
+- ``baseline_training_evaluation`` extends ``baseline_training`` with ``evaluation`` so
+  maintainers also have one canonical command path for the full review surface through
+  ``07_model_output`` and evaluation reporting
 - ``tokenization_shard`` persists shard-local Parquet-backed tokenized rows after the
   shared frozen vocabulary has been reduced
 - ``model_input_reduce`` merges shard-local ``model_input_version`` fragments and
@@ -114,7 +117,9 @@ and reducer variants:
 The default pipeline intentionally stops before training so routine preprocessing runs do
 not absorb expensive modeling work implicitly. Small staging nodes ensure that IR build
 depends on the completed ingestion summary and that ``baseline_training`` does not begin
-until the shared ``05_model_input`` artifacts have been persisted.
+until the shared ``05_model_input`` artifacts have been persisted. The canonical
+single-command full review path is now
+``uv run kedro run --pipeline=baseline_training_evaluation``.
 
 Current Pipeline Responsibilities
 ---------------------------------
@@ -173,7 +178,8 @@ Current Pipeline Responsibilities
    Streams split-scoped token windows lazily from persisted ``05_model_input`` rows,
    builds the baseline decoder-only Transformer from frozen Kedro parameters, and writes
    model checkpoints plus training history and run metadata. The canonical
-   single-command run path is ``uv run kedro run --pipeline=baseline_training``.
+   single-command training-only run path is
+   ``uv run kedro run --pipeline=baseline_training``.
    Corpus-wide materialization of tokenized documents or token windows is considered a
    regression against this contract.
 
@@ -183,6 +189,11 @@ Current Pipeline Responsibilities
    structural checks on deterministic prompt/continuation samples, and writes decoded
    sample tables under ``07_model_output`` plus metrics, Markdown summaries, and frozen
    evaluation run metadata under ``08_reporting``.
+
+``baseline_training_evaluation``
+   Provides the canonical single-command end-to-end baseline run path from raw corpus
+   inputs through evaluation outputs:
+   ``uv run kedro run --pipeline=baseline_training_evaluation``.
 
 Configuration Surfaces
 ----------------------

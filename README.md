@@ -15,7 +15,7 @@ training and evaluation stages for downstream experiments.
 - build canonical IR documents plus corpus manifests, validation reports, and scale
   summaries
 - track regression surfaces through fixtures, golden IR artifacts, inspection bundles,
-  and the IR inspection notebook
+  tracked training fixtures, and inspection notebooks
 - plan deterministic score-level experiment splits with persisted manifests and split
   summaries
 - project IR documents into sequence, graph, and hierarchical feature views
@@ -90,6 +90,16 @@ The default pipeline intentionally stops at `05_model_input`; heavy training wor
 behind the explicit `baseline_training` pipeline so maintainers can opt into it
 deliberately.
 
+Run the canonical single-command end-to-end baseline review path:
+
+```bash
+uv run kedro run --pipeline=baseline_training_evaluation
+```
+
+This path runs the baseline from raw corpus inputs through evaluation outputs and is the
+fastest way to refresh the full `05_model_input` + `06_models` + `07_model_output` +
+`08_reporting` review surface in one go.
+
 Run baseline evaluation after training artifacts exist:
 
 ```bash
@@ -106,6 +116,9 @@ Launch inspection tools when needed:
 uv run kedro viz
 uv run jupyter lab
 ```
+
+The training notebooks under `notebooks/` can inspect either runtime outputs under
+`data/` or a temporary artifact root exposed through `MOTIFML_TRAINING_ARTIFACT_ROOT`.
 
 ## Fixtures and Inspection Artifacts
 
@@ -138,7 +151,10 @@ Useful entry points include:
 - `docs/source/index.rst`
 - `docs/source/guides/contributing.rst`
 - `docs/source/guides/ir_engineering.rst`
+- `docs/source/guides/training_workflow.rst`
+- `docs/source/guides/inspection_artifacts.rst`
 - `docs/source/reference/ir_contract.rst`
+- `docs/source/reference/training_contract.rst`
 
 ## Development
 
