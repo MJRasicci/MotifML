@@ -11,6 +11,7 @@ from motifml.training.contracts import (
     serialize_metadata_artifact,
 )
 from motifml.training.versioning import (
+    build_contract_version,
     build_feature_version,
     build_model_input_version,
     build_normalized_ir_version,
@@ -25,6 +26,7 @@ __all__ = [
     "SplitManifestEntry",
     "TrainingRunMetadata",
     "VocabularyMetadata",
+    "build_contract_version",
     "build_feature_version",
     "build_model_input_version",
     "build_normalized_ir_version",

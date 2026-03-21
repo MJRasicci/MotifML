@@ -11,6 +11,15 @@ from pathlib import Path
 from typing import Any
 
 
+def build_contract_version(
+    *,
+    namespace: str,
+    payload: Mapping[str, Any],
+) -> str:
+    """Build a deterministic version key for a frozen contract payload."""
+    return _hash_version_payload(namespace, payload)
+
+
 def build_normalized_ir_version(
     *,
     normalized_ir_contract: Mapping[str, Any],
@@ -145,6 +154,7 @@ def _sort_key(value: Any) -> str:
 
 
 __all__ = [
+    "build_contract_version",
     "build_feature_version",
     "build_model_input_version",
     "build_normalized_ir_version",
