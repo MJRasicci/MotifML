@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any
 
 from motifml.pipelines.feature_extraction.models import ProjectionType
+from motifml.training.token_codec import coerce_frozen_vocabulary
 from motifml.training.token_families import SPECIAL_TOKENS
 
 
@@ -130,8 +131,8 @@ class TokenCountEntry:
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "token", _normalize_text(self.token, "token"))
-        if self.count <= 0:
-            raise ValueError("count must be positive.")
+        if self.count < 0:
+            raise ValueError("count must be non-negative.")
 
 
 @dataclass(frozen=True)
@@ -210,6 +211,192 @@ class ShardTokenCounts:
         object.__setattr__(self, "token_counts", normalized_counts)
 
 
+@dataclass(frozen=True)
+class TokenFamilyCoverageEntry:
+    """Coverage summary for one retained token family in the frozen vocabulary."""
+
+    family: str
+    vocabulary_size: int
+    token_count: int
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "family", _normalize_text(self.family, "family"))
+        if self.vocabulary_size < 0:
+            raise ValueError("vocabulary_size must be non-negative.")
+        if self.token_count < 0:
+            raise ValueError("token_count must be non-negative.")
+
+
+@dataclass(frozen=True)
+class VocabularyArtifact:
+    """Frozen vocabulary surface persisted for deterministic tokenization."""
+
+    vocabulary_version: str
+    feature_version: str
+    split_version: str
+    token_count: int
+    vocabulary_size: int
+    token_to_id: dict[str, int]
+    token_counts: tuple[TokenCountEntry, ...]
+    construction_parameters: dict[str, Any]
+    special_token_policy: dict[str, Any]
+    id_to_token: tuple[str, ...] = field(init=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "vocabulary_version",
+            _normalize_text(self.vocabulary_version, "vocabulary_version"),
+        )
+        object.__setattr__(
+            self,
+            "feature_version",
+            _normalize_text(self.feature_version, "feature_version"),
+        )
+        object.__setattr__(
+            self,
+            "split_version",
+            _normalize_text(self.split_version, "split_version"),
+        )
+        if self.token_count < 0:
+            raise ValueError("token_count must be non-negative.")
+        if self.vocabulary_size < 0:
+            raise ValueError("vocabulary_size must be non-negative.")
+        normalized_counts = tuple(
+            sorted(
+                (
+                    entry
+                    if isinstance(entry, TokenCountEntry)
+                    else TokenCountEntry(
+                        token=str(entry["token"]),
+                        count=int(entry["count"]),
+                    )
+                    for entry in self.token_counts
+                ),
+                key=lambda item: item.token,
+            )
+        )
+        if self.token_count != sum(entry.count for entry in normalized_counts):
+            raise ValueError("token_count must match the summed retained token counts.")
+        if len(normalized_counts) != self.vocabulary_size:
+            raise ValueError("vocabulary_size must match the retained token count.")
+        frozen_vocabulary = coerce_frozen_vocabulary({"token_to_id": self.token_to_id})
+        if len(frozen_vocabulary.token_to_id) != self.vocabulary_size:
+            raise ValueError("token_to_id must match vocabulary_size.")
+        count_tokens = {entry.token for entry in normalized_counts}
+        vocabulary_tokens = set(frozen_vocabulary.token_to_id)
+        if count_tokens != vocabulary_tokens:
+            raise ValueError(
+                "token_counts and token_to_id must cover the same retained token set."
+            )
+        object.__setattr__(
+            self,
+            "token_to_id",
+            dict(frozen_vocabulary.token_to_id),
+        )
+        object.__setattr__(self, "id_to_token", frozen_vocabulary.id_to_token)
+        object.__setattr__(self, "token_counts", normalized_counts)
+        object.__setattr__(
+            self,
+            "construction_parameters",
+            {
+                _normalize_text(str(key), "construction_parameters"): value
+                for key, value in sorted(
+                    self.construction_parameters.items(),
+                    key=lambda item: str(item[0]),
+                )
+            },
+        )
+        object.__setattr__(
+            self,
+            "special_token_policy",
+            {
+                _normalize_text(str(key), "special_token_policy"): value
+                for key, value in sorted(
+                    self.special_token_policy.items(),
+                    key=lambda item: str(item[0]),
+                )
+            },
+        )
+
+
+@dataclass(frozen=True)
+class VocabularyStatsReport:
+    """Human-reviewable statistics for one frozen vocabulary reduction."""
+
+    vocabulary_version: str
+    feature_version: str
+    split_version: str
+    token_count: int
+    vocabulary_size: int
+    token_family_coverage: tuple[TokenFamilyCoverageEntry, ...]
+    top_tokens: tuple[TokenCountEntry, ...]
+    construction_parameters: dict[str, Any]
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "vocabulary_version",
+            _normalize_text(self.vocabulary_version, "vocabulary_version"),
+        )
+        object.__setattr__(
+            self,
+            "feature_version",
+            _normalize_text(self.feature_version, "feature_version"),
+        )
+        object.__setattr__(
+            self,
+            "split_version",
+            _normalize_text(self.split_version, "split_version"),
+        )
+        if self.token_count < 0:
+            raise ValueError("token_count must be non-negative.")
+        if self.vocabulary_size < 0:
+            raise ValueError("vocabulary_size must be non-negative.")
+        object.__setattr__(
+            self,
+            "token_family_coverage",
+            tuple(
+                sorted(
+                    (
+                        entry
+                        if isinstance(entry, TokenFamilyCoverageEntry)
+                        else TokenFamilyCoverageEntry(
+                            family=str(entry["family"]),
+                            vocabulary_size=int(entry["vocabulary_size"]),
+                            token_count=int(entry["token_count"]),
+                        )
+                        for entry in self.token_family_coverage
+                    ),
+                    key=lambda item: item.family,
+                )
+            ),
+        )
+        object.__setattr__(
+            self,
+            "top_tokens",
+            tuple(
+                entry
+                if isinstance(entry, TokenCountEntry)
+                else TokenCountEntry(
+                    token=str(entry["token"]), count=int(entry["count"])
+                )
+                for entry in self.top_tokens
+            ),
+        )
+        object.__setattr__(
+            self,
+            "construction_parameters",
+            {
+                _normalize_text(str(key), "construction_parameters"): value
+                for key, value in sorted(
+                    self.construction_parameters.items(),
+                    key=lambda item: str(item[0]),
+                )
+            },
+        )
+
+
 def coerce_tokenization_parameters(
     value: TokenizationParameters | Mapping[str, Any],
 ) -> TokenizationParameters:
@@ -269,6 +456,57 @@ def coerce_shard_token_counts(
             for relative_path in value.get("counted_relative_paths", ())
         ),
         token_counts=tuple(value.get("token_counts", ())),
+    )
+
+
+def coerce_vocabulary_artifact(
+    value: VocabularyArtifact | Mapping[str, Any],
+) -> VocabularyArtifact:
+    """Coerce JSON-loaded frozen vocabulary payloads into the typed model."""
+    if isinstance(value, VocabularyArtifact):
+        return value
+
+    return VocabularyArtifact(
+        vocabulary_version=str(value["vocabulary_version"]),
+        feature_version=str(value["feature_version"]),
+        split_version=str(value["split_version"]),
+        token_count=int(value["token_count"]),
+        vocabulary_size=int(value["vocabulary_size"]),
+        token_to_id={
+            str(token): int(token_id)
+            for token, token_id in value["token_to_id"].items()
+        },
+        token_counts=tuple(value.get("token_counts", ())),
+        construction_parameters={
+            str(key): item
+            for key, item in value.get("construction_parameters", {}).items()
+        },
+        special_token_policy={
+            str(key): item
+            for key, item in value.get("special_token_policy", {}).items()
+        },
+    )
+
+
+def coerce_vocabulary_stats_report(
+    value: VocabularyStatsReport | Mapping[str, Any],
+) -> VocabularyStatsReport:
+    """Coerce JSON-loaded vocabulary stats payloads into the typed model."""
+    if isinstance(value, VocabularyStatsReport):
+        return value
+
+    return VocabularyStatsReport(
+        vocabulary_version=str(value["vocabulary_version"]),
+        feature_version=str(value["feature_version"]),
+        split_version=str(value["split_version"]),
+        token_count=int(value["token_count"]),
+        vocabulary_size=int(value["vocabulary_size"]),
+        token_family_coverage=tuple(value.get("token_family_coverage", ())),
+        top_tokens=tuple(value.get("top_tokens", ())),
+        construction_parameters={
+            str(key): item
+            for key, item in value.get("construction_parameters", {}).items()
+        },
     )
 
 

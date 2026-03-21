@@ -20,8 +20,11 @@ from motifml.pipelines.tokenization.models import (
     PaddingStrategy,
     ShardTokenCounts,
     TokenCountEntry,
+    TokenFamilyCoverageEntry,
     TokenizationParameters,
+    VocabularyArtifact,
     VocabularyParameters,
+    VocabularyStatsReport,
     coerce_shard_token_counts,
     coerce_tokenization_parameters,
     coerce_vocabulary_parameters,
@@ -29,6 +32,7 @@ from motifml.pipelines.tokenization.models import (
 from motifml.training.contracts import (
     DatasetSplit,
     SplitManifestEntry,
+    VocabularyMetadata,
     coerce_split_manifest_entries,
 )
 from motifml.training.sequence_schema import (
@@ -37,7 +41,8 @@ from motifml.training.sequence_schema import (
 )
 from motifml.training.special_token_policy import coerce_special_token_policy
 from motifml.training.token_codec import encode_projected_events_to_tokens
-from motifml.training.token_families import PAD_TOKEN
+from motifml.training.token_families import PAD_TOKEN, SPECIAL_TOKENS
+from motifml.training.versioning import build_vocabulary_version
 
 
 @dataclass(frozen=True)
@@ -168,6 +173,64 @@ def merge_token_count_shards(
     )
 
 
+def reduce_vocabulary(
+    token_count_shards: list[ShardTokenCounts] | list[Mapping[str, Any]],
+    parameters: VocabularyParameters | Mapping[str, Any],
+    split_seed: int | str,
+) -> tuple[VocabularyArtifact, VocabularyStatsReport, VocabularyMetadata]:
+    """Reduce shard-local counts into one deterministic frozen vocabulary surface."""
+    merged_counts = merge_token_count_shards(token_count_shards)
+    typed_parameters = coerce_vocabulary_parameters(parameters)
+    retained_counts = _retained_token_counts(
+        merged_counts,
+        typed_parameters=typed_parameters,
+    )
+    vocabulary_version_payload = _vocabulary_version_payload(typed_parameters)
+    vocabulary_version = build_vocabulary_version(
+        feature_version=merged_counts.feature_version,
+        tokenization_config=vocabulary_version_payload,
+        split_version=merged_counts.split_version,
+        split_seed=split_seed,
+        special_token_policy=merged_counts.special_token_policy,
+    )
+    vocabulary = VocabularyArtifact(
+        vocabulary_version=vocabulary_version,
+        feature_version=merged_counts.feature_version,
+        split_version=merged_counts.split_version,
+        token_count=sum(entry.count for entry in retained_counts),
+        vocabulary_size=len(retained_counts),
+        token_to_id=_build_token_to_id(
+            retained_counts,
+            special_tokens=typed_parameters.special_tokens or SPECIAL_TOKENS,
+        ),
+        token_counts=retained_counts,
+        construction_parameters=vocabulary_version_payload,
+        special_token_policy=dict(merged_counts.special_token_policy),
+    )
+    stats = VocabularyStatsReport(
+        vocabulary_version=vocabulary_version,
+        feature_version=merged_counts.feature_version,
+        split_version=merged_counts.split_version,
+        token_count=vocabulary.token_count,
+        vocabulary_size=vocabulary.vocabulary_size,
+        token_family_coverage=_build_token_family_coverage(retained_counts),
+        top_tokens=tuple(
+            sorted(retained_counts, key=lambda item: (-item.count, item.token))[:10]
+        ),
+        construction_parameters=vocabulary_version_payload,
+    )
+    metadata = VocabularyMetadata(
+        vocabulary_version=vocabulary_version,
+        feature_version=merged_counts.feature_version,
+        split_version=merged_counts.split_version,
+        token_count=vocabulary.token_count,
+        vocabulary_size=vocabulary.vocabulary_size,
+        construction_parameters=vocabulary_version_payload,
+        special_token_policy=dict(merged_counts.special_token_policy),
+    )
+    return vocabulary, stats, metadata
+
+
 def _iter_feature_records(
     ir_features: IrFeatureSet | Mapping[str, Any],
 ) -> tuple[_FeatureRecordInput, ...]:
@@ -285,6 +348,86 @@ def _validate_shard_count_contract(
         raise ValueError("All token-count shards must share one time_resolution.")
     if shard.special_token_policy != baseline.special_token_policy:
         raise ValueError("All token-count shards must share one special_token_policy.")
+
+
+def _retained_token_counts(
+    merged_counts: ShardTokenCounts,
+    *,
+    typed_parameters: VocabularyParameters,
+) -> tuple[TokenCountEntry, ...]:
+    special_tokens = typed_parameters.special_tokens or SPECIAL_TOKENS
+    special_token_values = tuple(special_tokens.values())
+    counted_by_token = {
+        entry.token: entry.count for entry in merged_counts.token_counts
+    }
+    retained: list[TokenCountEntry] = [
+        TokenCountEntry(
+            token=token,
+            count=counted_by_token.get(token, 0),
+        )
+        for token in special_token_values
+    ]
+    ordinary_tokens = [
+        entry
+        for entry in merged_counts.token_counts
+        if entry.token not in set(special_token_values)
+        and entry.count >= typed_parameters.minimum_frequency
+    ]
+    ordinary_tokens.sort(key=lambda item: (-item.count, item.token))
+    remaining_capacity = max(typed_parameters.maximum_size - len(retained), 0)
+    retained.extend(ordinary_tokens[:remaining_capacity])
+    return tuple(sorted(retained, key=lambda item: item.token))
+
+
+def _build_token_to_id(
+    retained_counts: tuple[TokenCountEntry, ...],
+    *,
+    special_tokens: dict[str, str],
+) -> dict[str, int]:
+    ordered_tokens = [
+        special_tokens[key]
+        for key in ("pad", "bos", "eos", "unk")
+        if key in special_tokens
+    ]
+    ordered_tokens.extend(
+        entry.token
+        for entry in sorted(retained_counts, key=lambda item: (-item.count, item.token))
+        if entry.token not in set(ordered_tokens)
+    )
+    return {token: index for index, token in enumerate(ordered_tokens)}
+
+
+def _build_token_family_coverage(
+    retained_counts: tuple[TokenCountEntry, ...],
+) -> tuple[TokenFamilyCoverageEntry, ...]:
+    coverage: dict[str, tuple[int, int]] = {}
+    for entry in retained_counts:
+        family = _token_family(entry.token)
+        vocabulary_size, token_count = coverage.get(family, (0, 0))
+        coverage[family] = (vocabulary_size + 1, token_count + entry.count)
+    return tuple(
+        TokenFamilyCoverageEntry(
+            family=family,
+            vocabulary_size=vocabulary_size,
+            token_count=token_count,
+        )
+        for family, (vocabulary_size, token_count) in sorted(coverage.items())
+    )
+
+
+def _token_family(token: str) -> str:
+    if token.startswith("<") and token.endswith(">"):
+        return "SPECIAL"
+    return token.split(":", maxsplit=1)[0]
+
+
+def _vocabulary_version_payload(parameters: VocabularyParameters) -> dict[str, Any]:
+    return {
+        "time_resolution": parameters.time_resolution,
+        "minimum_frequency": parameters.minimum_frequency,
+        "maximum_size": parameters.maximum_size,
+        "special_tokens": dict(parameters.special_tokens or SPECIAL_TOKENS),
+    }
 
 
 def _projection_summary_tokens(record: _FeatureRecordInput) -> tuple[str, ...]:

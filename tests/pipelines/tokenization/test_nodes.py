@@ -24,14 +24,20 @@ from motifml.pipelines.tokenization.models import (
 from motifml.pipelines.tokenization.nodes import (
     count_training_split_tokens,
     merge_model_input_shards,
+    reduce_vocabulary,
     tokenize_features,
 )
-from motifml.training.contracts import DatasetSplit, SplitManifestEntry
+from motifml.training.contracts import (
+    DatasetSplit,
+    SplitManifestEntry,
+    VocabularyMetadata,
+)
 from motifml.training.sequence_schema import SequenceSchemaContract
 from motifml.training.token_families import BOS_TOKEN, EOS_TOKEN, PAD_TOKEN
 
 EXPECTED_TIME_RESOLUTION = 48
 EXPECTED_TRAIN_TOKEN_COUNT = 6
+EXPECTED_REDUCED_VOCABULARY_SIZE = 7
 
 
 def test_tokenize_features_consumes_typed_parameters() -> None:
@@ -255,6 +261,105 @@ def test_count_training_split_tokens_is_deterministic_and_filters_to_train() -> 
         "NOTE_DURATION:96": 1,
     }
     assert "NOTE_PITCH:D4" not in {entry.token for entry in first.token_counts}
+
+
+def test_reduce_vocabulary_is_deterministic_and_assigns_stable_ids() -> None:
+    shard_counts = [
+        {
+            "feature_version": "feature-v1",
+            "split_version": "split-v1",
+            "time_resolution": 96,
+            "special_token_policy": {
+                "bos": "document",
+                "eos": "document",
+                "padding_interaction": "outside_boundaries",
+                "unknown_token_mapping": "map_to_unk",
+            },
+            "counted_document_count": 1,
+            "total_token_count": 10,
+            "counted_relative_paths": ["fixtures/a.json"],
+            "token_counts": [
+                {"token": BOS_TOKEN, "count": 1},
+                {"token": EOS_TOKEN, "count": 1},
+                {"token": "NOTE_DURATION:96", "count": 3},
+                {"token": "NOTE_PITCH:C4", "count": 3},
+                {"token": "STRUCTURE:BAR", "count": 2},
+            ],
+        },
+        {
+            "feature_version": "feature-v1",
+            "split_version": "split-v1",
+            "time_resolution": 96,
+            "special_token_policy": {
+                "bos": "document",
+                "eos": "document",
+                "padding_interaction": "outside_boundaries",
+                "unknown_token_mapping": "map_to_unk",
+            },
+            "counted_document_count": 1,
+            "total_token_count": 7,
+            "counted_relative_paths": ["fixtures/b.json"],
+            "token_counts": [
+                {"token": BOS_TOKEN, "count": 1},
+                {"token": EOS_TOKEN, "count": 1},
+                {"token": "NOTE_DURATION:96", "count": 1},
+                {"token": "STRUCTURE:BAR", "count": 1},
+                {"token": "TIME_SHIFT:96", "count": 2},
+                {"token": "NOTE_PITCH:D4", "count": 1},
+            ],
+        },
+    ]
+    parameters = VocabularyParameters(
+        time_resolution=96,
+        minimum_frequency=2,
+        maximum_size=7,
+    )
+
+    first_vocabulary, first_stats, first_metadata = reduce_vocabulary(
+        shard_counts,
+        parameters,
+        split_seed=17,
+    )
+    repeated_vocabulary, repeated_stats, repeated_metadata = reduce_vocabulary(
+        list(reversed(shard_counts)),
+        parameters,
+        split_seed=17,
+    )
+
+    assert first_vocabulary == repeated_vocabulary
+    assert first_stats == repeated_stats
+    assert first_metadata == repeated_metadata
+    assert isinstance(first_metadata, VocabularyMetadata)
+    assert first_vocabulary.token_to_id == {
+        "<pad>": 0,
+        "<bos>": 1,
+        "<eos>": 2,
+        "<unk>": 3,
+        "NOTE_DURATION:96": 4,
+        "NOTE_PITCH:C4": 5,
+        "STRUCTURE:BAR": 6,
+    }
+    assert first_vocabulary.id_to_token == (
+        "<pad>",
+        "<bos>",
+        "<eos>",
+        "<unk>",
+        "NOTE_DURATION:96",
+        "NOTE_PITCH:C4",
+        "STRUCTURE:BAR",
+    )
+    assert {entry.token: entry.count for entry in first_vocabulary.token_counts} == {
+        "<pad>": 0,
+        "<bos>": 2,
+        "<eos>": 2,
+        "<unk>": 0,
+        "NOTE_DURATION:96": 4,
+        "NOTE_PITCH:C4": 3,
+        "STRUCTURE:BAR": 3,
+    }
+    assert first_vocabulary.vocabulary_size == EXPECTED_REDUCED_VOCABULARY_SIZE
+    assert first_stats.token_family_coverage[0].family == "NOTE_DURATION"
+    assert first_stats.token_family_coverage[-1].family == "STRUCTURE"
 
 
 def _build_note_event(pitch_step: str, time: ScoreTime) -> NoteSequenceEvent:
