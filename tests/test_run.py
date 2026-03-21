@@ -12,12 +12,12 @@ EXPECTED_IR_VALIDATION_NODE_COUNT = 4
 EXPECTED_NORMALIZATION_NODE_COUNT = 2
 EXPECTED_DATASET_SPLITTING_NODE_COUNT = 2
 EXPECTED_FEATURE_EXTRACTION_NODE_COUNT = 1
-EXPECTED_TOKENIZATION_NODE_COUNT = 3
+EXPECTED_TOKENIZATION_NODE_COUNT = 4
 EXPECTED_VOCABULARY_COUNTING_NODE_COUNT = 1
 EXPECTED_MODEL_INPUT_REDUCE_NODE_COUNT = 2
 EXPECTED_TRAINING_NODE_COUNT = 1
 EXPECTED_EVALUATION_NODE_COUNT = 1
-EXPECTED_BASELINE_TRAINING_NODE_COUNT = 31
+EXPECTED_BASELINE_TRAINING_NODE_COUNT = 32
 EXPECTED_DEFAULT_NODE_ORDER = [
     "build_raw_corpus_manifest",
     "build_raw_partition_index",
@@ -48,6 +48,7 @@ EXPECTED_DEFAULT_NODE_ORDER = [
     "count_training_split_tokens_for_default_run",
     "reduce_vocabulary_for_default_run",
     "build_model_input_artifacts",
+    "render_model_input_report",
 ]
 EXPECTED_BASELINE_TRAINING_NODE_ORDER = [
     *EXPECTED_DEFAULT_NODE_ORDER,
@@ -192,10 +193,13 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "vocab_stats",
         "vocabulary_version",
         "model_input",
-        "model_input_stats",
         "model_input_version",
+        "model_input_report",
     }
-    assert pipelines["tokenization"].all_outputs() >= {"vocabulary"}
+    assert pipelines["tokenization"].all_outputs() >= {
+        "vocabulary",
+        "model_input_stats",
+    }
 
     assert pipelines["training"].inputs() == {
         "model_input_runtime",

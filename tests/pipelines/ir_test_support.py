@@ -242,6 +242,10 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "type": "motifml.datasets.json_dataset.JsonDataset",
             "filepath": str(output_root / "model_input_stats.json"),
         },
+        "model_input_report": {
+            "type": "motifml.datasets.text_dataset.TextDataset",
+            "filepath": str(output_root / "model_input_report.md"),
+        },
         "model_input_stats_shard": {
             "type": "motifml.datasets.json_dataset.JsonDataset",
             "filepath": str(

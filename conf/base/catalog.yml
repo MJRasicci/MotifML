@@ -145,6 +145,10 @@ model_input_stats:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/training/model_input_stats.json
 
+model_input_report:
+  type: motifml.datasets.text_dataset.TextDataset
+  filepath: data/08_reporting/training/model_input_report.md
+
 model_input_stats_shard:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/training/model_input_stats/shards/${runtime_params:execution.shard_id,__all__}.json

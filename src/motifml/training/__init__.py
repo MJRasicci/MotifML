@@ -62,7 +62,9 @@ from motifml.training.model_input_stats import (
     build_model_input_shard_stats,
     coerce_model_input_reporting_parameters,
     coerce_model_input_shard_stats_artifact,
+    coerce_model_input_stats_report,
     reduce_model_input_stats_shards,
+    render_model_input_stats_markdown,
 )
 from motifml.training.special_token_policy import (
     BoundaryPlacement,
@@ -202,6 +204,7 @@ __all__ = [
     "coerce_frozen_vocabulary",
     "coerce_learning_rate_scheduler_parameters",
     "coerce_loader_iteration_options",
+    "coerce_model_input_stats_report",
     "coerce_model_input_reporting_parameters",
     "coerce_model_input_shard_stats_artifact",
     "coerce_special_token_ids",
@@ -220,6 +223,7 @@ __all__ = [
     "freeze_parameter_snapshot",
     "load_tokenized_document_row_file",
     "reduce_model_input_stats_shards",
+    "render_model_input_stats_markdown",
     "resolve_torch_device",
     "run_training_epoch",
     "run_validation_pass",

@@ -9,6 +9,7 @@ from motifml.training.model_input_stats import (
     ModelInputReportingParameters,
     build_model_input_shard_stats,
     reduce_model_input_stats_shards,
+    render_model_input_stats_markdown,
 )
 from motifml.training.special_token_policy import SpecialTokenPolicy
 
@@ -105,6 +106,33 @@ def test_reduce_model_input_stats_shards_is_deterministic_and_aggregates_exact_c
         "validation/c.json",
         "test/e.json",
     ]
+
+
+def test_render_model_input_stats_markdown_surfaces_pathological_documents() -> None:
+    report = reduce_model_input_stats_shards(
+        (
+            build_model_input_shard_stats(
+                (
+                    _build_row("train/a.json", split="train", token_count=20),
+                    _build_row(
+                        "validation/c.json", split="validation", token_count=110
+                    ),
+                ),
+                shard_id="shard-00000",
+                reporting_parameters={
+                    "worst_document_limit": 2,
+                    "oversized_token_count_threshold": 100,
+                },
+            ),
+        )
+    )
+
+    markdown = render_model_input_stats_markdown(report)
+
+    assert "# Model Input Pathology Report" in markdown
+    assert "train: documents=1, total_tokens=20" in markdown
+    assert "validation/c.json" in markdown
+    assert "EXCEEDS_THRESHOLD" in markdown
 
 
 def _build_row(

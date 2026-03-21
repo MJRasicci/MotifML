@@ -71,7 +71,9 @@ from motifml.training.model_input import (
 )
 from motifml.training.model_input_stats import (
     build_model_input_shard_stats,
+    coerce_model_input_stats_report,
     reduce_model_input_stats_shards,
+    render_model_input_stats_markdown,
 )
 from motifml.training.sequence_schema import (
     SequenceSchemaContract,
@@ -359,6 +361,13 @@ def build_model_input_artifacts(
         model_input,
         reduce_model_input_stats_shards((shard_stats,)).to_json_dict(),
         metadata,
+    )
+
+
+def render_model_input_report(model_input_stats: Mapping[str, Any]) -> str:
+    """Render one human-reviewable model-input pathology summary."""
+    return render_model_input_stats_markdown(
+        coerce_model_input_stats_report(model_input_stats)
     )
 
 

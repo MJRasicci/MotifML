@@ -8,6 +8,7 @@ from motifml.datasets.training_checkpoint_dataset import TrainingCheckpointDatas
 from tests.pipelines.ir_test_support import (
     MOTIF_JSON_FIXTURE_ROOT,
     load_json,
+    load_text,
     run_session,
     write_test_conf,
 )
@@ -102,6 +103,7 @@ def _baseline_training_runtime_overrides() -> dict[str, object]:
 
 def _assert_persisted_training_artifacts(output_root: Path) -> None:
     history = load_json(output_root / "training_history.json")
+    model_input_report = load_text(output_root / "model_input_report.md")
     run_metadata = load_json(output_root / "training_run_metadata.json")
     training_artifacts = TrainingCheckpointDataset(
         filepath=str(output_root / "training" / "baseline")
@@ -109,6 +111,7 @@ def _assert_persisted_training_artifacts(output_root: Path) -> None:
 
     assert history["best_epoch_index"] == 0
     assert history["epochs"][0]["epoch_index"] == 0
+    assert "# Model Input Pathology Report" in model_input_report
     assert run_metadata["training_run_id"]
     assert run_metadata["model_input_version"]
     assert training_artifacts["best_checkpoint"]["checkpoint_name"] == "epoch-0000.pt"

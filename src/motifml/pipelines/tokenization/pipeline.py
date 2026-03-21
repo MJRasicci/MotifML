@@ -9,6 +9,7 @@ from motifml.pipelines.tokenization.nodes import (
     build_shard_model_input_artifacts,
     count_training_split_tokens_from_model_input_parameters,
     reduce_vocabulary_from_count_artifact,
+    render_model_input_report,
 )
 
 
@@ -51,6 +52,12 @@ def create_pipeline(**kwargs: object) -> Pipeline:
                 ],
                 outputs=["model_input", "model_input_stats", "model_input_version"],
                 name="build_model_input_artifacts",
+            ),
+            node(
+                func=render_model_input_report,
+                inputs="model_input_stats",
+                outputs="model_input_report",
+                name="render_model_input_report",
             ),
         ],
         tags=["tokenization", "training_prep"],

@@ -438,6 +438,66 @@ def test_token_window_data_loader_only_pads_the_current_batch() -> None:
     assert batches[1].input_ids.tolist() == [[6, 7, 8, 9, 10, 11]]
 
 
+def test_lazy_token_window_dataset_streams_long_documents_before_later_documents() -> (
+    None
+):
+    visited_documents: list[str] = []
+
+    def document_source() -> object:
+        visited_documents.append("long-doc")
+        yield LoadedTokenizedDocument(
+            shard_id="shard-00000",
+            record_path="records/train/shard-00000/fixtures/long.json.model_input.parquet",
+            row=TokenizedDocumentRow(
+                relative_path="fixtures/long.json",
+                document_id="long-doc",
+                split="train",
+                split_version="split-v1",
+                projection_type="sequence",
+                sequence_mode="baseline_v1",
+                normalized_ir_version="normalized-v1",
+                feature_version="feature-v1",
+                vocabulary_version="vocab-v1",
+                model_input_version="model-input-v1",
+                storage_schema_version="parquet-v1",
+                token_count=16,
+                token_ids=tuple(range(16)),
+                window_start_offsets=(0, 2, 4, 6, 8, 10, 12),
+                context_length=4,
+                stride=2,
+                padding_strategy="right",
+                special_token_policy=SpecialTokenPolicy().to_version_payload(),
+            ),
+        )
+        visited_documents.append("later-doc")
+        yield LoadedTokenizedDocument(
+            shard_id="shard-00001",
+            record_path="records/train/shard-00001/fixtures/later.json.model_input.parquet",
+            row=_build_row(relative_path="fixtures/later.json", split="train"),
+        )
+
+    dataset = LazyTokenWindowDataset(
+        document_source(),
+        split="train",
+        special_token_ids=SpecialTokenIds(
+            pad_token_id=0,
+            bos_token_id=1,
+            eos_token_id=2,
+            unk_token_id=3,
+        ),
+        iteration_options=LoaderIterationOptions(shuffle_windows=False),
+    )
+
+    first_windows = list(islice(iter(dataset), 3))
+
+    assert [example.document_id for example in first_windows] == [
+        "long-doc",
+        "long-doc",
+        "long-doc",
+    ]
+    assert visited_documents == ["long-doc"]
+
+
 def _build_model_input_fixture(tmp_path: Path) -> Path:
     dataset_root = tmp_path / "model_input"
     shard_zero = TokenizedModelInputDataset(

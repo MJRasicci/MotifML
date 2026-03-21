@@ -318,6 +318,55 @@ class ModelInputStatsReport:
         return to_json_compatible(self)
 
 
+def render_model_input_stats_markdown(
+    value: ModelInputStatsReport | Mapping[str, Any],
+) -> str:
+    """Render one human-reviewable Markdown summary for model-input pathologies."""
+    report = coerce_model_input_stats_report(value)
+    lines = [
+        "# Model Input Pathology Report",
+        "",
+        f"- Model Input Version: `{report.model_input_version}`",
+        f"- Total Documents: {report.total_document_count}",
+        "- Oversized Threshold: "
+        f"{report.reporting_parameters.oversized_token_count_threshold} tokens",
+        "",
+        "## Split Summaries",
+        "",
+    ]
+
+    for split_summary in report.split_summaries:
+        lines.append(
+            "- "
+            f"{split_summary.split.value}: documents={split_summary.document_count}, "
+            f"total_tokens={split_summary.total_token_count}, "
+            f"max_tokens={split_summary.max_token_count}, "
+            f"p95_tokens={split_summary.p95_token_count}"
+        )
+
+    lines.extend(["", "## Worst Offending Documents", ""])
+    if not report.worst_offending_documents:
+        lines.extend(["No pathological documents were reported.", ""])
+        return "\n".join(lines).rstrip() + "\n"
+
+    for entry in report.worst_offending_documents:
+        status = (
+            "EXCEEDS_THRESHOLD"
+            if entry.exceeds_oversized_threshold
+            else "WITHIN_THRESHOLD"
+        )
+        lines.append(
+            "- "
+            f"`{entry.relative_path}` "
+            f"(document_id=`{entry.document_id}`, split=`{entry.split.value}`, "
+            f"shard=`{entry.shard_id}`): "
+            f"{entry.token_count} tokens [{status}]"
+        )
+
+    lines.append("")
+    return "\n".join(lines)
+
+
 def build_model_input_shard_stats(
     rows: Sequence[TokenizedDocumentRow | Mapping[str, Any]],
     *,
@@ -473,6 +522,25 @@ def coerce_model_input_shard_stats_artifact(
     )
 
 
+def coerce_model_input_stats_report(
+    value: ModelInputStatsReport | Mapping[str, Any],
+) -> ModelInputStatsReport:
+    """Coerce JSON-loaded model-input stats payloads into the typed report."""
+    if isinstance(value, ModelInputStatsReport):
+        return value
+    return ModelInputStatsReport(
+        model_input_version=str(value["model_input_version"]),
+        storage_schema_version=str(value["storage_schema_version"]),
+        total_document_count=int(value["total_document_count"]),
+        split_summaries=tuple(value.get("split_summaries", ())),
+        shard_summaries=tuple(value.get("shard_summaries", ())),
+        worst_offending_documents=tuple(value.get("worst_offending_documents", ())),
+        reporting_parameters=coerce_model_input_reporting_parameters(
+            value.get("reporting_parameters", {})
+        ),
+    )
+
+
 def _document_entry(
     row: TokenizedDocumentRow,
     *,
@@ -554,7 +622,9 @@ __all__ = [
     "ModelInputSplitStatsEntry",
     "ModelInputStatsReport",
     "build_model_input_shard_stats",
+    "coerce_model_input_stats_report",
     "coerce_model_input_reporting_parameters",
     "coerce_model_input_shard_stats_artifact",
     "reduce_model_input_stats_shards",
+    "render_model_input_stats_markdown",
 ]

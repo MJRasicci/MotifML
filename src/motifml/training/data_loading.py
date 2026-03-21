@@ -423,11 +423,12 @@ class LazyTokenWindowDataset(IterableDataset[TokenWindowExample]):
     def __iter__(self) -> Iterator[TokenWindowExample]:
         """Yield reconstructed windows in persisted offset order."""
         for document in self._documents:
-            window_offsets = list(document.row.window_start_offsets)
-            if _resolve_shuffle_enabled(
+            should_shuffle = _resolve_shuffle_enabled(
                 split=self._effective_split(document),
                 override=self._iteration_options.shuffle_windows,
-            ):
+            )
+            if should_shuffle:
+                window_offsets: Sequence[int] = list(document.row.window_start_offsets)
                 _shuffle_in_place(
                     window_offsets,
                     iteration_options=self._iteration_options,
@@ -435,6 +436,8 @@ class LazyTokenWindowDataset(IterableDataset[TokenWindowExample]):
                     scope="windows",
                     key=f"{document.shard_id}|{document.row.relative_path}",
                 )
+            else:
+                window_offsets = document.row.window_start_offsets
             for window_index, window_start_offset in enumerate(window_offsets):
                 example = build_token_window_example(
                     document.row,
