@@ -127,7 +127,10 @@ Current Pipeline Responsibilities
    Packages projected features into a deterministic baseline model-input surface. The
    current implementation records projection metadata and simple structural counts in a
    fixed-length token sequence; it should be treated as a baseline contract rather than a
-   finalized modeling vocabulary.
+   finalized modeling vocabulary. Explicit sequence token naming, BOS/EOS placement,
+   unknown-token handling, and encode/decode helpers now live under ``motifml.training``
+   so future tokenization, inspection, notebook, and evaluation code can reuse one
+   shared interpretation layer.
 
 Configuration Surfaces
 ----------------------
@@ -148,8 +151,8 @@ Examples of currently configured parameters include:
 - per-rule validation severities for the structural validator
 - projection type, explicit sequence mode, and sequence-schema settings for feature
   extraction
-- vocabulary strategy, max sequence length, padding strategy, and time resolution for
-  tokenization
+- vocabulary strategy, max sequence length, padding strategy, time resolution, and
+  special-token policy settings for tokenization and model-input preparation
 
 Code Organization
 -----------------

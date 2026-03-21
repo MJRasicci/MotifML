@@ -22,6 +22,13 @@ from motifml.training.special_token_policy import (
     UnknownTokenMapping,
     coerce_special_token_policy,
 )
+from motifml.training.token_codec import (
+    FrozenVocabulary,
+    coerce_frozen_vocabulary,
+    decode_token_ids_to_strings,
+    encode_projected_events_to_tokens,
+    encode_token_strings_to_ids,
+)
 from motifml.training.token_families import (
     BOS_TOKEN,
     EOS_TOKEN,
@@ -59,6 +66,7 @@ __all__ = [
     "EOS_TOKEN",
     "EventTokenSpan",
     "EvaluationRunMetadata",
+    "FrozenVocabulary",
     "ModelInputMetadata",
     "PAD_TOKEN",
     "PaddingInteraction",
@@ -86,8 +94,12 @@ __all__ = [
     "build_structure_token",
     "build_time_shift_token",
     "build_vocabulary_version",
+    "coerce_frozen_vocabulary",
     "coerce_special_token_policy",
+    "decode_token_ids_to_strings",
     "deserialize_metadata_artifact",
+    "encode_projected_events_to_tokens",
+    "encode_token_strings_to_ids",
     "expand_sequence_event_spans",
     "flatten_token_spans",
     "freeze_parameter_snapshot",

@@ -111,7 +111,8 @@ model_input:
   special_token_policy:
     bos: document
     eos: document
-    unknown_token: vocabulary_unk
+    padding_interaction: outside_boundaries
+    unknown_token_mapping: map_to_unk
   storage:
     backend: parquet
     schema_version: parquet-v1

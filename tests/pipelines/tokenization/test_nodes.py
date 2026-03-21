@@ -16,6 +16,7 @@ from motifml.pipelines.tokenization.nodes import (
     merge_model_input_shards,
     tokenize_features,
 )
+from motifml.training.token_families import PAD_TOKEN
 
 EXPECTED_TIME_RESOLUTION = 48
 
@@ -49,8 +50,8 @@ def test_tokenize_features_consumes_typed_parameters() -> None:
         "vocabulary:shared_placeholder",
         "time_resolution:24",
         "events:0",
-        "<pad>",
-        "<pad>",
+        PAD_TOKEN,
+        PAD_TOKEN,
     )
     assert model_input.records[0].attention_mask == (1, 1, 1, 1, 0, 0)
 

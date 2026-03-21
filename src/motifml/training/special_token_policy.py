@@ -206,8 +206,11 @@ def coerce_special_token_policy(
         padding_interaction=value.get(
             "padding_interaction", PaddingInteraction.OUTSIDE_BOUNDARIES
         ),
-        unknown_token_mapping=value.get(
-            "unknown_token_mapping", UnknownTokenMapping.MAP_TO_UNK
+        unknown_token_mapping=_coerce_unknown_token_mapping(
+            value.get(
+                "unknown_token_mapping",
+                value.get("unknown_token", UnknownTokenMapping.MAP_TO_UNK),
+            )
         ),
     )
 
@@ -317,6 +320,18 @@ def _normalize_padding_strategy(value: str) -> str:
     if normalized not in {"none", "left", "right"}:
         raise ValueError("padding_strategy must be one of: none, left, right.")
     return normalized
+
+
+def _coerce_unknown_token_mapping(value: object) -> UnknownTokenMapping:
+    normalized = _normalize_text(str(value), "unknown_token_mapping").casefold()
+    if normalized in {"map_to_unk", "vocabulary_unk"}:
+        return UnknownTokenMapping.MAP_TO_UNK
+    if normalized in {"error", "reject"}:
+        return UnknownTokenMapping.ERROR
+    raise ValueError(
+        "unknown_token_mapping must be one of: map_to_unk, vocabulary_unk, "
+        "error, reject."
+    )
 
 
 __all__ = [

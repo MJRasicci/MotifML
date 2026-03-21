@@ -11,6 +11,10 @@ from motifml.training.config import (
     build_parameter_snapshots,
     freeze_parameter_snapshot,
 )
+from motifml.training.special_token_policy import (
+    SpecialTokenPolicy,
+    coerce_special_token_policy,
+)
 
 PARAMETERS_PATH = "conf/base/parameters.yml"
 OVERRIDE_BATCH_SIZE = 16
@@ -73,6 +77,15 @@ def test_build_parameter_snapshots_rejects_missing_baseline_families() -> None:
 
     with pytest.raises(ValueError, match="Missing: vocabulary"):
         build_parameter_snapshots(parameters)
+
+
+def test_parameters_yaml_uses_the_canonical_special_token_policy_shape() -> None:
+    parameters = _load_parameters()
+
+    assert (
+        coerce_special_token_policy(parameters["model_input"]["special_token_policy"])
+        == SpecialTokenPolicy()
+    )
 
 
 def _load_parameters() -> dict[str, object]:

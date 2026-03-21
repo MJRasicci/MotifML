@@ -18,8 +18,7 @@ from motifml.pipelines.tokenization.models import (
     TokenizationParameters,
     coerce_tokenization_parameters,
 )
-
-_PAD_TOKEN = "<pad>"
+from motifml.training.token_families import PAD_TOKEN
 
 
 @dataclass(frozen=True)
@@ -174,7 +173,7 @@ def _apply_sequence_constraints(
     if padding_needed <= 0 or parameters.padding_strategy is PaddingStrategy.NONE:
         return truncated_tokens, attention_mask
 
-    pad_tokens = tuple(_PAD_TOKEN for _ in range(padding_needed))
+    pad_tokens = tuple(PAD_TOKEN for _ in range(padding_needed))
     pad_mask = tuple(0 for _ in range(padding_needed))
     if parameters.padding_strategy is PaddingStrategy.LEFT:
         return pad_tokens + truncated_tokens, pad_mask + attention_mask
