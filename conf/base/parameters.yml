@@ -31,6 +31,95 @@ tokenization:
   padding_strategy: right
   time_resolution: 96
 
+seed: 17
+
+data_split:
+  ratios:
+    train: 0.8
+    validation: 0.1
+    test: 0.1
+  hash_seed: 17
+  grouping_strategy: document_id
+  grouping_key_fallback: relative_path
+
+sequence_schema:
+  schema_name: baseline_sequence
+  schema_mode: baseline_v1
+  note_payload_fields:
+    - pitch
+    - duration
+  structure_markers:
+    enabled: true
+    marker_kinds:
+      - part
+      - staff
+      - bar
+      - voice_lane
+      - onset_group
+  controls:
+    include_point_controls: true
+    point_control_kinds:
+      - tempo_change
+      - dynamic_change
+      - fermata
+    include_span_controls: true
+    span_control_kinds:
+      - hairpin
+      - ottava
+
+vocabulary:
+  time_resolution: 96
+  minimum_frequency: 1
+  maximum_size: 65536
+  special_tokens:
+    pad: <pad>
+    bos: <bos>
+    eos: <eos>
+    unk: <unk>
+
+model_input:
+  projection_type: sequence
+  sequence_mode: baseline_v1
+  context_length: 256
+  stride: 128
+  padding_strategy: right
+  special_token_policy:
+    bos: document
+    eos: document
+    unknown_token: vocabulary_unk
+  storage:
+    backend: parquet
+    schema_version: parquet-v1
+
+model:
+  architecture: decoder_only_transformer
+  embedding_dim: 256
+  hidden_size: 256
+  num_layers: 4
+  num_heads: 4
+  dropout: 0.1
+  positional_encoding: learned
+
+training:
+  device: cpu
+  batch_size: 8
+  num_epochs: 5
+  learning_rate: 0.0005
+  weight_decay: 0.01
+  gradient_clip_norm: 1.0
+  optimizer: adamw
+  lr_scheduler:
+    name: cosine_decay
+    warmup_steps: 100
+
+evaluation:
+  batch_size: 8
+  top_k: 5
+  decode_max_tokens: 256
+  splits:
+    - validation
+    - test
+
 execution:
   shard_id: __all__
   max_parallel_shards: 1
