@@ -17,6 +17,7 @@ from motifml.datasets.motif_ir_shard_dataset import MotifIrShardDataset
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonCorpusDataset
 from motifml.datasets.motif_json_shard_dataset import MotifJsonShardDataset
 from motifml.datasets.partitioned_record_set_dataset import PartitionedRecordSetDataset
+from motifml.datasets.tokenized_model_input_dataset import TokenizedModelInputDataset
 
 __all__ = [
     "JsonDataset",
@@ -33,5 +34,6 @@ __all__ = [
     "MotifJsonCorpusDataset",
     "MotifJsonShardDataset",
     "PartitionedRecordSetDataset",
+    "TokenizedModelInputDataset",
     "coerce_model_input_storage_schema",
 ]
