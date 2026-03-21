@@ -19,6 +19,7 @@ from motifml.training.contracts import (
     serialize_split_manifest,
     sort_split_manifest_entries,
 )
+from motifml.training.special_token_policy import SpecialTokenPolicy
 
 
 def test_split_manifest_entry_round_trips_through_json() -> None:
@@ -134,6 +135,10 @@ def test_vocabulary_metadata_validates_non_negative_counts() -> None:
 
 
 def test_vocabulary_metadata_round_trips_with_canonicalized_snapshots() -> None:
+    policy = SpecialTokenPolicy(
+        eos_placement="document",
+        bos_placement="document",
+    )
     metadata = VocabularyMetadata(
         vocabulary_version="vocab-v1",
         feature_version="feature-v1",
@@ -141,13 +146,21 @@ def test_vocabulary_metadata_round_trips_with_canonicalized_snapshots() -> None:
         token_count=128,
         vocabulary_size=32,
         construction_parameters={"z": 2, "a": {"y": True, "x": False}},
-        special_token_policy={"eos": "document", "bos": "document"},
+        special_token_policy=policy.to_version_payload(),
     )
 
     payload = metadata.to_json_dict()
     restored = VocabularyMetadata.from_json_dict(payload)
 
     assert list(payload["construction_parameters"]) == ["a", "z"]
+    assert list(payload["special_token_policy"]) == [
+        "bos",
+        "eos",
+        "padding_interaction",
+        "policy_mode",
+        "policy_name",
+        "unknown_token_mapping",
+    ]
     assert restored == metadata
 
 

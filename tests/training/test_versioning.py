@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from motifml.training.special_token_policy import SpecialTokenPolicy
 from motifml.training.versioning import (
     build_feature_version,
     build_model_input_version,
@@ -86,26 +87,34 @@ def test_split_version_is_order_independent_for_corpus_membership() -> None:
 
 
 def test_vocabulary_version_changes_only_for_vocabulary_dependencies() -> None:
+    policy = SpecialTokenPolicy().to_version_payload()
     baseline = build_vocabulary_version(
         feature_version="feature-v1",
         tokenization_config={"minimum_frequency": 2, "time_resolution": 96},
         split_version="split-v1",
         split_seed=17,
-        special_token_policy={"bos": "document", "eos": "document"},
+        special_token_policy=policy,
     )
     repeated = build_vocabulary_version(
         feature_version="feature-v1",
         tokenization_config={"time_resolution": 96, "minimum_frequency": 2},
         split_version="split-v1",
         split_seed=17,
-        special_token_policy={"eos": "document", "bos": "document"},
+        special_token_policy={
+            "unknown_token_mapping": "map_to_unk",
+            "eos": "document",
+            "policy_mode": "baseline_v1",
+            "bos": "document",
+            "padding_interaction": "outside_boundaries",
+            "policy_name": "baseline_special_tokens",
+        },
     )
     changed = build_vocabulary_version(
         feature_version="feature-v1",
         tokenization_config={"minimum_frequency": 3, "time_resolution": 96},
         split_version="split-v1",
         split_seed=17,
-        special_token_policy={"bos": "document", "eos": "document"},
+        special_token_policy=policy,
     )
 
     assert baseline == repeated
@@ -113,6 +122,7 @@ def test_vocabulary_version_changes_only_for_vocabulary_dependencies() -> None:
 
 
 def test_model_input_version_changes_only_for_model_input_dependencies() -> None:
+    policy = SpecialTokenPolicy().to_version_payload()
     baseline = build_model_input_version(
         feature_version="feature-v1",
         vocabulary_version="vocab-v1",
@@ -121,7 +131,7 @@ def test_model_input_version_changes_only_for_model_input_dependencies() -> None
             "stride": 128,
             "padding_strategy": "right",
         },
-        special_token_policy={"bos": "document", "eos": "document"},
+        special_token_policy=policy,
         storage_schema_version="parquet-v1",
     )
     repeated = build_model_input_version(
@@ -132,7 +142,14 @@ def test_model_input_version_changes_only_for_model_input_dependencies() -> None
             "context_length": 256,
             "padding_strategy": "right",
         },
-        special_token_policy={"eos": "document", "bos": "document"},
+        special_token_policy={
+            "unknown_token_mapping": "map_to_unk",
+            "eos": "document",
+            "policy_mode": "baseline_v1",
+            "bos": "document",
+            "padding_interaction": "outside_boundaries",
+            "policy_name": "baseline_special_tokens",
+        },
         storage_schema_version="parquet-v1",
     )
     changed = build_model_input_version(
@@ -143,7 +160,7 @@ def test_model_input_version_changes_only_for_model_input_dependencies() -> None
             "stride": 128,
             "padding_strategy": "right",
         },
-        special_token_policy={"bos": "document", "eos": "document"},
+        special_token_policy=policy,
         storage_schema_version="parquet-v1",
     )
 
@@ -152,6 +169,7 @@ def test_model_input_version_changes_only_for_model_input_dependencies() -> None
 
 
 def test_versions_do_not_cross_contaminate_dependency_surfaces() -> None:
+    policy = SpecialTokenPolicy().to_version_payload()
     feature_baseline = build_feature_version(
         normalized_ir_version="normalized-v1",
         projection_config={"projection_type": "sequence"},
@@ -167,14 +185,14 @@ def test_versions_do_not_cross_contaminate_dependency_surfaces() -> None:
         tokenization_config={"minimum_frequency": 2},
         split_version="split-v1",
         split_seed=7,
-        special_token_policy={"bos": "document", "eos": "document"},
+        special_token_policy=policy,
     )
     vocabulary_changed = build_vocabulary_version(
         feature_version=feature_repeated,
         tokenization_config={"minimum_frequency": 3},
         split_version="split-v1",
         split_seed=7,
-        special_token_policy={"bos": "document", "eos": "document"},
+        special_token_policy=policy,
     )
 
     assert feature_baseline == feature_repeated

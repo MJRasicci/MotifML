@@ -15,6 +15,13 @@ from motifml.training.contracts import (
     deserialize_metadata_artifact,
     serialize_metadata_artifact,
 )
+from motifml.training.special_token_policy import (
+    BoundaryPlacement,
+    PaddingInteraction,
+    SpecialTokenPolicy,
+    UnknownTokenMapping,
+    coerce_special_token_policy,
+)
 from motifml.training.token_families import (
     BOS_TOKEN,
     EOS_TOKEN,
@@ -47,18 +54,22 @@ from motifml.training.versioning import (
 
 __all__ = [
     "BOS_TOKEN",
+    "BoundaryPlacement",
     "DatasetSplit",
     "EOS_TOKEN",
     "EventTokenSpan",
     "EvaluationRunMetadata",
     "ModelInputMetadata",
     "PAD_TOKEN",
+    "PaddingInteraction",
     "SPECIAL_TOKENS",
+    "SpecialTokenPolicy",
     "SplitManifestEntry",
     "TrainingRunMetadata",
     "TrainingParameterSnapshots",
     "TokenFamily",
     "UNK_TOKEN",
+    "UnknownTokenMapping",
     "VocabularyMetadata",
     "build_parameter_snapshots",
     "build_contract_version",
@@ -75,6 +86,7 @@ __all__ = [
     "build_structure_token",
     "build_time_shift_token",
     "build_vocabulary_version",
+    "coerce_special_token_policy",
     "deserialize_metadata_artifact",
     "expand_sequence_event_spans",
     "flatten_token_spans",
