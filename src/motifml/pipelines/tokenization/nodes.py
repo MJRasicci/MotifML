@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from motifml.datasets.model_input_storage import coerce_model_input_storage_schema
 from motifml.ir.models import (
     ControlScope,
     DynamicChangeValue,
@@ -54,22 +55,31 @@ from motifml.pipelines.tokenization.models import (
     VocabularyStatsReport,
     coerce_shard_token_counts,
     coerce_tokenization_parameters,
+    coerce_vocabulary_artifact,
     coerce_vocabulary_parameters,
 )
 from motifml.training.contracts import (
     DatasetSplit,
+    ModelInputMetadata,
     SplitManifestEntry,
     VocabularyMetadata,
     coerce_split_manifest_entries,
 )
+from motifml.training.model_input import TokenizedDocumentRow
 from motifml.training.sequence_schema import (
     SequenceSchemaContract,
     coerce_sequence_schema_contract,
 )
 from motifml.training.special_token_policy import coerce_special_token_policy
-from motifml.training.token_codec import encode_projected_events_to_tokens
+from motifml.training.token_codec import (
+    encode_projected_events_to_tokens,
+    encode_token_strings_to_ids,
+)
 from motifml.training.token_families import PAD_TOKEN, SPECIAL_TOKENS
-from motifml.training.versioning import build_vocabulary_version
+from motifml.training.versioning import (
+    build_model_input_version,
+    build_vocabulary_version,
+)
 
 
 @dataclass(frozen=True)
@@ -167,6 +177,119 @@ def count_training_split_tokens_from_model_input_parameters(
             model_input_parameters
         ),
     )
+
+
+def tokenize_features_with_vocabulary(
+    ir_features: IrFeatureSet | Mapping[str, Any],
+    split_manifest: tuple[SplitManifestEntry, ...] | list[Mapping[str, Any]],
+    sequence_schema: SequenceSchemaContract | Mapping[str, Any],
+    vocabulary: VocabularyArtifact | Mapping[str, Any],
+    model_input_parameters: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Tokenize sequence features into typed per-document model-input rows."""
+    feature_set = _coerce_feature_set(ir_features)
+    typed_sequence_schema = coerce_sequence_schema_contract(sequence_schema)
+    manifest_entries = coerce_split_manifest_entries(split_manifest)
+    typed_vocabulary = coerce_vocabulary_artifact(vocabulary)
+    typed_special_token_policy = coerce_special_token_policy(
+        _special_token_policy_from_model_input(model_input_parameters)
+    )
+    split_version = _split_version_for_manifest(manifest_entries)
+    split_by_path = {entry.relative_path: entry for entry in manifest_entries}
+    if feature_set.parameters.feature_version is None:
+        raise ValueError("ir_features.parameters.feature_version must be populated.")
+    if feature_set.parameters.normalized_ir_version is None:
+        raise ValueError(
+            "ir_features.parameters.normalized_ir_version must be populated."
+        )
+    if typed_vocabulary.feature_version != feature_set.parameters.feature_version:
+        raise ValueError(
+            "vocabulary.feature_version must match ir_features.parameters.feature_version."
+        )
+    if typed_vocabulary.split_version != split_version:
+        raise ValueError("vocabulary.split_version must match split_manifest.")
+
+    storage_parameters = _storage_parameters_from_model_input(model_input_parameters)
+    storage_schema = coerce_model_input_storage_schema(storage_parameters)
+    model_input_version = build_model_input_version(
+        feature_version=feature_set.parameters.feature_version,
+        vocabulary_version=typed_vocabulary.vocabulary_version,
+        model_input_config=_model_input_version_payload(model_input_parameters),
+        special_token_policy=typed_special_token_policy.to_version_payload(),
+        storage_schema_version=storage_schema.storage_schema_version,
+    )
+    metadata = ModelInputMetadata(
+        model_input_version=model_input_version,
+        normalized_ir_version=feature_set.parameters.normalized_ir_version,
+        feature_version=feature_set.parameters.feature_version,
+        vocabulary_version=typed_vocabulary.vocabulary_version,
+        projection_type=str(model_input_parameters["projection_type"]),
+        sequence_mode=str(model_input_parameters["sequence_mode"]),
+        context_length=int(model_input_parameters["context_length"]),
+        stride=int(model_input_parameters["stride"]),
+        padding_strategy=str(model_input_parameters["padding_strategy"]),
+        special_token_policy=typed_special_token_policy.to_version_payload(),
+        storage_backend=storage_schema.backend,
+        storage_schema_version=storage_schema.storage_schema_version,
+    )
+
+    records: list[TokenizedDocumentRow] = []
+    time_resolution = int(typed_vocabulary.construction_parameters["time_resolution"])
+    for record in feature_set.records:
+        split_entry = split_by_path.get(record.relative_path)
+        if split_entry is None:
+            raise ValueError(
+                "split_manifest is missing an entry for feature record "
+                f"{record.relative_path!r}."
+            )
+        if record.projection_type is not ProjectionType.SEQUENCE:
+            raise ValueError(
+                "tokenize_features_with_vocabulary only supports sequence projections."
+            )
+        if not isinstance(record.projection, SequenceProjection):
+            raise ValueError(
+                "Sequence feature records must contain typed SequenceProjection data "
+                "for vocabulary-driven tokenization."
+            )
+        token_strings = encode_projected_events_to_tokens(
+            record.projection.events,
+            time_resolution=time_resolution,
+            note_payload_fields=typed_sequence_schema.note_payload_fields,
+            special_token_policy=typed_special_token_policy,
+        )
+        token_ids = encode_token_strings_to_ids(
+            token_strings,
+            vocabulary=typed_vocabulary.token_to_id,
+            special_token_policy=typed_special_token_policy,
+        )
+        records.append(
+            TokenizedDocumentRow(
+                relative_path=record.relative_path,
+                document_id=split_entry.document_id,
+                split=split_entry.split,
+                split_version=split_entry.split_version,
+                projection_type=str(model_input_parameters["projection_type"]),
+                sequence_mode=str(model_input_parameters["sequence_mode"]),
+                normalized_ir_version=feature_set.parameters.normalized_ir_version,
+                feature_version=feature_set.parameters.feature_version,
+                vocabulary_version=typed_vocabulary.vocabulary_version,
+                model_input_version=model_input_version,
+                storage_schema_version=storage_schema.storage_schema_version,
+                token_count=len(token_ids),
+                token_ids=token_ids,
+                window_start_offsets=(),
+                context_length=int(model_input_parameters["context_length"]),
+                stride=int(model_input_parameters["stride"]),
+                padding_strategy=str(model_input_parameters["padding_strategy"]),
+                special_token_policy=typed_special_token_policy.to_version_payload(),
+            )
+        )
+
+    return {
+        "parameters": metadata,
+        "storage_schema": storage_schema,
+        "records": tuple(records),
+    }
 
 
 def merge_model_input_shards(
@@ -828,6 +951,27 @@ def _special_token_policy_from_model_input(
     if not isinstance(special_token_policy, Mapping):
         raise ValueError("special_token_policy must be a mapping.")
     return special_token_policy
+
+
+def _storage_parameters_from_model_input(
+    model_input_parameters: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    storage_parameters = model_input_parameters.get("storage")
+    if not isinstance(storage_parameters, Mapping):
+        raise ValueError("model_input parameters must include a storage mapping.")
+    return storage_parameters
+
+
+def _model_input_version_payload(
+    model_input_parameters: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "projection_type": str(model_input_parameters["projection_type"]),
+        "sequence_mode": str(model_input_parameters["sequence_mode"]),
+        "context_length": int(model_input_parameters["context_length"]),
+        "stride": int(model_input_parameters["stride"]),
+        "padding_strategy": str(model_input_parameters["padding_strategy"]),
+    }
 
 
 def _projection_summary_tokens(record: _FeatureRecordInput) -> tuple[str, ...]:

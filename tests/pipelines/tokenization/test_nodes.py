@@ -1,4 +1,4 @@
-"""Unit tests for the tokenization pipeline skeleton."""
+"""Unit tests for tokenization nodes and reducer helpers."""
 
 from __future__ import annotations
 
@@ -28,12 +28,15 @@ from motifml.pipelines.tokenization.nodes import (
     merge_model_input_shards,
     reduce_vocabulary,
     tokenize_features,
+    tokenize_features_with_vocabulary,
 )
 from motifml.training.contracts import (
     DatasetSplit,
+    ModelInputMetadata,
     SplitManifestEntry,
     VocabularyMetadata,
 )
+from motifml.training.model_input import TokenizedDocumentRow
 from motifml.training.sequence_schema import SequenceSchemaContract
 from motifml.training.token_families import BOS_TOKEN, EOS_TOKEN, PAD_TOKEN
 
@@ -379,6 +382,136 @@ def test_reduce_vocabulary_fails_fast_for_degenerate_guardrail_conditions(
             parameters,
             split_seed=17,
         )
+
+
+def test_tokenize_features_with_vocabulary_emits_token_ids_for_one_document() -> None:
+    feature_set = IrFeatureSet(
+        parameters=FeatureExtractionParameters(
+            projection_type="sequence",
+            feature_version="feature-v1",
+            sequence_schema_version="sequence-schema-v1",
+            normalized_ir_version="normalized-v1",
+        ),
+        records=(
+            IrFeatureRecord(
+                relative_path="fixtures/example.json",
+                projection_type="sequence",
+                projection=SequenceProjection(
+                    mode=SequenceProjectionMode.NOTES_AND_CONTROLS_AND_STRUCTURE_MARKERS,
+                    events=(
+                        StructureMarkerSequenceEvent(
+                            time=ScoreTime(0, 1),
+                            marker_kind=StructureMarkerKind.BAR,
+                            entity_id="bar:1",
+                            part_id="part:1",
+                            staff_id="staff:part:1:1",
+                            bar_id="bar:1",
+                            voice_lane_id=None,
+                        ),
+                        _build_note_event("C", ScoreTime(0, 1)),
+                        _build_note_event("D", ScoreTime(1, 4)),
+                    ),
+                ),
+            ),
+        ),
+    )
+    model_input = tokenize_features_with_vocabulary(
+        feature_set,
+        split_manifest=(
+            SplitManifestEntry(
+                document_id="doc-1",
+                relative_path="fixtures/example.json",
+                split=DatasetSplit.TRAIN,
+                group_key="doc-1",
+                split_version="split-v1",
+            ),
+        ),
+        sequence_schema=SequenceSchemaContract(),
+        vocabulary={
+            "vocabulary_version": "vocab-v1",
+            "feature_version": "feature-v1",
+            "split_version": "split-v1",
+            "token_count": 8,
+            "vocabulary_size": 9,
+            "token_to_id": {
+                "<pad>": 0,
+                "<bos>": 1,
+                "<eos>": 2,
+                "<unk>": 3,
+                "STRUCTURE:BAR": 4,
+                "NOTE_DURATION:96": 5,
+                "NOTE_PITCH:C4": 6,
+                "NOTE_PITCH:D4": 7,
+                "TIME_SHIFT:96": 8,
+            },
+            "token_counts": [
+                {"token": "<pad>", "count": 0},
+                {"token": "<bos>", "count": 1},
+                {"token": "<eos>", "count": 1},
+                {"token": "<unk>", "count": 0},
+                {"token": "STRUCTURE:BAR", "count": 1},
+                {"token": "NOTE_DURATION:96", "count": 2},
+                {"token": "NOTE_PITCH:C4", "count": 1},
+                {"token": "NOTE_PITCH:D4", "count": 1},
+                {"token": "TIME_SHIFT:96", "count": 1},
+            ],
+            "construction_parameters": {
+                "time_resolution": 96,
+                "minimum_frequency": 1,
+                "maximum_size": 65536,
+                "special_tokens": {
+                    "pad": "<pad>",
+                    "bos": "<bos>",
+                    "eos": "<eos>",
+                    "unk": "<unk>",
+                },
+            },
+            "special_token_policy": {
+                "policy_name": "baseline_special_tokens",
+                "policy_mode": "baseline_v1",
+                "bos": "document",
+                "eos": "document",
+                "padding_interaction": "outside_boundaries",
+                "unknown_token_mapping": "map_to_unk",
+            },
+        },
+        model_input_parameters={
+            "projection_type": "sequence",
+            "sequence_mode": "baseline_v1",
+            "context_length": 256,
+            "stride": 128,
+            "padding_strategy": "right",
+            "special_token_policy": {
+                "bos": "document",
+                "eos": "document",
+                "padding_interaction": "outside_boundaries",
+                "unknown_token_mapping": "map_to_unk",
+            },
+            "storage": {
+                "backend": "parquet",
+                "schema_version": "parquet-v1",
+            },
+        },
+    )
+
+    assert isinstance(model_input["parameters"], ModelInputMetadata)
+    assert model_input["parameters"].vocabulary_version == "vocab-v1"
+    assert model_input["storage_schema"].storage_schema_version == "parquet-v1"
+    assert len(model_input["records"]) == 1
+    record = model_input["records"][0]
+    assert isinstance(record, TokenizedDocumentRow)
+    assert record.relative_path == "fixtures/example.json"
+    assert record.document_id == "doc-1"
+    assert record.split is DatasetSplit.TRAIN
+    assert record.projection_type == "sequence"
+    assert record.sequence_mode == "baseline_v1"
+    assert record.feature_version == "feature-v1"
+    assert record.normalized_ir_version == "normalized-v1"
+    assert record.vocabulary_version == "vocab-v1"
+    assert record.model_input_version == model_input["parameters"].model_input_version
+    assert record.token_ids == (1, 4, 6, 5, 8, 7, 5, 2)
+    assert record.token_count == len(record.token_ids)
+    assert record.window_start_offsets == ()
 
 
 def _build_note_event(pitch_step: str, time: ScoreTime) -> NoteSequenceEvent:
