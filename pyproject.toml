@@ -95,5 +95,8 @@ select = [
 ]
 ignore = ["E501"]  # Ruff format takes care of line-too-long
 
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.ipynb" = ["T201"]
+
 [tool.kedro_telemetry]
 project_id = "5c83dbdeaece4a18bf267e0b0232bf54"
