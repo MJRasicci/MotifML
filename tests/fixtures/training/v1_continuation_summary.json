@@ -1,0 +1,49 @@
+{
+  "continuation_dataset_version": "c9d8d70ebb5167f21bfad9b0f9fad9b89405ffd0954f3fcacadbf2f74510c975",
+  "normalized_ir_version": "5e52c695b2121186f92364cdbf0ba1d44973617048c8ba3947f0381e598714f7",
+  "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
+  "source_document_count": 4,
+  "source_document_used_count": 0,
+  "emitted_example_count": 0,
+  "split_example_counts": {},
+  "rejection_counts_by_reason": {
+    "control events present": 1,
+    "grace notes present": 1,
+    "multi-part document": 1,
+    "multi-voice document": 1
+  },
+  "rejections": [
+    {
+      "relative_path": "guitar_techniques_tuplets.json",
+      "document_id": "guitar_techniques_tuplets.json",
+      "split": "train",
+      "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
+      "rejection_reason": "grace notes present",
+      "detail": null
+    },
+    {
+      "relative_path": "single_track_monophonic_pickup.json",
+      "document_id": "single_track_monophonic_pickup.json",
+      "split": "train",
+      "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
+      "rejection_reason": "control events present",
+      "detail": null
+    },
+    {
+      "relative_path": "ensemble_polyphony_controls.json",
+      "document_id": "ensemble_polyphony_controls.json",
+      "split": "validation",
+      "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
+      "rejection_reason": "multi-part document",
+      "detail": null
+    },
+    {
+      "relative_path": "voice_reentry.json",
+      "document_id": "voice_reentry.json",
+      "split": "validation",
+      "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
+      "rejection_reason": "multi-voice document",
+      "detail": null
+    }
+  ]
+}

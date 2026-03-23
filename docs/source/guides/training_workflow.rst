@@ -5,11 +5,11 @@ This guide describes the approved maintainer workflow for MotifML's baseline tra
 and evaluation stack. Use it when you need to rerun the baseline, inspect runtime
 artifacts, or intentionally regenerate the tracked training fixtures.
 
-The runnable workflow in this guide is still the baseline document-row path. The
-authoritative task design for the planned recovery path lives in
-:doc:`../reference/v1_continuation_task_contract`; treat that reference page as the
-source of truth for V1 prompt/scaffold/target semantics until dedicated V1 Kedro
-pipelines land.
+The authoritative recovery baseline is now the V1 continuation task documented in
+:doc:`../reference/v1_continuation_task_contract`. The default preprocessing flow
+persists a dedicated continuation-example dataset under ``05_model_input``. The older
+document-row tokenization path still exists as a legacy comparison/runtime surface until
+the training and evaluation stacks are rewritten around continuation examples.
 
 Canonical Run Paths
 -------------------
@@ -20,15 +20,18 @@ maintainers can choose the scope they need:
 .. code-block:: bash
 
    uv run kedro run --async
+   uv run kedro run --pipelines=continuation_dataset
    uv run kedro run --pipelines=baseline_training
    uv run kedro run --pipelines=evaluation
    uv run kedro run --pipelines=baseline_training_evaluation
 
 Use these command paths intentionally:
 
-- ``__default__`` via ``uv run kedro run --async`` stops at persisted
-  ``05_model_input`` artifacts and is the lightest way to refresh the training-prep
-  surface.
+- ``__default__`` via ``uv run kedro run --async`` refreshes the baseline training-prep
+  surface, including the V1 continuation dataset under ``05_model_input`` plus the
+  legacy document-row artifacts still used by the current sequence-model runtime.
+- ``continuation_dataset`` rebuilds just the deterministic V1 prompt/scaffold/target
+  extraction surface from normalized IR plus the split manifest.
 - ``baseline_training`` runs the default preprocessing path plus baseline training and
   persists ``06_models`` plus training reporting under ``08_reporting/training``.
 - ``evaluation`` reuses an existing best checkpoint and persisted ``05_model_input`` to
@@ -43,6 +46,8 @@ Baseline behavior is frozen through the training-phase parameter families in
 ``conf/base/parameters.yml``:
 
 - ``data_split`` controls score-level split assignment and the split hash seed.
+- ``continuation_dataset`` freezes the V1 structural eligibility and prompt-window
+  contract used when extracting continuation examples from ``03_primary`` normalized IR.
 - ``sequence_schema`` freezes the baseline token-emission surface from ``04_feature``.
 - ``vocabulary`` controls special tokens, size limits, and acceptance guardrails.
 - ``model_input`` controls context length, stride, padding, special-token policy, and
@@ -64,15 +69,18 @@ example:
 Artifact Review Surfaces
 ------------------------
 
-The baseline run produces four primary artifact families:
+The baseline run produces five primary artifact families:
 
-- ``data/05_model_input/ir/`` for persisted tokenized-document rows, vocabulary
+- ``data/05_model_input/v1_continuation/`` for persisted prompt/scaffold/target
+  continuation examples plus shared dataset parameters
+- ``data/05_model_input/ir/`` for the legacy tokenized-document rows, vocabulary
   metadata, version keys, and storage-schema metadata
 - ``data/06_models/training/baseline/`` for checkpoints plus frozen model and training
   configs
 - ``data/07_model_output/evaluation/`` for decoded qualitative sample payloads
-- ``data/08_reporting/training/`` for split stats, vocabulary/model-input reports,
-  training history, metrics, Markdown summaries, and run metadata
+- ``data/08_reporting/training/`` for split stats, continuation-dataset reporting,
+  vocabulary/model-input reports, training history, metrics, Markdown summaries, and
+  run metadata
 
 The section 15 notebooks are the supported interactive inspection surfaces for these
 artifacts:
@@ -122,6 +130,7 @@ Regenerate them with:
 Run that command when a change intentionally affects:
 
 - split planning behavior
+- continuation-example extraction, rejection logic, or continuation-dataset version keys
 - vocabulary contents or version-key derivation
 - tokenized row structure or model-input metadata
 - baseline training metadata, metrics, or qualitative evaluation outputs

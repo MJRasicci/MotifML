@@ -63,6 +63,9 @@ def test_training_preparation_outputs_are_stable_across_repeated_and_reordered_r
 
     version_keys = first_snapshot["version_keys"]
     tracked_split_manifest = load_json(TRAINING_FIXTURE_ROOT / "split_manifest.json")
+    tracked_continuation_summary = load_json(
+        TRAINING_FIXTURE_ROOT / "v1_continuation_summary.json"
+    )
     tracked_vocabulary_version = load_json(
         TRAINING_FIXTURE_ROOT / "vocabulary_version.json"
     )
@@ -78,6 +81,10 @@ def test_training_preparation_outputs_are_stable_across_repeated_and_reordered_r
     )
     assert version_keys["split_versions"] == sorted(
         {entry["split_version"] for entry in tracked_split_manifest}
+    )
+    assert (
+        version_keys["continuation_dataset_version"]
+        == tracked_continuation_summary["continuation_dataset_version"]
     )
     assert (
         version_keys["vocabulary_version"]
@@ -152,6 +159,7 @@ def _build_training_preparation_snapshot(output_root: Path) -> dict[str, Any]:
     feature_parameters = load_partitioned_record_set(output_root / "ir_features")[
         "parameters"
     ]
+    continuation_examples = load_partitioned_record_set(output_root / "v1_continuation")
     vocabulary_version = load_json(output_root / "vocabulary_version.json")
     model_input_version = load_json(
         output_root / "model_input" / "model_input_version.json"
@@ -162,6 +170,8 @@ def _build_training_preparation_snapshot(output_root: Path) -> dict[str, Any]:
         "normalized_ir_version": load_json(output_root / "normalized_ir_version.json"),
         "split_manifest": split_manifest,
         "split_stats": load_json(output_root / "split_stats.json"),
+        "continuation_examples": continuation_examples,
+        "continuation_summary": load_json(output_root / "v1_continuation_summary.json"),
         "feature_parameters": feature_parameters,
         "vocabulary": load_json(output_root / "vocabulary.json"),
         "vocabulary_version": vocabulary_version,
@@ -180,6 +190,9 @@ def _build_training_preparation_snapshot(output_root: Path) -> dict[str, Any]:
             "split_versions": sorted(
                 {entry["split_version"] for entry in split_manifest}
             ),
+            "continuation_dataset_version": continuation_examples["parameters"][
+                "continuation_dataset_version"
+            ],
             "vocabulary_version": vocabulary_version["vocabulary_version"],
             "model_input_version": model_input_version["model_input_version"],
         },

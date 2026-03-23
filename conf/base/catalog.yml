@@ -109,6 +109,15 @@ split_stats:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/08_reporting/training/split_stats.json
 
+v1_continuation_examples:
+  type: motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset
+  filepath: data/05_model_input/v1_continuation
+  record_suffix: ".continuation.json"
+
+v1_continuation_summary:
+  type: motifml.datasets.json_dataset.JsonDataset
+  filepath: data/08_reporting/training/v1_continuation_summary.json
+
 token_count_shard:
   type: motifml.datasets.json_dataset.JsonDataset
   filepath: data/02_intermediate/training/token_counts/shards/${runtime_params:execution.shard_id,__all__}.json

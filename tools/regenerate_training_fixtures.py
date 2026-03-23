@@ -28,6 +28,7 @@ from tests.pipelines.training_test_support import (  # noqa: E402
 TRACKED_OUTPUTS = (
     "split_manifest.json",
     "split_stats.json",
+    "v1_continuation_summary.json",
     "vocabulary.json",
     "vocabulary_version.json",
     "vocab_stats.json",
@@ -37,6 +38,7 @@ TRACKED_OUTPUTS = (
     "model_input/storage_schema.json",
 )
 REPRESENTATIVE_ROW_ROOT = TRAINING_FIXTURE_ROOT / "representative_rows"
+CONTINUATION_DATASET_ROOT = TRAINING_FIXTURE_ROOT / "v1_continuation"
 
 
 def main() -> None:
@@ -61,6 +63,17 @@ def main() -> None:
             target_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source_path, target_path)
             regenerated_paths.append(target_path)
+
+        source_continuation_root = output_root / "v1_continuation"
+        if CONTINUATION_DATASET_ROOT.exists():
+            shutil.rmtree(CONTINUATION_DATASET_ROOT)
+        if source_continuation_root.exists():
+            shutil.copytree(source_continuation_root, CONTINUATION_DATASET_ROOT)
+            regenerated_paths.extend(
+                path
+                for path in sorted(CONTINUATION_DATASET_ROOT.rglob("*"))
+                if path.is_file()
+            )
 
         rows = TokenizedModelInputDataset(
             filepath=str(output_root / "model_input")

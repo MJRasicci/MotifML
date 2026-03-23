@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Any
 
 from motifml.datasets.tokenized_model_input_dataset import TokenizedModelInputDataset
-from tests.pipelines.ir_test_support import load_json, run_session, write_test_conf
+from tests.pipelines.ir_test_support import (
+    load_json,
+    load_partitioned_record_set,
+    run_session,
+    write_test_conf,
+)
 from tests.pipelines.training_test_support import (
     TRAINING_FIXTURE_ROOT,
     baseline_training_runtime_overrides,
@@ -16,6 +21,7 @@ from tests.pipelines.training_test_support import (
 TRACKED_JSON_OUTPUTS = (
     "split_manifest.json",
     "split_stats.json",
+    "v1_continuation_summary.json",
     "vocabulary.json",
     "vocabulary_version.json",
     "vocab_stats.json",
@@ -40,6 +46,10 @@ def test_training_preparation_outputs_match_tracked_fixtures(tmp_path: Path) -> 
         assert load_json(output_root / relative_path) == load_json(
             TRAINING_FIXTURE_ROOT / relative_path
         )
+
+    assert load_partitioned_record_set(output_root / "v1_continuation") == (
+        load_partitioned_record_set(TRAINING_FIXTURE_ROOT / "v1_continuation")
+    )
 
     actual_rows = TokenizedModelInputDataset(
         filepath=str(output_root / "model_input")

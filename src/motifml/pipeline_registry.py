@@ -5,6 +5,9 @@ from __future__ import annotations
 from kedro.pipeline import Pipeline, node, pipeline
 
 from motifml.datasets.motif_json_corpus_dataset import MotifJsonDocument
+from motifml.pipelines.continuation_dataset.pipeline import (
+    create_pipeline as create_continuation_dataset,
+)
 from motifml.pipelines.dataset_splitting.pipeline import (
     create_pipeline as create_dataset_splitting,
 )
@@ -61,6 +64,7 @@ def register_pipelines() -> dict[str, Pipeline]:
     ir_validation = create_ir_validation()
     normalization = create_normalization()
     dataset_splitting = create_dataset_splitting()
+    continuation_dataset = create_continuation_dataset()
     feature_extraction = create_feature_extraction()
     tokenization = create_tokenization()
     tokenization_shard = create_tokenization_shard()
@@ -131,6 +135,7 @@ def register_pipelines() -> dict[str, Pipeline]:
         + ir_validation
         + normalization
         + dataset_splitting
+        + continuation_dataset
         + feature_extraction
         + tokenization
     )
@@ -161,6 +166,7 @@ def register_pipelines() -> dict[str, Pipeline]:
         "ir_validation": ir_validation,
         "normalization": normalization,
         "dataset_splitting": dataset_splitting,
+        "continuation_dataset": continuation_dataset,
         "feature_extraction": feature_extraction,
         "tokenization": tokenization,
         "vocabulary_counting_shard": vocabulary_counting,

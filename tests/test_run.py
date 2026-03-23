@@ -11,14 +11,15 @@ EXPECTED_IR_BUILD_NODE_COUNT = 12
 EXPECTED_IR_VALIDATION_NODE_COUNT = 4
 EXPECTED_NORMALIZATION_NODE_COUNT = 2
 EXPECTED_DATASET_SPLITTING_NODE_COUNT = 2
+EXPECTED_CONTINUATION_DATASET_NODE_COUNT = 1
 EXPECTED_FEATURE_EXTRACTION_NODE_COUNT = 1
 EXPECTED_TOKENIZATION_NODE_COUNT = 4
 EXPECTED_VOCABULARY_COUNTING_NODE_COUNT = 1
 EXPECTED_MODEL_INPUT_REDUCE_NODE_COUNT = 2
 EXPECTED_TRAINING_NODE_COUNT = 1
 EXPECTED_EVALUATION_NODE_COUNT = 1
-EXPECTED_BASELINE_TRAINING_NODE_COUNT = 32
-EXPECTED_BASELINE_TRAINING_EVALUATION_NODE_COUNT = 33
+EXPECTED_BASELINE_TRAINING_NODE_COUNT = 33
+EXPECTED_BASELINE_TRAINING_EVALUATION_NODE_COUNT = 34
 EXPECTED_DEFAULT_NODE_ORDER = [
     "build_raw_corpus_manifest",
     "build_raw_partition_index",
@@ -44,6 +45,7 @@ EXPECTED_DEFAULT_NODE_ORDER = [
     "publish_ir_validation_report",
     "summarize_ir_corpus",
     "build_split_statistics",
+    "extract_continuation_examples",
     "extract_features",
     "report_ir_scale_metrics",
     "count_training_split_tokens_for_default_run",
@@ -76,6 +78,7 @@ def test_register_pipelines_exposes_project_pipelines():
     assert "normalization" in pipelines
     assert "normalization_shard" in pipelines
     assert "dataset_splitting" in pipelines
+    assert "continuation_dataset" in pipelines
     assert "feature_extraction" in pipelines
     assert "feature_extraction_shard" in pipelines
     assert "tokenization" in pipelines
@@ -97,6 +100,10 @@ def test_register_pipelines_exposes_project_pipelines():
     assert (
         len(pipelines["dataset_splitting"].nodes)
         == EXPECTED_DATASET_SPLITTING_NODE_COUNT
+    )
+    assert (
+        len(pipelines["continuation_dataset"].nodes)
+        == EXPECTED_CONTINUATION_DATASET_NODE_COUNT
     )
     assert (
         len(pipelines["feature_extraction"].nodes)
@@ -199,6 +206,17 @@ def test_pipeline_inputs_and_outputs_match_the_registered_catalog_contract():
         "split_stats",
     }
     assert pipelines["dataset_splitting"].outputs() == {"split_stats"}
+
+    assert pipelines["continuation_dataset"].inputs() == {
+        "normalized_ir_corpus",
+        "split_manifest",
+        "params:continuation_dataset",
+        "normalized_ir_version",
+    }
+    assert pipelines["continuation_dataset"].outputs() == {
+        "v1_continuation_examples",
+        "v1_continuation_summary",
+    }
 
     assert pipelines["tokenization"].inputs() == {
         "ir_features",

@@ -196,6 +196,15 @@ def write_test_conf(tmp_path: Path, raw_corpus_path: Path) -> tuple[Path, Path]:
             "type": "motifml.datasets.json_dataset.JsonDataset",
             "filepath": str(output_root / "split_stats.json"),
         },
+        "v1_continuation_examples": {
+            "type": "motifml.datasets.partitioned_record_set_dataset.PartitionedRecordSetDataset",
+            "filepath": str(output_root / "v1_continuation"),
+            "record_suffix": ".continuation.json",
+        },
+        "v1_continuation_summary": {
+            "type": "motifml.datasets.json_dataset.JsonDataset",
+            "filepath": str(output_root / "v1_continuation_summary.json"),
+        },
         "token_count_shard": {
             "type": "motifml.datasets.json_dataset.JsonDataset",
             "filepath": str(

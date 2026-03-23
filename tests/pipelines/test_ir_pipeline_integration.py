@@ -18,6 +18,7 @@ from tests.pipelines.ir_test_support import (
 )
 
 EXPECTED_FIXTURE_COUNT = len(fixture_entries())
+EXPECTED_PROMPT_BAR_COUNT = 4
 EXPECTED_DEFAULT_STAGE_ORDER = [
     "build_raw_corpus_manifest",
     "build_raw_partition_index",
@@ -43,11 +44,13 @@ EXPECTED_DEFAULT_STAGE_ORDER = [
     "publish_ir_validation_report",
     "summarize_ir_corpus",
     "build_split_statistics",
+    "extract_continuation_examples",
     "extract_features",
     "report_ir_scale_metrics",
     "count_training_split_tokens_for_default_run",
     "reduce_vocabulary_for_default_run",
     "build_model_input_artifacts",
+    "render_model_input_report",
 ]
 
 
@@ -77,6 +80,7 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
     run_session(conf_source)
 
     ir_features = load_partitioned_record_set(output_root / "ir_features")
+    v1_continuation = load_partitioned_record_set(output_root / "v1_continuation")
     model_input = load_tokenized_model_input(output_root / "model_input")
 
     assert load_json(output_root / "raw_motif_json_manifest.json")
@@ -92,6 +96,12 @@ def test_kedro_session_runs_default_pipeline_in_stage_sequence(tmp_path: Path):
     assert ir_features["parameters"]["normalized_ir_version"]
     assert load_json(output_root / "split_manifest.json")
     assert load_json(output_root / "split_stats.json")
+    assert load_json(output_root / "v1_continuation_summary.json")
+    assert v1_continuation["parameters"]["continuation_dataset_version"]
+    assert v1_continuation["parameters"]["normalized_ir_version"]
+    assert (
+        v1_continuation["parameters"]["prompt_bar_count"] == EXPECTED_PROMPT_BAR_COUNT
+    )
     assert load_json(output_root / "vocabulary.json")
     assert load_json(output_root / "vocab_stats.json")
     assert load_json(output_root / "model_input" / "model_input_version.json")[

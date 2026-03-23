@@ -1,0 +1,8 @@
+{
+  "continuation_dataset_version": "c9d8d70ebb5167f21bfad9b0f9fad9b89405ffd0954f3fcacadbf2f74510c975",
+  "normalized_ir_version": "5e52c695b2121186f92364cdbf0ba1d44973617048c8ba3947f0381e598714f7",
+  "split_version": "9ad3a76b5e6f167287afe39fb5c3957a8ba993c00d2d9a659dfb50c4689d5665",
+  "task_contract_name": "motifml.v1_continuation_task",
+  "task_contract_version": "1.0.0",
+  "prompt_bar_count": 4
+}

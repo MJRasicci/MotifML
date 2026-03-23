@@ -67,6 +67,19 @@ data_split:
   grouping_strategy: document_id
   grouping_key_fallback: relative_path
 
+continuation_dataset:
+  contract_name: motifml.v1_continuation_task
+  contract_version: "1.0.0"
+  prompt_bar_count: 4
+  require_single_part: true
+  require_single_staff: true
+  require_single_voice_lane_chain: true
+  reject_control_events: true
+  reject_grace_notes: true
+  reject_techniques: true
+  require_attack_equals_sounding: true
+  require_pitched_notes: true
+
 sequence_schema:
   schema_name: baseline_sequence
   schema_mode: baseline_v1
