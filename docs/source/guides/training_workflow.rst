@@ -5,6 +5,12 @@ This guide describes the approved maintainer workflow for MotifML's baseline tra
 and evaluation stack. Use it when you need to rerun the baseline, inspect runtime
 artifacts, or intentionally regenerate the tracked training fixtures.
 
+The runnable workflow in this guide is still the baseline document-row path. The
+authoritative task design for the planned recovery path lives in
+:doc:`../reference/v1_continuation_task_contract`; treat that reference page as the
+source of truth for V1 prompt/scaffold/target semantics until dedicated V1 Kedro
+pipelines land.
+
 Canonical Run Paths
 -------------------
 

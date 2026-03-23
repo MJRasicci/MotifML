@@ -1,10 +1,15 @@
-Training Contract
-=================
+Baseline Training Contract
+==========================
 
 This page summarizes the implemented baseline training contract for MotifML. It freezes
 the main configuration families, version-key derivation rules, token and split
 semantics, and the persisted artifact layout that maintainers should expect from the
 baseline stack.
+
+It is intentionally retained as the runnable baseline reference. The authoritative design
+contract for the in-progress recovery path lives in :doc:`v1_continuation_task_contract`.
+That page defines the future single-track, single-voice, next-bar continuation task;
+this page documents the currently implemented document-row baseline.
 
 Approved Baseline Boundary
 --------------------------
